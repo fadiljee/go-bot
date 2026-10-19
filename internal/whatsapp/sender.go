@@ -55,41 +55,31 @@ func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string
 	return nil
 }
 
-// SendInteractiveMessage sends single-select or quick-reply interactive message, with reliable plain-text delivery
+// SendInteractiveMessage sends native single-select or quick-reply interactive button message
 func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg *waE2E.Message) error {
-	var textToSend string
-
-	if msg != nil {
-		var interactive *waE2E.InteractiveMessage
-		if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
-			interactive = msg.GetViewOnceMessage().GetMessage().GetInteractiveMessage()
-		} else {
-			interactive = msg.GetInteractiveMessage()
-		}
-
-		if interactive != nil {
-			if interactive.GetBody() != nil {
+	log.Printf("📤 [SENDER] Mengirim pesan tombol interaktif ke %s...", jid.String())
+	resp, err := s.client.SendMessage(ctx, jid, msg)
+	if err != nil {
+		log.Printf("⚠️ [SENDER WARN] WhatsApp menolak pesan tombol interaktif ke %s: %v. Mengirim teks cadangan...", jid.String(), err)
+		var textToSend string
+		if msg != nil {
+			var interactive *waE2E.InteractiveMessage
+			if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
+				interactive = msg.GetViewOnceMessage().GetMessage().GetInteractiveMessage()
+			} else {
+				interactive = msg.GetInteractiveMessage()
+			}
+			if interactive != nil && interactive.GetBody() != nil {
 				textToSend = interactive.GetBody().GetText()
 			}
 		}
-	}
-
-	if textToSend == "" && msg.GetConversation() != "" {
-		textToSend = msg.GetConversation()
-	}
-
-	if textToSend != "" {
-		// Kirim teks terformat resmi yang 100% didukung dan dijamin tampil di semua WhatsApp client
-		return s.SendTextMessage(ctx, jid, textToSend)
-	}
-
-	log.Printf("📤 [SENDER] Mengirim pesan ke %s...", jid.String())
-	resp, err := s.client.SendMessage(ctx, jid, msg)
-	if err != nil {
-		log.Printf("❌ [SENDER ERROR] Gagal mengirim pesan ke %s: %v", jid.String(), err)
+		if textToSend != "" {
+			return s.SendTextMessage(ctx, jid, textToSend)
+		}
 		return err
 	}
-	log.Printf("✅ [SENDER OK] Pesan terkirim ke %s (ID: %s)", jid.String(), resp.ID)
+
+	log.Printf("✅ [SENDER OK] Pesan tombol interaktif berhasil terkirim ke %s (ID: %s)", jid.String(), resp.ID)
 	return nil
 }
 
