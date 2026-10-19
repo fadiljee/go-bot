@@ -8,6 +8,7 @@ import (
 
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
+	"bot-istimewa/internal/locale"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -125,6 +126,19 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 	if session.CurrentState == StateAdminWaitPass {
 		_ = r.HandleAdminAuth(ctx, session, p)
+		return
+	}
+
+	// Mode Admin Aktif: Admin dapat memilih nomor 1-8 untuk detail database atau mengetik menu
+	if session.CurrentState == StateAdminLoggedIn {
+		if input == "1" || input == "2" || input == "3" || input == "4" || input == "5" || input == "6" || input == "7" || input == "8" {
+			key := fmt.Sprintf("menuAdmin%s", input)
+			reply := fmt.Sprintf("📂 *Link Database Admin (%s):*\n\n%s\n\n───────────────────────────\n_Ketik angka lain (1-8) atau ketik *menu* untuk melihat semua link._\n_Ketik *0* untuk keluar ke Menu Utama._", input, locale.T(key))
+			_ = r.sender.SendTextMessage(ctx, p.JID, reply)
+			return
+		}
+
+		_ = r.SendAdminDashboard(ctx, session, p)
 		return
 	}
 
