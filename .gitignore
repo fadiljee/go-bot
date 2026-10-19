@@ -1,0 +1,62 @@
+# ==========================================
+# BOT ISTIMEWA - .gitignore
+# ==========================================
+
+# 1. Environment & Kredensial / Secret Keys (JANGAN DI-PUSH!)
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+credentials*.json
+service-account*.json
+
+# 2. Database & Sesi WhatsApp (Berisi Kunci Enkripsi & Chat Session)
+storage/
+session/
+state/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+
+# 3. Compiled Go Binaries & Executables
+bot-istimewa
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# 4. Logs & Debugging
+*.log
+*.log.*
+
+# 5. Media Video Berukuran Besar (Private / Heavy Assets)
+VideoliterasiStatistik/
+*.mp4
+*.MP4
+*.mkv
+*.avi
+*.mov
+
+# 6. Editor & IDE Settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.antigravity*
+
+# 7. OS Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
