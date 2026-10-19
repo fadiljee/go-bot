@@ -81,12 +81,16 @@ go-bot/
 - Go 1.21+ (sudah terpasang di sistem: `go1.26.8`)
 
 ### 2. Konfigurasi (`.env`)
-Pastikan file `.env` sudah sesuai (salin dari `.env.example` jika baru):
+Pastikan file `.env` sudah dibuat dengan menyalin template:
+```bash
+cp .env.example .env
+```
+Sesuaikan nilai konfigurasi di dalam file `.env`:
 ```env
 APP_PORT=3000
-API_SECRET_KEY=rahasia_internal_bps_1903
-ADMIN_TRIGGER_KEYWORD="login admin - 1903"
-ADMIN_PASSWORD=supertim1903
+API_SECRET_KEY=ganti_dengan_api_secret_key_anda
+ADMIN_TRIGGER_KEYWORD="login admin - 1234"
+ADMIN_PASSWORD=ganti_dengan_password_admin_anda
 ACTIVE_INDICATOR_YEAR=2025
 IDLE_TIMEOUT_MINUTES=15
 ```
