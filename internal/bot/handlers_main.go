@@ -134,11 +134,24 @@ func (r *BotRouter) HandleAdminPrompt(ctx context.Context, s *UserSession, p *wh
 	return r.sender.SendTextMessage(ctx, p.JID, "🔐 Silakan masukkan *Password Admin* untuk melanjutkan:")
 }
 
-// HandleAdminAuth verifies admin password from .env
+// HandleAdminAuth verifies admin password from .env and displays admin database links
 func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	if strings.TrimSpace(p.Text) == r.cfg.AdminPassword {
 		s.CurrentState = StateAdminLoggedIn
-		return r.sender.SendTextMessage(ctx, p.JID, "✅ *Login Admin Berhasil!*\n\nSelamat datang di Panel Admin BOT ISTIMEWA.\nKetik *0* untuk kembali ke menu awal pengguna.")
+
+		adminText := fmt.Sprintf("✅ *Login Admin Berhasil!*\n\n%s\n\n*1.* %s\n\n*2.* %s\n\n*3.* %s\n\n*4.* %s\n\n*5.* %s\n\n*6.* %s\n\n*7.* %s\n\n*8.* %s\n\n%s",
+			locale.T("introMenuAdmin"),
+			locale.T("menuAdmin1"),
+			locale.T("menuAdmin2"),
+			locale.T("menuAdmin3"),
+			locale.T("menuAdmin4"),
+			locale.T("menuAdmin5"),
+			locale.T("menuAdmin6"),
+			locale.T("menuAdmin7"),
+			locale.T("menuAdmin8"),
+			locale.T("footerMenu1"),
+		)
+		return r.sender.SendTextMessage(ctx, p.JID, adminText)
 	}
 
 	return r.sender.SendTextMessage(ctx, p.JID, "❌ Password admin salah! Akses ditolak.\nKetik *0* untuk kembali ke menu utama.")
