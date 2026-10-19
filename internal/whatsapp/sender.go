@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"go.mau.fi/whatsmeow"
+	waBinary "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
@@ -27,69 +31,145 @@ type CachedMedia struct {
 
 type Sender struct {
 	client     *whatsmeow.Client
+	queue      *MessageQueue
 	mediaMu    sync.RWMutex
 	mediaCache map[string]*CachedMedia
 	httpClient *http.Client
 }
 
-func NewSender(client *whatsmeow.Client) *Sender {
+func NewSender(client *whatsmeow.Client, queue *MessageQueue) *Sender {
 	return &Sender{
 		client:     client,
+		queue:      queue,
 		mediaCache: make(map[string]*CachedMedia),
 		httpClient: &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
-// SendTextMessage sends plain text message
-func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string) error {
-	log.Printf("📤 [SENDER] Mengirim pesan teks ke %s...", jid.String())
-	msg := &waE2E.Message{
-		Conversation: proto.String(text),
-	}
-	resp, err := s.client.SendMessage(ctx, jid, msg)
-	if err != nil {
-		log.Printf("❌ [SENDER ERROR] Gagal mengirim pesan teks ke %s: %v", jid.String(), err)
-		return err
-	}
-	log.Printf("✅ [SENDER OK] Pesan teks terkirim ke %s (ID: %s)", jid.String(), resp.ID)
-	return nil
+func (s *Sender) Queue() *MessageQueue {
+	return s.queue
 }
 
-// SendInteractiveMessage sends single-select or quick-reply interactive message, with reliable plain-text delivery
-func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg *waE2E.Message) error {
-	var textToSend string
+// ValidateURLAntiSSRF checks that the URL uses HTTPS and does not point to internal/private/loopback addresses
+func ValidateURLAntiSSRF(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
 
-	if msg != nil {
-		var interactive *waE2E.InteractiveMessage
-		if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
-			interactive = msg.GetViewOnceMessage().GetMessage().GetInteractiveMessage()
-		} else {
-			interactive = msg.GetInteractiveMessage()
-		}
+	if parsed.Scheme != "https" {
+		return fmt.Errorf("SSRF protection: only https scheme is allowed, got '%s'", parsed.Scheme)
+	}
 
-		if interactive != nil {
-			if interactive.GetBody() != nil {
-				textToSend = interactive.GetBody().GetText()
+	hostname := parsed.Hostname()
+	if hostname == "" {
+		return fmt.Errorf("SSRF protection: empty hostname")
+	}
+
+	lowerHost := strings.ToLower(hostname)
+	if lowerHost == "localhost" || lowerHost == "127.0.0.1" || lowerHost == "::1" {
+		return fmt.Errorf("SSRF protection: local address '%s' is prohibited", hostname)
+	}
+
+	// Resolve IP to check for private / loopback / link-local addresses
+	ips, err := net.LookupIP(hostname)
+	if err == nil {
+		for _, ip := range ips {
+			if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+				return fmt.Errorf("SSRF protection: host '%s' resolves to prohibited IP '%s'", hostname, ip.String())
 			}
 		}
 	}
 
-	if textToSend == "" && msg.GetConversation() != "" {
-		textToSend = msg.GetConversation()
+	return nil
+}
+
+// SendTextMessage sends plain text message via MessageQueue with typing simulation
+func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string) error {
+	if s == nil {
+		return nil
+	}
+	log.Printf("📤 [SENDER] Mengirim pesan teks ke %s...", jid.String())
+	msg := &waE2E.Message{
+		Conversation: proto.String(text),
 	}
 
-	if textToSend != "" {
-		// Kirim teks terformat resmi yang 100% didukung dan dijamin tampil di semua WhatsApp client
-		return s.SendTextMessage(ctx, jid, textToSend)
+	var err error
+	if s.queue != nil {
+		err = s.queue.SendInteractiveSync(ctx, jid, msg, nil)
+	} else if s.client != nil {
+		_, err = s.client.SendMessage(ctx, jid, msg)
 	}
 
-	log.Printf("📤 [SENDER] Mengirim pesan ke %s...", jid.String())
-	resp, err := s.client.SendMessage(ctx, jid, msg)
 	if err != nil {
-		log.Printf("❌ [SENDER ERROR] Gagal mengirim pesan ke %s: %v", jid.String(), err)
+		log.Printf("❌ [SENDER ERROR] Gagal mengirim pesan teks ke %s: %v", jid.String(), err)
 		return err
 	}
-	log.Printf("✅ [SENDER OK] Pesan terkirim ke %s (ID: %s)", jid.String(), resp.ID)
+	log.Printf("✅ [SENDER OK] Pesan teks berhasil terkirim ke %s", jid.String())
+	return nil
+}
+
+// SendInteractiveMessage sends native list dropdown or quick-reply buttons message via queue with text fallback
+func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg *waE2E.Message) error {
+	if s == nil {
+		return nil
+	}
+	log.Printf("📤 [SENDER] Mengirim pesan tombol resmi WhatsApp (Native Flow List / Buttons) ke %s...", jid.String())
+
+	extra := &whatsmeow.SendRequestExtra{
+		AdditionalNodes: &[]waBinary.Node{
+			{
+				Tag: "biz",
+				Content: []waBinary.Node{
+					{
+						Tag: "interactive",
+						Attrs: waBinary.Attrs{"type": "native_flow", "v": "1"},
+						Content: []waBinary.Node{
+							{
+								Tag: "native_flow",
+								Attrs: waBinary.Attrs{"v": "9", "name": "mixed"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var err error
+	if s.queue != nil {
+		err = s.queue.SendInteractiveSync(ctx, jid, msg, extra)
+	} else if s.client != nil {
+		_, err = s.client.SendMessage(ctx, jid, msg, *extra)
+	}
+
+	if err != nil {
+		log.Printf("⚠️ [SENDER ERROR] Gagal mengirim pesan tombol ke %s: %v. Mengirim versi teks cadangan...", jid.String(), err)
+		var textToSend string
+		if msg != nil {
+			unwrapped := msg
+			if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
+				unwrapped = msg.GetViewOnceMessage().GetMessage()
+			}
+			if inter := unwrapped.GetInteractiveMessage(); inter != nil {
+				if body := inter.GetBody(); body != nil {
+					textToSend = body.GetText()
+				}
+			} else if list := unwrapped.GetListMessage(); list != nil {
+				textToSend = list.GetDescription()
+			} else if btn := unwrapped.GetButtonsMessage(); btn != nil {
+				textToSend = btn.GetContentText()
+			} else if conv := unwrapped.GetConversation(); conv != "" {
+				textToSend = conv
+			}
+		}
+		if textToSend != "" {
+			return s.SendTextMessage(ctx, jid, textToSend)
+		}
+		return err
+	}
+
+	log.Printf("✅ [SENDER OK] Pesan tombol resmi berhasil terkirim ke %s", jid.String())
 	return nil
 }
 
@@ -136,22 +216,34 @@ func (s *Sender) SendSticker(ctx context.Context, jid types.JID, filePath string
 		},
 	}
 
-	resp, err := s.client.SendMessage(ctx, jid, msg)
+	var err error
+	if s.queue != nil {
+		err = s.queue.SendInteractiveSync(ctx, jid, msg, nil)
+	} else if s.client != nil {
+		_, err = s.client.SendMessage(ctx, jid, msg)
+	}
+
 	if err != nil {
 		log.Printf("❌ [SENDER ERROR] Gagal mengirim stiker ke %s: %v", jid.String(), err)
 		return err
 	}
-	log.Printf("✅ [SENDER OK] Stiker terkirim ke %s (ID: %s)", jid.String(), resp.ID)
+	log.Printf("✅ [SENDER OK] Stiker terkirim ke %s", jid.String())
 	return nil
 }
 
-// SendImageFromURL downloads image from URL, uploads to WA, and sends with optional caption
+// SendImageFromURL downloads image from URL with Anti-SSRF and LimitReader, uploads to WA, and sends with caption
 func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, caption string) error {
 	if imageURL == "" {
 		return nil
 	}
 
-	// Check cache
+	// 1. Anti-SSRF Validation
+	if err := ValidateURLAntiSSRF(imageURL); err != nil {
+		log.Printf("⚠️ [SSRF BLOCKED] Menolak download gambar dari %s: %v", imageURL, err)
+		return err
+	}
+
+	// 2. Check cache
 	s.mediaMu.RLock()
 	cached, found := s.mediaCache[imageURL]
 	s.mediaMu.RUnlock()
@@ -163,7 +255,10 @@ func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, 
 		}
 		defer resp.Body.Close()
 
-		data, err := io.ReadAll(resp.Body)
+		// 3. Anti-OOM Memory Protection: limit to 16 MB
+		const maxMediaBytes = 16 * 1024 * 1024
+		limitedReader := io.LimitReader(resp.Body, maxMediaBytes)
+		data, err := io.ReadAll(limitedReader)
 		if err != nil {
 			return fmt.Errorf("read image body: %w", err)
 		}
@@ -205,6 +300,12 @@ func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, 
 		},
 	}
 
-	_, err := s.client.SendMessage(ctx, jid, msg)
+	var err error
+	if s.queue != nil {
+		err = s.queue.SendInteractiveSync(ctx, jid, msg, nil)
+	} else if s.client != nil {
+		_, err = s.client.SendMessage(ctx, jid, msg)
+	}
+
 	return err
 }

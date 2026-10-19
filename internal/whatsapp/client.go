@@ -48,9 +48,11 @@ func NewClientManager(cfg *config.Config) (*ClientManager, error) {
 	clientLog := waLog.Stdout("WhatsApp", "INFO", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
+	mq := NewMessageQueue(client, cfg.QueueInteractiveMinDelayMs, cfg.QueueInteractiveMaxDelayMs, cfg.QueueBlastMinDelayMs, cfg.QueueBlastMaxDelayMs)
+
 	mgr := &ClientManager{
 		Client: client,
-		Sender: NewSender(client),
+		Sender: NewSender(client, mq),
 		cfg:    cfg,
 	}
 

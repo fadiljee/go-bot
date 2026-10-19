@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-	"math/rand"
 	"runtime"
 	"strings"
 	"time"
@@ -18,6 +17,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	waBinary "go.mau.fi/whatsmeow/binary"
+	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
 )
 
@@ -55,17 +56,22 @@ func (s *APIServer) setupRoutes() {
 	// Public Health Check
 	s.app.Get("/health", s.handleHealth)
 
-	// Web Browser QR Scanner
+	// Web Browser QR Scanner (Auto-Locks when logged in)
 	s.app.Get("/qr", s.handleQRPage)
 
-	// API Group
+	// API Group (Protected by X-API-Key / Bearer token)
 	api := s.app.Group("/api", s.authMiddleware)
 
-	// Cache Invalidation
+	// Legacy & V1 Cache Invalidation endpoints
 	api.Post("/cache/refresh", s.handleCacheRefresh)
+	api.Post("/v1/cache/clear", s.handleCacheRefresh)
 
-	// Asynchronous Blast (FR-07)
+	// Legacy & V1 Asynchronous Blast endpoints
 	api.Post("/blast", s.handleBlast)
+	api.Post("/v1/blast", s.handleBlast)
+
+	// Protected API QR endpoint
+	api.Get("/v1/qr", s.handleQRAPI)
 }
 
 func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
@@ -75,6 +81,9 @@ func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			apiKey = strings.TrimPrefix(authHeader, "Bearer ")
 		}
+	}
+	if apiKey == "" {
+		apiKey = c.Query("key")
 	}
 
 	if apiKey != s.cfg.APISecretKey {
@@ -93,7 +102,7 @@ func (s *APIServer) handleHealth(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"app":       "BOT ISTIMEWA",
-		"version":   "3.0.0 (Go Native)",
+		"version":   "3.0.0 (Go Native Hardened)",
 		"agency":    "BPS Kabupaten Bangka Barat",
 		"connected": s.clientMgr.IsLoggedIn,
 		"uptime":    time.Since(s.startTime).String(),
@@ -105,16 +114,17 @@ func (s *APIServer) handleHealth(c *fiber.Ctx) error {
 	})
 }
 
+// handleQRPage renders HTML QR page or returns 403 Forbidden if already logged in (Auto-Lock)
 func (s *APIServer) handleQRPage(c *fiber.Ctx) error {
 	if s.clientMgr.IsLoggedIn {
-		return c.Type("html").SendString(`
+		return c.Status(fiber.StatusForbidden).Type("html").SendString(`
 			<!DOCTYPE html>
 			<html>
-			<head><title>BOT ISTIMEWA - QR Code</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+			<head><title>403 Forbidden - BOT ISTIMEWA</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
 			<body style="font-family:sans-serif; text-align:center; padding: 40px; background:#f4f6f9;">
 				<div style="max-width:450px; margin:auto; background:white; padding:30px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
-					<h2 style="color:#2e7d32;">✅ Bot Sudah Terhubung!</h2>
-					<p>BOT ISTIMEWA WhatsApp BPS Kabupaten Bangka Barat sedang aktif dan siap melayani.</p>
+					<h2 style="color:#d32f2f;">🔒 Akses QR Terkunci (403 Forbidden)</h2>
+					<p>Bot WhatsApp sudah berhasil terhubung dan sesi aktif. Akses pemindaian QR ditutup demi keamanan sistem.</p>
 				</div>
 			</body>
 			</html>
@@ -169,6 +179,29 @@ func (s *APIServer) handleQRPage(c *fiber.Ctx) error {
 	return c.Type("html").SendString(html)
 }
 
+func (s *APIServer) handleQRAPI(c *fiber.Ctx) error {
+	if s.clientMgr.IsLoggedIn {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"error":   "Forbidden: WhatsApp client is already logged in",
+		})
+	}
+
+	qrPNG, qrStr := s.clientMgr.GetQR()
+	if len(qrPNG) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "QR code is not currently generated or waiting for scan",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"qr_raw":  qrStr,
+		"qr_png":  base64.StdEncoding.EncodeToString(qrPNG),
+	})
+}
+
 func (s *APIServer) handleCacheRefresh(c *fiber.Ctx) error {
 	log.Println("[API] Permintaan pembersihan dan pemutakhiran cache Google Sheets diterima...")
 	err := s.gsheet.RefreshAll()
@@ -199,10 +232,36 @@ func (s *APIServer) handleBlast(c *fiber.Ctx) error {
 		})
 	}
 
-	// Run blast asynchronously in background goroutine with random delay
-	go func(numbers []string, msg string) {
-		log.Printf("[BLAST] Memulai pengiriman pesan ke %d nomor subscriber...", len(numbers))
-		for i, num := range numbers {
+	// Build blast message with Opt-Out quick reply button to prevent report/spam ban
+	optOutButtons := []whatsapp.QuickReplyButton{
+		{ID: "berhenti_langganan", DisplayText: "🔕 Berhenti Berlangganan"},
+	}
+	blastMsg := whatsapp.BuildQuickReplyButtons("📢 Rilis Data BPS Bangka Barat", req.Message, "PST BPS Kabupaten Bangka Barat", optOutButtons)
+
+	extra := &whatsmeow.SendRequestExtra{
+		AdditionalNodes: &[]waBinary.Node{
+			{
+				Tag: "biz",
+				Content: []waBinary.Node{
+					{
+						Tag: "interactive",
+						Attrs: waBinary.Attrs{"type": "native_flow", "v": "1"},
+						Content: []waBinary.Node{
+							{
+								Tag: "native_flow",
+								Attrs: waBinary.Attrs{"v": "9", "name": "mixed"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Dispatch to low-priority BlastQueue
+	go func(numbers []string) {
+		log.Printf("[BLAST QUEUE] Memasukkan %d nomor ke antrean BlastQueue (delay 5-10 detik)...", len(numbers))
+		for _, num := range numbers {
 			cleanNum := strings.TrimSpace(num)
 			cleanNum = strings.TrimPrefix(cleanNum, "+")
 			if strings.HasPrefix(cleanNum, "08") {
@@ -210,23 +269,18 @@ func (s *APIServer) handleBlast(c *fiber.Ctx) error {
 			}
 
 			jid := types.NewJID(cleanNum, types.DefaultUserServer)
-			err := s.clientMgr.Sender.SendTextMessage(context.Background(), jid, msg)
-			if err != nil {
-				log.Printf("[BLAST] Gagal mengirim ke %s: %v", cleanNum, err)
+			if s.clientMgr.Sender.Queue() != nil {
+				s.clientMgr.Sender.Queue().EnqueueBlast(jid, blastMsg, extra)
 			} else {
-				log.Printf("[BLAST] (%d/%d) Berhasil terkirim ke %s", i+1, len(numbers), cleanNum)
+				_ = s.clientMgr.Sender.SendInteractiveMessage(context.Background(), jid, blastMsg)
 			}
-
-			// Random delay 3 to 7 seconds to prevent ban
-			delay := time.Duration(3000+rand.Intn(4000)) * time.Millisecond
-			time.Sleep(delay)
 		}
-		log.Println("[BLAST] Seluruh pengiriman blast selesai.")
-	}(req.Numbers, req.Message)
+		log.Println("[BLAST QUEUE] Seluruh nomor telah dijadwalkan di antrean blast.")
+	}(req.Numbers)
 
 	return c.JSON(fiber.Map{
 		"success": true,
-		"message": fmt.Sprintf("Pengiriman blast ke %d nomor sedang diproses di latar belakang.", len(req.Numbers)),
+		"message": fmt.Sprintf("Pengiriman blast ke %d nomor sedang diproses di antrean latar belakang dengan tombol opt-out.", len(req.Numbers)),
 	})
 }
 
@@ -237,4 +291,3 @@ func (s *APIServer) Listen(addr string) error {
 func (s *APIServer) Shutdown() error {
 	return s.app.Shutdown()
 }
-

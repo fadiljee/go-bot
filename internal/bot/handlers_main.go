@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"bot-istimewa/internal/locale"
 	"bot-istimewa/internal/whatsapp"
@@ -134,14 +135,57 @@ func (r *BotRouter) HandleAdminPrompt(ctx context.Context, s *UserSession, p *wh
 	return r.sender.SendTextMessage(ctx, p.JID, "🔐 Silakan masukkan *Password Admin* untuk melanjutkan:")
 }
 
-// HandleAdminAuth verifies admin password from .env and displays admin database links
+// HandleAdminAuth verifies admin password from .env, applies brute-force lockout, and auto-expires admin session
 func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	if strings.TrimSpace(p.Text) == r.cfg.AdminPassword {
-		s.CurrentState = StateAdminLoggedIn
-		return r.SendAdminDashboard(ctx, s, p)
+	phone := p.JID.User
+
+	// Check lockout
+	if locked, until := r.isAdminLockedOut(phone); locked {
+		s.ResetToRoot()
+		msg := fmt.Sprintf("⛔ Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
+		return r.sender.SendTextMessage(ctx, p.JID, msg)
 	}
 
-	return r.sender.SendTextMessage(ctx, p.JID, "❌ Password admin salah! Akses ditolak.\nKetik *0* untuk kembali ke menu utama.")
+	enteredPass := strings.TrimSpace(p.Text)
+	if enteredPass == r.cfg.AdminPassword {
+		r.adminMu.Lock()
+		r.adminFailedAttempts[phone] = 0
+		r.adminMu.Unlock()
+
+		log.Printf("✅ [ADMIN AUTH] Admin %s berhasil login", phone)
+		s.CurrentState = StateAdminLoggedIn
+		err := r.SendAdminDashboard(ctx, s, p)
+		// Auto-expire admin session back to normal state
+		s.ResetToRoot()
+		return err
+	}
+
+	// Password wrong
+	r.adminMu.Lock()
+	r.adminFailedAttempts[phone]++
+	attempts := r.adminFailedAttempts[phone]
+	maxRetry := r.cfg.AdminMaxRetry
+	if maxRetry <= 0 {
+		maxRetry = 3
+	}
+
+	if attempts >= maxRetry {
+		lockoutDuration := time.Duration(r.cfg.AdminLockoutMinutes) * time.Minute
+		if lockoutDuration <= 0 {
+			lockoutDuration = 60 * time.Minute
+		}
+		r.adminLockedUntil[phone] = time.Now().Add(lockoutDuration)
+		r.adminFailedAttempts[phone] = 0
+		r.adminMu.Unlock()
+
+		log.Printf("🚨 [ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", phone, lockoutDuration, attempts)
+		s.ResetToRoot()
+		return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("⛔ Akses ditolak! Anda telah gagal %d kali berturut-turut.\nNomor Anda dikunci selama %d menit dari percobaan login admin.\nKetik *0* untuk kembali ke menu utama.", attempts, r.cfg.AdminLockoutMinutes))
+	}
+	r.adminMu.Unlock()
+
+	log.Printf("⚠️ [ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", phone, attempts, maxRetry)
+	return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("❌ Password admin salah! Percobaan %d/%d.\nKetik *0* untuk membatalkan dan kembali ke menu utama.", attempts, maxRetry))
 }
 
 // SendAdminDashboard displays the full 8 database management links for administrators

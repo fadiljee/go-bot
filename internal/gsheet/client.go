@@ -111,7 +111,8 @@ func fetchGAS(client *http.Client, url string, target any) error {
 		return fmt.Errorf("HTTP error: %s", resp.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	const maxBodyBytes = 16 * 1024 * 1024 // 16 MB
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
 	if err != nil {
 		return err
 	}

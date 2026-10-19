@@ -11,6 +11,7 @@ import (
 
 type ListRow struct {
 	ID          string `json:"id"`
+	RowID       string `json:"row_id,omitempty"`
 	Title       string `json:"title"`
 	Description string `json:"description,omitempty"`
 }
@@ -21,13 +22,18 @@ type ListSection struct {
 }
 
 type QuickReplyButton struct {
-	ID          string
-	DisplayText string
+	ID          string `json:"id"`
+	DisplayText string `json:"display_text"`
+}
+
+type singleSelectSection struct {
+	Title string    `json:"title"`
+	Rows  []ListRow `json:"rows"`
 }
 
 type singleSelectParams struct {
-	Title    string        `json:"title"`
-	Sections []ListSection `json:"sections"`
+	Title    string                `json:"title"`
+	Sections []singleSelectSection `json:"sections"`
 }
 
 type quickReplyParams struct {
@@ -35,18 +41,38 @@ type quickReplyParams struct {
 	ID          string `json:"id"`
 }
 
-// BuildInteractiveList constructs a single-bubble interactive message with Single Select List
+// BuildInteractiveList constructs a native WhatsApp List Message with Dropdown Drawer (single_select)
 func BuildInteractiveList(header, body, footer, buttonText string, sections []ListSection) *waE2E.Message {
-	paramJSON, _ := json.Marshal(singleSelectParams{
-		Title:    buttonText,
-		Sections: sections,
-	})
+	var secList []singleSelectSection
+	for _, sec := range sections {
+		var rows []ListRow
+		for _, r := range sec.Rows {
+			row := r
+			if row.RowID == "" {
+				row.RowID = row.ID
+			}
+			rows = append(rows, row)
+		}
+		secList = append(secList, singleSelectSection{
+			Title: sec.Title,
+			Rows:  rows,
+		})
+	}
 
+	payload := singleSelectParams{
+		Title:    buttonText,
+		Sections: secList,
+	}
+
+	jsonBytes, _ := json.Marshal(payload)
+
+	btn := &waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton{
+		Name:             proto.String("single_select"),
+		ButtonParamsJSON: proto.String(string(jsonBytes)),
+	}
+
+	msgVersion := int32(1)
 	interactiveMsg := &waE2E.InteractiveMessage{
-		Header: &waE2E.InteractiveMessage_Header{
-			Title:              proto.String(header),
-			HasMediaAttachment: proto.Bool(false),
-		},
 		Body: &waE2E.InteractiveMessage_Body{
 			Text: proto.String(body),
 		},
@@ -55,21 +81,24 @@ func BuildInteractiveList(header, body, footer, buttonText string, sections []Li
 		},
 		InteractiveMessage: &waE2E.InteractiveMessage_NativeFlowMessage_{
 			NativeFlowMessage: &waE2E.InteractiveMessage_NativeFlowMessage{
+				MessageVersion: &msgVersion,
 				Buttons: []*waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton{
-					{
-						Name:             proto.String("single_select"),
-						ButtonParamsJSON: proto.String(string(paramJSON)),
-					},
+					btn,
 				},
 			},
 		},
+	}
+
+	if header != "" {
+		interactiveMsg.Header = &waE2E.InteractiveMessage_Header{
+			Title: proto.String(header),
+		}
 	}
 
 	return &waE2E.Message{
 		ViewOnceMessage: &waE2E.FutureProofMessage{
 			Message: &waE2E.Message{
 				MessageContextInfo: &waE2E.MessageContextInfo{
-					DeviceListMetadata:        &waE2E.DeviceListMetadata{},
 					DeviceListMetadataVersion: proto.Int32(2),
 				},
 				InteractiveMessage: interactiveMsg,
@@ -78,60 +107,47 @@ func BuildInteractiveList(header, body, footer, buttonText string, sections []Li
 	}
 }
 
-// BuildQuickReplyButtons constructs a message with clean text options and quick navigation
+// BuildQuickReplyButtons constructs a native WhatsApp Quick Reply Buttons Message (vertical stacked full-width)
 func BuildQuickReplyButtons(header, body, footer string, buttons []QuickReplyButton) *waE2E.Message {
-	var bodyWithButtons strings.Builder
-	bodyWithButtons.WriteString(body)
-
-	if len(buttons) > 0 {
-		bodyWithButtons.WriteString("\n\n───────────────────────────\n*Pilihan Navigasi:*")
-		for _, btn := range buttons {
-			bodyWithButtons.WriteString(fmt.Sprintf("\n• Ketik *%s* : %s", btn.ID, btn.DisplayText))
-		}
-	}
-
-	finalBody := bodyWithButtons.String()
-
 	var nativeButtons []*waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton
-	for _, btn := range buttons {
-		pJSON, _ := json.Marshal(quickReplyParams{
-			DisplayText: btn.DisplayText,
-			ID:          btn.ID,
-		})
+	for _, b := range buttons {
+		p := quickReplyParams{
+			DisplayText: b.DisplayText,
+			ID:          b.ID,
+		}
+		jsonBytes, _ := json.Marshal(p)
 		nativeButtons = append(nativeButtons, &waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton{
 			Name:             proto.String("quick_reply"),
-			ButtonParamsJSON: proto.String(string(pJSON)),
+			ButtonParamsJSON: proto.String(string(jsonBytes)),
 		})
 	}
 
-	var headerObj *waE2E.InteractiveMessage_Header
-	if header != "" {
-		headerObj = &waE2E.InteractiveMessage_Header{
-			Title:              proto.String(header),
-			HasMediaAttachment: proto.Bool(false),
-		}
-	}
-
+	msgVersion := int32(1)
 	interactiveMsg := &waE2E.InteractiveMessage{
-		Header: headerObj,
 		Body: &waE2E.InteractiveMessage_Body{
-			Text: proto.String(finalBody),
+			Text: proto.String(body),
 		},
 		Footer: &waE2E.InteractiveMessage_Footer{
 			Text: proto.String(footer),
 		},
 		InteractiveMessage: &waE2E.InteractiveMessage_NativeFlowMessage_{
 			NativeFlowMessage: &waE2E.InteractiveMessage_NativeFlowMessage{
-				Buttons: nativeButtons,
+				MessageVersion: &msgVersion,
+				Buttons:        nativeButtons,
 			},
 		},
+	}
+
+	if header != "" {
+		interactiveMsg.Header = &waE2E.InteractiveMessage_Header{
+			Title: proto.String(header),
+		}
 	}
 
 	return &waE2E.Message{
 		ViewOnceMessage: &waE2E.FutureProofMessage{
 			Message: &waE2E.Message{
 				MessageContextInfo: &waE2E.MessageContextInfo{
-					DeviceListMetadata:        &waE2E.DeviceListMetadata{},
 					DeviceListMetadataVersion: proto.Int32(2),
 				},
 				InteractiveMessage: interactiveMsg,
@@ -140,7 +156,24 @@ func BuildQuickReplyButtons(header, body, footer string, buttons []QuickReplyBut
 	}
 }
 
-// BuildBodyText formats text body with clean numbered list (Opsi 1: Angka Ringkas & Bersih)
+// UnpackInteractiveMessage extracts the inner InteractiveMessage regardless of ViewOnce packaging
+func UnpackInteractiveMessage(msg *waE2E.Message) *waE2E.InteractiveMessage {
+	if msg == nil {
+		return nil
+	}
+	if msg.GetInteractiveMessage() != nil {
+		return msg.GetInteractiveMessage()
+	}
+	if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
+		return msg.GetViewOnceMessage().GetMessage().GetInteractiveMessage()
+	}
+	if msg.GetViewOnceMessageV2() != nil && msg.GetViewOnceMessageV2().GetMessage() != nil {
+		return msg.GetViewOnceMessageV2().GetMessage().GetInteractiveMessage()
+	}
+	return nil
+}
+
+// BuildBodyText formats text body with clean numbered list
 func BuildBodyText(intro string, rows []ListRow, footer string) string {
 	var sb strings.Builder
 

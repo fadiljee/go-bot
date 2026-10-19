@@ -20,7 +20,9 @@ type ParsedMessage struct {
 }
 
 type nativeFlowParams struct {
-	ID string `json:"id"`
+	ID          string `json:"id"`
+	RowID       string `json:"row_id"`
+	DisplayText string `json:"display_text"`
 }
 
 // ParseIncomingMessage extracts text, IDs from buttons, or interactive single select lists
@@ -53,9 +55,19 @@ func ParseIncomingMessage(evt *events.Message) *ParsedMessage {
 	if inter := msg.GetInteractiveResponseMessage(); inter != nil {
 		if nativeFlow := inter.GetNativeFlowResponseMessage(); nativeFlow != nil {
 			var params nativeFlowParams
-			if err := json.Unmarshal([]byte(nativeFlow.GetParamsJSON()), &params); err == nil && params.ID != "" {
-				parsed.Text = strings.TrimSpace(params.ID)
-				return parsed
+			if err := json.Unmarshal([]byte(nativeFlow.GetParamsJSON()), &params); err == nil {
+				if params.ID != "" {
+					parsed.Text = strings.TrimSpace(params.ID)
+					return parsed
+				}
+				if params.RowID != "" {
+					parsed.Text = strings.TrimSpace(params.RowID)
+					return parsed
+				}
+				if params.DisplayText != "" {
+					parsed.Text = strings.TrimSpace(params.DisplayText)
+					return parsed
+				}
 			}
 		}
 		if body := inter.GetBody(); body != nil && body.GetText() != "" {

@@ -1,6 +1,7 @@
 package whatsapp
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -14,27 +15,54 @@ func TestBuildInteractiveList(t *testing.T) {
 		{Title: "Kategori A", Rows: rows},
 	}
 
-	msg := BuildInteractiveList("Pilih Salah Satu", "Halo User", "Footer Info", "Buka Pilihan", sections)
+	msg := BuildInteractiveList("Pilih Salah Satu", "Halo User", "Footer Info", "📋 Buka Pilihan ▾", sections)
 	if msg == nil {
 		t.Fatal("expected non-nil message")
 	}
 
-	viewOnce := msg.GetViewOnceMessage()
-	if viewOnce == nil {
-		t.Fatal("expected viewOnceMessage wrapper")
+	inter := UnpackInteractiveMessage(msg)
+	if inter == nil {
+		t.Fatal("expected InteractiveMessage within ViewOnce wrapper")
 	}
 
-	interactive := viewOnce.GetMessage().GetInteractiveMessage()
-	if interactive == nil {
-		t.Fatal("expected interactiveMessage inside viewOnce")
+	if inter.GetHeader().GetTitle() != "Pilih Salah Satu" {
+		t.Errorf("expected header 'Pilih Salah Satu', got '%s'", inter.GetHeader().GetTitle())
 	}
 
-	if interactive.GetBody().GetText() != "Halo User" {
-		t.Errorf("expected body 'Halo User', got '%s'", interactive.GetBody().GetText())
+	if inter.GetBody().GetText() != "Halo User" {
+		t.Errorf("expected body 'Halo User', got '%s'", inter.GetBody().GetText())
 	}
 
-	if interactive.GetFooter().GetText() != "Footer Info" {
-		t.Errorf("expected footer 'Footer Info', got '%s'", interactive.GetFooter().GetText())
+	if inter.GetFooter().GetText() != "Footer Info" {
+		t.Errorf("expected footer 'Footer Info', got '%s'", inter.GetFooter().GetText())
+	}
+
+	nativeFlow := inter.GetNativeFlowMessage()
+	if nativeFlow == nil {
+		t.Fatal("expected NativeFlowMessage")
+	}
+
+	buttons := nativeFlow.GetButtons()
+	if len(buttons) != 1 {
+		t.Fatalf("expected 1 single_select button, got %d", len(buttons))
+	}
+
+	btn := buttons[0]
+	if btn.GetName() != "single_select" {
+		t.Errorf("expected button name 'single_select', got '%s'", btn.GetName())
+	}
+
+	var params singleSelectParams
+	if err := json.Unmarshal([]byte(btn.GetButtonParamsJSON()), &params); err != nil {
+		t.Fatalf("failed to unmarshal single_select params: %v", err)
+	}
+
+	if params.Title != "📋 Buka Pilihan ▾" {
+		t.Errorf("expected dropdown button title '📋 Buka Pilihan ▾', got '%s'", params.Title)
+	}
+
+	if len(params.Sections) != 1 || len(params.Sections[0].Rows) != 2 {
+		t.Errorf("expected 1 section with 2 rows, got %+v", params.Sections)
 	}
 }
 
@@ -49,18 +77,40 @@ func TestBuildQuickReplyButtons(t *testing.T) {
 		t.Fatal("expected non-nil message")
 	}
 
-	viewOnce := msg.GetViewOnceMessage()
-	if viewOnce == nil {
-		t.Fatal("expected viewOnceMessage wrapper")
+	inter := UnpackInteractiveMessage(msg)
+	if inter == nil {
+		t.Fatal("expected InteractiveMessage within ViewOnce wrapper")
 	}
 
-	interactive := viewOnce.GetMessage().GetInteractiveMessage()
-	if interactive == nil {
-		t.Fatal("expected interactiveMessage")
+	if inter.GetHeader().GetTitle() != "Header Judul" {
+		t.Errorf("expected header 'Header Judul', got '%s'", inter.GetHeader().GetTitle())
 	}
 
-	if interactive.GetHeader().GetTitle() != "Header Judul" {
-		t.Errorf("expected header 'Header Judul', got '%s'", interactive.GetHeader().GetTitle())
+	if inter.GetBody().GetText() != "Isi pesan detail..." {
+		t.Errorf("expected body 'Isi pesan detail...', got '%s'", inter.GetBody().GetText())
+	}
+
+	nativeFlow := inter.GetNativeFlowMessage()
+	if nativeFlow == nil {
+		t.Fatal("expected NativeFlowMessage")
+	}
+
+	nativeButtons := nativeFlow.GetButtons()
+	if len(nativeButtons) != 2 {
+		t.Fatalf("expected 2 buttons, got %d", len(nativeButtons))
+	}
+
+	for i, nb := range nativeButtons {
+		if nb.GetName() != "quick_reply" {
+			t.Errorf("expected button %d name 'quick_reply', got '%s'", i, nb.GetName())
+		}
+		var p quickReplyParams
+		if err := json.Unmarshal([]byte(nb.GetButtonParamsJSON()), &p); err != nil {
+			t.Fatalf("failed to unmarshal quick_reply params %d: %v", i, err)
+		}
+		if p.ID != buttons[i].ID || p.DisplayText != buttons[i].DisplayText {
+			t.Errorf("mismatch button %d: expected %+v, got %+v", i, buttons[i], p)
+		}
 	}
 }
 

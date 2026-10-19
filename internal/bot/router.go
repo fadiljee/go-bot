@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
+	"time"
 
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
@@ -36,20 +38,27 @@ const (
 )
 
 type BotRouter struct {
-	cfg        *config.Config
-	sender     *whatsapp.Sender
-	gsheet     *gsheet.Client
-	sessions   *SessionManager
-	handlerMap map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error
+	cfg                 *config.Config
+	sender              *whatsapp.Sender
+	gsheet              *gsheet.Client
+	sessions            *SessionManager
+	handlerMap          map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error
+	rateLimiter         *RateLimiter
+	adminFailedAttempts map[string]int
+	adminLockedUntil    map[string]time.Time
+	adminMu             sync.Mutex
 }
 
 func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client) *BotRouter {
 	r := &BotRouter{
-		cfg:        cfg,
-		sender:     sender,
-		gsheet:     gsheetClient,
-		sessions:   NewSessionManager(cfg.IdleTimeoutMinutes),
-		handlerMap: make(map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error),
+		cfg:                 cfg,
+		sender:              sender,
+		gsheet:              gsheetClient,
+		sessions:            NewSessionManager(cfg.IdleTimeoutMinutes),
+		handlerMap:          make(map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error),
+		rateLimiter:         NewRateLimiter(cfg.UserRateLimitPer10s, cfg.UserCooldownSeconds),
+		adminFailedAttempts: make(map[string]int),
+		adminLockedUntil:    make(map[string]time.Time),
 	}
 
 	r.registerRoutes()
@@ -82,12 +91,23 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		}
 	}
 
+	// 1. Per-User Token Bucket Rate Limiting (Anti-Flooding / DDoS Protection)
+	if !r.rateLimiter.Allow(p.JID.User) {
+		log.Printf("⚠️ [RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", p.JID.User)
+		return
+	}
+
 	// Get or create session
 	session := r.sessions.GetOrCreate(p.JID, func(s *UserSession) {
 		r.HandleIdleTimeout(context.Background(), s)
 	})
 
+	// Input sanitization & 100 character limit (Anti-ReDoS / Anti-OOM)
 	input := strings.TrimSpace(p.Text)
+	runes := []rune(input)
+	if len(runes) > 100 {
+		input = string(runes[:100])
+	}
 	inputLower := strings.ToLower(input)
 
 	log.Printf("[ROUTER] Dari: %s | State: %s | Input: '%s'", p.JID.User, session.CurrentState, input)
@@ -118,7 +138,32 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
+	// Opt-Out / Berhenti Berlangganan (Anti-Spam Report Protection)
+	if inputLower == "berhenti_langganan" || inputLower == "unsub" || inputLower == "unsubscribe" || inputLower == "stop" {
+		log.Printf("🔕 [UNSUBSCRIBE] Permintaan berhenti berlangganan dari %s", p.JID.User)
+		session.ResetToRoot()
+		msg := "🔕 *Berhenti Berlangganan Berhasil*\n\nNomor Anda telah dicatat untuk berhenti menerima siaran rilis data berkala BPS Kabupaten Bangka Barat.\n\nTerima kasih telah menggunakan layanan kami 🙏\nKetik *0* untuk kembali ke menu utama."
+		_ = r.sender.SendTextMessage(ctx, p.JID, msg)
+		return
+	}
+
+	// Admin Trigger Keyword Check with Whitelist & Lockout
 	if inputLower == strings.ToLower(r.cfg.AdminTriggerKeyword) {
+		// Whitelist check: only registered numbers in .env can trigger admin mode
+		if !r.isAdminWhitelisted(p.JID.User) {
+			log.Printf("🔒 [ADMIN AUDIT] Percobaan login admin dari nomor tidak dikenal: %s (silent reject)", p.JID.User)
+			_ = r.HandleUnavailable(ctx, session, p)
+			return
+		}
+
+		// Lockout check: verify if temporarily locked out due to previous failed attempts
+		if locked, until := r.isAdminLockedOut(p.JID.User); locked {
+			log.Printf("🔒 [ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", p.JID.User, until.Format("15:04:05"))
+			msg := fmt.Sprintf("⛔ Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
+			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
+			return
+		}
+
 		session.PushState(StateAdminWaitPass)
 		_ = r.HandleAdminPrompt(ctx, session, p)
 		return
@@ -278,3 +323,39 @@ func (r *BotRouter) registerRoutes() {
 		}
 	}
 }
+
+func (r *BotRouter) isAdminWhitelisted(phone string) bool {
+	if len(r.cfg.AdminWhitelistNumbers) == 0 {
+		return false
+	}
+	clean := strings.TrimPrefix(strings.TrimSpace(phone), "+")
+	if strings.HasPrefix(clean, "08") {
+		clean = "62" + clean[1:]
+	}
+	for _, allowed := range r.cfg.AdminWhitelistNumbers {
+		cand := strings.TrimPrefix(strings.TrimSpace(allowed), "+")
+		if strings.HasPrefix(cand, "08") {
+			cand = "62" + cand[1:]
+		}
+		if cand == clean {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *BotRouter) isAdminLockedOut(phone string) (bool, time.Time) {
+	r.adminMu.Lock()
+	defer r.adminMu.Unlock()
+
+	until, exists := r.adminLockedUntil[phone]
+	if !exists {
+		return false, time.Time{}
+	}
+	if time.Now().Before(until) {
+		return true, until
+	}
+	delete(r.adminLockedUntil, phone)
+	return false, time.Time{}
+}
+

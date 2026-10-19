@@ -54,13 +54,21 @@ func main() {
 	// 5. Initialize Bot Message Router
 	botRouter := bot.NewBotRouter(cfg, clientMgr.Sender, gsheetClient)
 
+	botStartTime := time.Now()
+
 	// 6. Register Event Listener
 	clientMgr.Client.AddEventHandler(func(rawEvt interface{}) {
 		switch evt := rawEvt.(type) {
 		case *events.Message:
-			if evt.Info.IsFromMe {
+			// Strict Source Filtering (Lapis 2): ignore self, groups, status/broadcasts
+			if evt.Info.IsFromMe || evt.Info.IsGroup || evt.Info.Chat.Server == "broadcast" || evt.Info.Chat.Server == "newsletter" {
 				return
 			}
+			// Historical message filter: ignore messages sent before bot startup
+			if evt.Info.Timestamp.Before(botStartTime) {
+				return
+			}
+
 			parsed := whatsapp.ParseIncomingMessage(evt)
 			if parsed != nil {
 				go botRouter.Dispatch(context.Background(), parsed)
@@ -90,9 +98,9 @@ func main() {
 	// 8. Start Fiber REST API Server
 	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient)
 	go func() {
-		addr := fmt.Sprintf(":%s", cfg.AppPort)
-		log.Printf("🚀 Server Web Dashboard aktif di http://localhost%s", addr)
-		log.Printf("📲 Buka http://localhost%s/qr untuk memindai QR code via browser.", cfg.AppPort)
+		addr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)
+		log.Printf("🚀 Server Web Dashboard aktif di http://%s", addr)
+		log.Printf("📲 Akses http://%s/qr untuk memindai QR code via browser.", addr)
 		if err := apiServer.Listen(addr); err != nil {
 			log.Printf("ℹ️ Web server berhenti: %v", err)
 		}
