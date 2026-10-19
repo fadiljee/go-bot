@@ -147,7 +147,8 @@ func (c *Client) FetchLayananDataRaw() ([]LayananDataItem, error) {
 			log.Printf("[CACHE] GAS error on %s, serving stale cache: %v", key, err)
 			return stale.([]LayananDataItem), nil
 		}
-		return nil, err
+		log.Printf("[FALLBACK] GAS error on %s, serving fallback dataset: %v", key, err)
+		return DefaultLayananData(), nil
 	}
 
 	c.setCached(key, items)
@@ -186,7 +187,8 @@ func (c *Client) FetchIndikatorRaw() ([]IndikatorItem, error) {
 			log.Printf("[CACHE] GAS error on %s, serving stale cache: %v", key, err)
 			return stale.([]IndikatorItem), nil
 		}
-		return nil, err
+		log.Printf("[FALLBACK] GAS error on %s, serving fallback dataset: %v", key, err)
+		return DefaultIndikators(), nil
 	}
 
 	c.setCached(key, items)
@@ -231,7 +233,8 @@ func (c *Client) FetchVideoRaw() ([]VideoItem, error) {
 			log.Printf("[CACHE] GAS error on %s, serving stale cache: %v", key, err)
 			return stale.([]VideoItem), nil
 		}
-		return nil, err
+		log.Printf("[FALLBACK] GAS error on %s, serving fallback dataset: %v", key, err)
+		return DefaultVideos(), nil
 	}
 
 	c.setCached(key, items)
@@ -270,7 +273,8 @@ func (c *Client) FetchInfografikRaw() ([]InfografikItem, error) {
 			log.Printf("[CACHE] GAS error on %s, serving stale cache: %v", key, err)
 			return stale.([]InfografikItem), nil
 		}
-		return nil, err
+		log.Printf("[FALLBACK] GAS error on %s, serving fallback dataset: %v", key, err)
+		return DefaultInfografiks(), nil
 	}
 
 	c.setCached(key, items)
@@ -354,7 +358,8 @@ func (c *Client) FetchFAQRaw() ([]FAQItem, error) {
 			log.Printf("[CACHE] GAS error on %s, serving stale cache: %v", key, err)
 			return stale.([]FAQItem), nil
 		}
-		return nil, err
+		log.Printf("[FALLBACK] GAS error on %s, serving fallback dataset: %v", key, err)
+		return DefaultFAQs(), nil
 	}
 
 	c.setCached(key, items)
