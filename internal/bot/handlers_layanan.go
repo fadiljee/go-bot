@@ -155,9 +155,32 @@ func (r *BotRouter) HandleLayananSub_Sektoral(ctx context.Context, s *UserSessio
 func (r *BotRouter) HandleLayananSub_SearchPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu1_Search)
 
-	text := "🔍 *Cari Data Berdasarkan Kata Kunci*\n\nSilakan ketik kata kunci data yang ingin Sahabat cari ✍️\n\nContoh:\n- *kemiskinan*\n- *inflasi*\n- *penduduk*\n- *pdrb*\n\n_Ketik *99* untuk kembali atau *0* untuk ke menu utama._"
+	var sb strings.Builder
+	sb.WriteString("🔍 *Cari Data Berdasarkan Kata Kunci*\n\n")
+	sb.WriteString("Silakan ketik kata kunci data yang ingin Sahabat cari ✍️\n\n")
+	sb.WriteString("Atau sentuh kata kunci populer di bawah ini untuk langsung mencari:\n")
 
-	return r.sender.SendTextMessage(ctx, p.JID, text)
+	botNum := whatsapp.GetBotNumber()
+	if botNum != "" {
+		sb.WriteString(fmt.Sprintf("• *kemiskinan* 👉 https://wa.me/%s?text=kemiskinan\n", botNum))
+		sb.WriteString(fmt.Sprintf("• *inflasi* 👉 https://wa.me/%s?text=inflasi\n", botNum))
+		sb.WriteString(fmt.Sprintf("• *penduduk* 👉 https://wa.me/%s?text=penduduk\n", botNum))
+		sb.WriteString(fmt.Sprintf("• *pdrb* 👉 https://wa.me/%s?text=pdrb\n\n", botNum))
+	} else {
+		sb.WriteString("- *kemiskinan*\n- *inflasi*\n- *penduduk*\n- *pdrb*\n\n")
+	}
+
+	msg := whatsapp.BuildQuickReplyButtons(
+		"🔍 Cari Data",
+		sb.String(),
+		"PST BPS Kabupaten Bangka Barat",
+		[]whatsapp.QuickReplyButton{
+			{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
+			{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
+		},
+	)
+
+	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
 // HandleSearchKeyword executes search across all 6 sheets

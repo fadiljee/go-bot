@@ -33,6 +33,9 @@ type Sender struct {
 }
 
 func NewSender(client *whatsmeow.Client) *Sender {
+	if client != nil && client.Store != nil && client.Store.ID != nil {
+		SetBotNumber(client.Store.ID.User)
+	}
 	return &Sender{
 		client:     client,
 		mediaCache: make(map[string]*CachedMedia),
@@ -57,6 +60,10 @@ func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string
 
 // SendInteractiveMessage sends single-select or quick-reply interactive message, with reliable plain-text delivery
 func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg *waE2E.Message) error {
+	if s.client != nil && s.client.Store != nil && s.client.Store.ID != nil {
+		SetBotNumber(s.client.Store.ID.User)
+	}
+
 	var textToSend string
 
 	if msg != nil {

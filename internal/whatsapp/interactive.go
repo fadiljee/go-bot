@@ -3,11 +3,41 @@ package whatsapp
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
+	"sync"
 
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"google.golang.org/protobuf/proto"
 )
+
+var (
+	botNumberMu sync.RWMutex
+	botNumber   string
+)
+
+// SetBotNumber configures the current bot phone number for Click-to-Chat links
+func SetBotNumber(number string) {
+	botNumberMu.Lock()
+	defer botNumberMu.Unlock()
+	botNumber = number
+}
+
+// GetBotNumber returns the current bot phone number
+func GetBotNumber() string {
+	botNumberMu.RLock()
+	defer botNumberMu.RUnlock()
+	return botNumber
+}
+
+// GenerateClickToChatLink creates a wa.me direct action link for a command or number
+func GenerateClickToChatLink(command string) string {
+	num := GetBotNumber()
+	if num == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://wa.me/%s?text=%s", num, url.QueryEscape(command))
+}
 
 type ListRow struct {
 	ID          string `json:"id"`
@@ -57,7 +87,7 @@ func BuildInteractiveList(header, body, footer, buttonText string, sections []Li
 			NativeFlowMessage: &waE2E.InteractiveMessage_NativeFlowMessage{
 				Buttons: []*waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton{
 					{
-						Name: proto.String("single_select"),
+						Name:             proto.String("single_select"),
 						ButtonParamsJSON: proto.String(string(paramJSON)),
 					},
 				},
@@ -78,8 +108,24 @@ func BuildInteractiveList(header, body, footer, buttonText string, sections []Li
 	}
 }
 
-// BuildQuickReplyButtons constructs a message with quick reply buttons at bottom
+// BuildQuickReplyButtons constructs a message with quick reply buttons and wa.me direct links
 func BuildQuickReplyButtons(header, body, footer string, buttons []QuickReplyButton) *waE2E.Message {
+	botNum := GetBotNumber()
+	var bodyWithButtons strings.Builder
+	bodyWithButtons.WriteString(body)
+
+	if len(buttons) > 0 {
+		bodyWithButtons.WriteString("\n\n📋 *Pilihan Cepat:*")
+		for _, btn := range buttons {
+			bodyWithButtons.WriteString(fmt.Sprintf("\n• *%s*", btn.DisplayText))
+			if botNum != "" && btn.ID != "" {
+				bodyWithButtons.WriteString(fmt.Sprintf("\n  👉 https://wa.me/%s?text=%s", botNum, url.QueryEscape(btn.ID)))
+			}
+		}
+	}
+
+	finalBody := bodyWithButtons.String()
+
 	var nativeButtons []*waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton
 	for _, btn := range buttons {
 		pJSON, _ := json.Marshal(quickReplyParams{
@@ -103,7 +149,7 @@ func BuildQuickReplyButtons(header, body, footer string, buttons []QuickReplyBut
 	interactiveMsg := &waE2E.InteractiveMessage{
 		Header: headerObj,
 		Body: &waE2E.InteractiveMessage_Body{
-			Text: proto.String(body),
+			Text: proto.String(finalBody),
 		},
 		Footer: &waE2E.InteractiveMessage_Footer{
 			Text: proto.String(footer),
@@ -128,9 +174,49 @@ func BuildQuickReplyButtons(header, body, footer string, buttons []QuickReplyBut
 	}
 }
 
-// BuildBodyText formats text body with numbered list fallback
+// FormatFooterWithLinks appends wa.me click-to-chat links for navigation lines in footer
+func FormatFooterWithLinks(footer string) string {
+	botNum := GetBotNumber()
+	if botNum == "" || footer == "" {
+		return footer
+	}
+
+	lines := strings.Split(footer, "\n")
+	var result []string
+	for _, line := range lines {
+		result = append(result, line)
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "*0.") || strings.HasPrefix(trimmed, "*0 ") {
+			result = append(result, fmt.Sprintf("👉 https://wa.me/%s?text=0", botNum))
+		} else if strings.HasPrefix(trimmed, "*99.") || strings.HasPrefix(trimmed, "*99 ") {
+			result = append(result, fmt.Sprintf("👉 https://wa.me/%s?text=99", botNum))
+		} else if strings.HasPrefix(trimmed, "*") {
+			parts := strings.SplitN(trimmed, " ", 2)
+			if len(parts) >= 1 {
+				numPart := strings.Trim(parts[0], "*.:")
+				if numPart != "" && len(numPart) <= 4 {
+					allDigits := true
+					for _, c := range numPart {
+						if c < '0' || c > '9' {
+							allDigits = false
+							break
+						}
+					}
+					if allDigits && numPart != "0" && numPart != "99" {
+						result = append(result, fmt.Sprintf("👉 https://wa.me/%s?text=%s", botNum, url.QueryEscape(numPart)))
+					}
+				}
+			}
+		}
+	}
+	return strings.Join(result, "\n")
+}
+
+// BuildBodyText formats text body with numbered list and one-tap click-to-chat links
 func BuildBodyText(intro string, rows []ListRow, footer string) string {
 	var sb strings.Builder
+	botNum := GetBotNumber()
+
 	if intro != "" {
 		sb.WriteString(intro)
 		sb.WriteString("\n\n")
@@ -141,12 +227,15 @@ func BuildBodyText(intro string, rows []ListRow, footer string) string {
 		if r.Description != "" {
 			sb.WriteString(fmt.Sprintf("   _%s_\n", r.Description))
 		}
+		if botNum != "" && r.ID != "" {
+			sb.WriteString(fmt.Sprintf("   👉 https://wa.me/%s?text=%s\n", botNum, url.QueryEscape(r.ID)))
+		}
+		sb.WriteString("\n")
 	}
 
 	if footer != "" {
-		sb.WriteString("\n")
-		sb.WriteString(footer)
+		sb.WriteString(FormatFooterWithLinks(footer))
 	}
 
-	return sb.String()
+	return strings.TrimSpace(sb.String())
 }

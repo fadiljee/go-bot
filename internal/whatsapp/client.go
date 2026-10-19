@@ -45,6 +45,10 @@ func NewClientManager(cfg *config.Config) (*ClientManager, error) {
 	// Set custom device name for WhatsApp Web identity
 	store.DeviceProps.Os = &cfg.WABrowserName
 
+	if deviceStore != nil && deviceStore.ID != nil {
+		SetBotNumber(deviceStore.ID.User)
+	}
+
 	clientLog := waLog.Stdout("WhatsApp", "INFO", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
@@ -59,6 +63,9 @@ func NewClientManager(cfg *config.Config) (*ClientManager, error) {
 
 // Start connects to WhatsApp and manages QR codes
 func (m *ClientManager) Start(ctx context.Context) error {
+	if m.Client.Store != nil && m.Client.Store.ID != nil {
+		SetBotNumber(m.Client.Store.ID.User)
+	}
 	if m.Client.Store.ID == nil {
 		// New login required
 		qrChan, _ := m.Client.GetQRChannel(ctx)

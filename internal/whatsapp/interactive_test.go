@@ -1,6 +1,7 @@
 package whatsapp
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -60,5 +61,30 @@ func TestBuildQuickReplyButtons(t *testing.T) {
 
 	if interactive.GetHeader().GetTitle() != "Header Judul" {
 		t.Errorf("expected header 'Header Judul', got '%s'", interactive.GetHeader().GetTitle())
+	}
+}
+
+func TestClickToChatLinks(t *testing.T) {
+	SetBotNumber("6282164302643")
+	defer SetBotNumber("")
+
+	rows := []ListRow{
+		{ID: "1", Title: "Layanan Data"},
+		{ID: "2", Title: "Indikator"},
+	}
+
+	footer := "*99. ↩️ Menu sebelumnya*\n*0. 📑 Menu Awal*"
+	body := BuildBodyText("Pilih menu:", rows, footer)
+
+	if !strings.Contains(body, "https://wa.me/6282164302643?text=1") {
+		t.Errorf("expected link for option 1, got:\n%s", body)
+	}
+
+	if !strings.Contains(body, "https://wa.me/6282164302643?text=99") {
+		t.Errorf("expected link for navigation 99, got:\n%s", body)
+	}
+
+	if !strings.Contains(body, "https://wa.me/6282164302643?text=0") {
+		t.Errorf("expected link for navigation 0, got:\n%s", body)
 	}
 }
