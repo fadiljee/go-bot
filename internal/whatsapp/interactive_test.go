@@ -64,10 +64,7 @@ func TestBuildQuickReplyButtons(t *testing.T) {
 	}
 }
 
-func TestClickToChatLinks(t *testing.T) {
-	SetBotNumber("6282164302643")
-	defer SetBotNumber("")
-
+func TestBuildBodyText(t *testing.T) {
 	rows := []ListRow{
 		{ID: "1", Title: "Layanan Data"},
 		{ID: "2", Title: "Indikator"},
@@ -76,15 +73,15 @@ func TestClickToChatLinks(t *testing.T) {
 	footer := "*99. ↩️ Menu sebelumnya*\n*0. 📑 Menu Awal*"
 	body := BuildBodyText("Pilih menu:", rows, footer)
 
-	if !strings.Contains(body, "https://wa.me/6282164302643?text=1") {
-		t.Errorf("expected link for option 1, got:\n%s", body)
+	if !strings.Contains(body, "*1.* Layanan Data") {
+		t.Errorf("expected option 1, got:\n%s", body)
 	}
 
-	if !strings.Contains(body, "https://wa.me/6282164302643?text=99") {
-		t.Errorf("expected link for navigation 99, got:\n%s", body)
+	if !strings.Contains(body, "*2.* Indikator") {
+		t.Errorf("expected option 2, got:\n%s", body)
 	}
 
-	if !strings.Contains(body, "https://wa.me/6282164302643?text=0") {
-		t.Errorf("expected link for navigation 0, got:\n%s", body)
+	if !strings.Contains(body, "*0. 📑 Menu Awal*") {
+		t.Errorf("expected navigation 0 in footer, got:\n%s", body)
 	}
 }
