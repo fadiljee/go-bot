@@ -235,7 +235,7 @@ func (r *BotRouter) HandleUnavailable(ctx context.Context, s *UserSession, p *wh
 
 // HandleIdleTimeout sends SKD survey outro and closing stickers after 15 min idle
 func (r *BotRouter) HandleIdleTimeout(ctx context.Context, s *UserSession) {
-	log.Printf("[TIMEOUT] Sesi idle 15 menit berakhir untuk %s. Mengirim Survei SKD dan penutup.", s.JID.User)
+	log.Printf("[TIMEOUT] Sesi idle %d menit berakhir untuk %s. Mengirim Survei SKD dan penutup.", r.cfg.IdleTimeoutMinutes, s.JID.User)
 
 	outro := locale.T("outro")
 	if outro != "" {

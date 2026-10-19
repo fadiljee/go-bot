@@ -387,3 +387,73 @@ func DefaultFAQs() []FAQItem {
 		},
 	}
 }
+
+// DefaultPakar returns fallback expert items when GAS is unavailable
+func DefaultPakar() []PakarItem {
+	return []PakarItem{
+		{
+			No:           "1",
+			Nama:         "Pakar Statistik Sosial Kependudukan",
+			Penjelasan:   "Konsultasi data kependudukan, kemiskinan, ketenagakerjaan, pendidikan, dan kesehatan.",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Sosial%20Kependudukan%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+		{
+			No:           "2",
+			Nama:         "Pakar Statistik Pertanian",
+			Penjelasan:   "Konsultasi data komoditas kelapa sawit, lada, karet, tanaman pangan, hortikultura, peternakan, dan perikanan.",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Pertanian%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+		{
+			No:           "3",
+			Nama:         "Pakar Statistik Ekonomi & PDRB",
+			Penjelasan:   "Konsultasi data Produk Domestik Regional Bruto (PDRB), pertumbuhan ekonomi, neraca wilayah, dan industri.",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Ekonomi%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+		{
+			No:           "4",
+			Nama:         "Pakar Distribusi, Harga & KTIP",
+			Penjelasan:   "Konsultasi data inflasi, Indeks Harga Konsumen (IHK), pariwisata, perdagangan, dan transportasi.",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Distribusi%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+		{
+			No:           "5",
+			Nama:         "Pakar Statistik Sektoral",
+			Penjelasan:   "Konsultasi data sektoral Organisasi Perangkat Daerah (OPD), Satu Data Indonesia (SDI), dan Rekomendasi Statistik (ROMANTIK).",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Statistik%20Sektoral%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+		{
+			No:           "6",
+			Nama:         "Pakar Statistik Khusus",
+			Penjelasan:   "Konsultasi analisis data tematik khusus, survei kebutuhan data, dan evaluasi penyelenggaraan statistik sektoral (EPSS).",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Statistik%20Khusus%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+		{
+			No:           "7",
+			Nama:         "Pakar Metodologi Statistik",
+			Penjelasan:   "Konsultasi desain sampling, metodologi survei, manajemen kualitas data, dan kerangka sampel.",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Metodologi%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+		{
+			No:           "8",
+			Nama:         "Pakar Diseminasi & Layanan Statistik",
+			Penjelasan:   "Konsultasi akses publikasi, website BPS, portal PST online, dan perpustakaan statistik.",
+			Link:         "https://wa.me/6282164302643?text=Halo%20Pakar%20Diseminasi%20BPS%20Bangka%20Barat",
+			PetugasPiket: "Petugas Pelayanan Statistik Terpadu (PST)",
+			LinkPetugas:  "https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat",
+		},
+	}
+}

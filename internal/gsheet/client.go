@@ -316,7 +316,8 @@ func (c *Client) FetchPakarRaw() ([]PakarItem, error) {
 			log.Printf("[CACHE] GAS error on %s, serving stale cache: %v", key, err)
 			return stale.([]PakarItem), nil
 		}
-		return nil, err
+		log.Printf("[FALLBACK] GAS error on %s, serving fallback dataset: %v", key, err)
+		return DefaultPakar(), nil
 	}
 
 	c.setCached(key, items)
