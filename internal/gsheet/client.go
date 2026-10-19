@@ -116,6 +116,11 @@ func fetchGAS(client *http.Client, url string, target any) error {
 		return err
 	}
 
+	trimmedBody := strings.TrimSpace(string(body))
+	if strings.HasPrefix(trimmedBody, "<") {
+		return fmt.Errorf("Google Apps Script mengembalikan halaman HTML/Login. Pastikan deployment GAS disetel ke 'Who has access: Anyone (Siapa saja)'")
+	}
+
 	var res standardGASResponse
 	if err := json.Unmarshal(body, &res); err != nil {
 		// Try unmarshaling directly into target if not standard wrapper
