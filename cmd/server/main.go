@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"bot-istimewa/internal/api"
+	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/bot"
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
@@ -95,8 +96,11 @@ func main() {
 		log.Printf("⚠️ Gagal memulai koneksi awal WhatsApp: %v", err)
 	}
 
-	// 8. Start Fiber REST API Server
-	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient)
+	// 8. Start Fiber REST API Server & BPS Web API Client
+	bpsClient := bpsapi.NewClient(cfg)
+	log.Printf("📊 BPS Web API Client aktif | Base URL: %s | Default Domain: %s", cfg.BPSAPIBaseURL, cfg.BPSDefaultDomain)
+
+	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient, bpsClient)
 	go func() {
 		addr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)
 		log.Printf("🚀 Server Web Dashboard aktif di http://%s", addr)

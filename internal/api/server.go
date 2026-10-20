@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
+	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/whatsapp"
@@ -27,10 +29,11 @@ type APIServer struct {
 	cfg       *config.Config
 	clientMgr *whatsapp.ClientManager
 	gsheet    *gsheet.Client
+	bps       *bpsapi.Client
 	startTime time.Time
 }
 
-func NewAPIServer(cfg *config.Config, clientMgr *whatsapp.ClientManager, gsheetClient *gsheet.Client) *APIServer {
+func NewAPIServer(cfg *config.Config, clientMgr *whatsapp.ClientManager, gsheetClient *gsheet.Client, bpsClient ...*bpsapi.Client) *APIServer {
 	app := fiber.New(fiber.Config{
 		AppName:               "BOT ISTIMEWA v3.0 (Go Edition)",
 		DisableStartupMessage: true,
@@ -40,11 +43,19 @@ func NewAPIServer(cfg *config.Config, clientMgr *whatsapp.ClientManager, gsheetC
 	app.Use(logger.New())
 	app.Use(cors.New())
 
+	var bps *bpsapi.Client
+	if len(bpsClient) > 0 && bpsClient[0] != nil {
+		bps = bpsClient[0]
+	} else {
+		bps = bpsapi.NewClient(cfg)
+	}
+
 	srv := &APIServer{
 		app:       app,
 		cfg:       cfg,
 		clientMgr: clientMgr,
 		gsheet:    gsheetClient,
+		bps:       bps,
 		startTime: time.Now(),
 	}
 
@@ -72,6 +83,19 @@ func (s *APIServer) setupRoutes() {
 
 	// Protected API QR endpoint
 	api.Get("/v1/qr", s.handleQRAPI)
+
+	// BPS Web API Route Group (Protected by X-API-Key)
+	bpsGroup := api.Group("/v1/bps")
+	bpsGroup.Get("/list", s.handleBPSList)
+	bpsGroup.Get("/subjects", s.handleBPSSubjects)
+	bpsGroup.Get("/subcats", s.handleBPSSubcats)
+	bpsGroup.Get("/variables", s.handleBPSVariables)
+	bpsGroup.Get("/statictables", s.handleBPSStaticTables)
+	bpsGroup.Get("/publications", s.handleBPSPublications)
+	bpsGroup.Get("/pressreleases", s.handleBPSPressReleases)
+	bpsGroup.Get("/infographics", s.handleBPSInfographics)
+	bpsGroup.Get("/data", s.handleBPSData)
+	bpsGroup.Post("/cache/clear", s.handleBPSCacheClear)
 }
 
 func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
@@ -281,6 +305,215 @@ func (s *APIServer) handleBlast(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"success": true,
 		"message": fmt.Sprintf("Pengiriman blast ke %d nomor sedang diproses di antrean latar belakang dengan tombol opt-out.", len(req.Numbers)),
+	})
+}
+
+func (s *APIServer) extractBPSParams(c *fiber.Ctx, defaultModel string) bpsapi.ListParams {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	model := c.Query("model", defaultModel)
+	return bpsapi.ListParams{
+		Model:   model,
+		Domain:  c.Query("domain", ""),
+		Lang:    c.Query("lang", ""),
+		Page:    page,
+		Subject: c.Query("subject", ""),
+		Subcat:  c.Query("subcat", ""),
+		Year:    c.Query("year", ""),
+		Month:   c.Query("month", ""),
+		Keyword: c.Query("keyword", ""),
+		Var:     c.Query("var", ""),
+		Turvar:  c.Query("turvar", ""),
+		Vervar:  c.Query("vervar", ""),
+		Th:      c.Query("th", ""),
+		Turth:   c.Query("turth", ""),
+	}
+}
+
+func (s *APIServer) handleBPSList(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "subject")
+	result, err := s.bps.FetchGenericList(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             params.Model,
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSSubjects(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "subject")
+	result, err := s.bps.GetSubjects(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "subject",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSSubcats(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "subcat")
+	result, err := s.bps.GetSubCats(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "subcat",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSVariables(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "var")
+	result, err := s.bps.GetVariables(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "var",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSStaticTables(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "statictable")
+	result, err := s.bps.GetStaticTables(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "statictable",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSPublications(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "publication")
+	result, err := s.bps.GetPublications(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "publication",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSPressReleases(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "pressrelease")
+	result, err := s.bps.GetPressReleases(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "pressrelease",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSInfographics(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "infographic")
+	result, err := s.bps.GetInfographics(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "infographic",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSData(c *fiber.Ctx) error {
+	params := s.extractBPSParams(c, "data")
+	result, err := s.bps.GetData(c.Context(), params)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success":           true,
+		"model":             "data",
+		"status":            result.Status,
+		"data_availability": result.DataAvailability,
+		"pagination":        result.Pagination,
+		"data":              result.Items,
+		"is_stale":          result.IsStale,
+	})
+}
+
+func (s *APIServer) handleBPSCacheClear(c *fiber.Ctx) error {
+	s.bps.ClearCache()
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "BPS Web API in-memory cache successfully cleared",
 	})
 }
 

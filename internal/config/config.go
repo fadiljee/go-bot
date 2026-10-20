@@ -43,6 +43,13 @@ type Config struct {
 	GASCacheTTLMinutes int
 
 	TentangBPSVideoURL string
+
+	// WebAPI BPS (https://webapi.bps.go.id/v1/api/list)
+	BPSAPIBaseURL      string
+	BPSAPIKey          string
+	BPSDefaultDomain   string
+	BPSDefaultLang     string
+	BPSCacheTTLMinutes int
 }
 
 func LoadConfig() *Config {
@@ -126,6 +133,12 @@ func LoadConfig() *Config {
 		GASCacheTTLMinutes: cacheTTL,
 
 		TentangBPSVideoURL: getEnv("TENTANG_BPS_VIDEO_URL", "https://www.youtube.com/watch?v=BFj6yi8HLAg"),
+
+		BPSAPIBaseURL:      getEnv("BPS_API_BASE_URL", "https://webapi.bps.go.id/v1/api/list"),
+		BPSAPIKey:          getEnv("BPS_API_KEY", ""),
+		BPSDefaultDomain:   getEnv("BPS_DEFAULT_DOMAIN", "1903"),
+		BPSDefaultLang:     getEnv("BPS_DEFAULT_LANG", "ind"),
+		BPSCacheTTLMinutes: getEnvInt("BPS_CACHE_TTL_MINUTES", 15),
 	}
 }
 
