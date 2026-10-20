@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/locale"
@@ -41,6 +42,7 @@ type BotRouter struct {
 	cfg                 *config.Config
 	sender              *whatsapp.Sender
 	gsheet              *gsheet.Client
+	bps                 *bpsapi.Client
 	sessions            *SessionManager
 	handlerMap          map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error
 	rateLimiter         *RateLimiter
@@ -49,11 +51,19 @@ type BotRouter struct {
 	adminMu             sync.Mutex
 }
 
-func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client) *BotRouter {
+func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client, bpsClient ...*bpsapi.Client) *BotRouter {
+	var bps *bpsapi.Client
+	if len(bpsClient) > 0 && bpsClient[0] != nil {
+		bps = bpsClient[0]
+	} else {
+		bps = bpsapi.NewClient(cfg)
+	}
+
 	r := &BotRouter{
 		cfg:                 cfg,
 		sender:              sender,
 		gsheet:              gsheetClient,
+		bps:                 bps,
 		sessions:            NewSessionManager(cfg.IdleTimeoutMinutes),
 		handlerMap:          make(map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error),
 		rateLimiter:         NewRateLimiter(cfg.UserRateLimitPer10s, cfg.UserCooldownSeconds),

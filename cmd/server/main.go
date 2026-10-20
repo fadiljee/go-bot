@@ -52,8 +52,13 @@ func main() {
 		log.Fatalf("❌ Gagal membuat WhatsApp Client Manager: %v", err)
 	}
 
+	// 4b. Initialize BPS Web API Client (Domain: 1903 Bangka Barat)
+	bpsClient := bpsapi.NewClient(cfg)
+	log.Printf("📊 BPS Web API Client aktif | Domain: %s (%s) | Base: %s",
+		cfg.BPSDefaultDomain, "BPS Kabupaten Bangka Barat", cfg.BPSAPIBaseURL)
+
 	// 5. Initialize Bot Message Router
-	botRouter := bot.NewBotRouter(cfg, clientMgr.Sender, gsheetClient)
+	botRouter := bot.NewBotRouter(cfg, clientMgr.Sender, gsheetClient, bpsClient)
 
 	botStartTime := time.Now()
 
@@ -96,10 +101,7 @@ func main() {
 		log.Printf("⚠️ Gagal memulai koneksi awal WhatsApp: %v", err)
 	}
 
-	// 8. Start Fiber REST API Server & BPS Web API Client
-	bpsClient := bpsapi.NewClient(cfg)
-	log.Printf("📊 BPS Web API Client aktif | Base URL: %s | Default Domain: %s", cfg.BPSAPIBaseURL, cfg.BPSDefaultDomain)
-
+	// 8. Start Fiber REST API Server
 	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient, bpsClient)
 	go func() {
 		addr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)

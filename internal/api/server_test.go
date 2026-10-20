@@ -111,40 +111,33 @@ func TestBPSRouteGroup(t *testing.T) {
 		t.Errorf("expected 401 Unauthorized for /api/v1/bps/subjects, got %d", respUnauth.StatusCode)
 	}
 
-	// 2. With auth -> 200 OK
-	reqAuth := httptest.NewRequest("GET", "/api/v1/bps/subjects?page=1", nil)
-	reqAuth.Header.Set("X-API-Key", "secret_bps_route_key")
-	respAuth, err := server.app.Test(reqAuth)
-	if err != nil {
-		t.Fatalf("auth test error: %v", err)
-	}
-	if respAuth.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 OK for /api/v1/bps/subjects, got %d", respAuth.StatusCode)
-	}
-
-	// 3. Test publications endpoint
-	reqPub := httptest.NewRequest("GET", "/api/v1/bps/publications?year=2024", nil)
-	reqPub.Header.Set("X-API-Key", "secret_bps_route_key")
-	respPub, err := server.app.Test(reqPub)
-	if err != nil {
-		t.Fatalf("pub test error: %v", err)
-	}
-	if respPub.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 OK for /api/v1/bps/publications, got %d", respPub.StatusCode)
+	// Helper for testing GET endpoints with auth
+	testEndpoint := func(name, path string) {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", path, nil)
+			req.Header.Set("X-API-Key", "secret_bps_route_key")
+			resp, err := server.app.Test(req)
+			if err != nil {
+				t.Fatalf("%s error: %v", path, err)
+			}
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("expected 200 OK for %s, got %d", path, resp.StatusCode)
+			}
+		})
 	}
 
-	// 4. Test pressreleases endpoint
-	reqBrs := httptest.NewRequest("GET", "/api/v1/bps/pressreleases", nil)
-	reqBrs.Header.Set("X-API-Key", "secret_bps_route_key")
-	respBrs, err := server.app.Test(reqBrs)
-	if err != nil {
-		t.Fatalf("brs test error: %v", err)
-	}
-	if respBrs.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 OK for /api/v1/bps/pressreleases, got %d", respBrs.StatusCode)
-	}
+	// 2. Test all 9 GET endpoints in BPS route group
+	testEndpoint("generic list", "/api/v1/bps/list?model=subject&page=1")
+	testEndpoint("subjects", "/api/v1/bps/subjects?page=1")
+	testEndpoint("subcats", "/api/v1/bps/subcats")
+	testEndpoint("variables", "/api/v1/bps/variables?subject=1")
+	testEndpoint("statictables", "/api/v1/bps/statictables?keyword=penduduk")
+	testEndpoint("publications", "/api/v1/bps/publications?year=2024")
+	testEndpoint("pressreleases", "/api/v1/bps/pressreleases")
+	testEndpoint("infographics", "/api/v1/bps/infographics")
+	testEndpoint("data", "/api/v1/bps/data?var=123")
 
-	// 5. Test cache clear endpoint
+	// 3. Test POST cache clear endpoint
 	reqClear := httptest.NewRequest("POST", "/api/v1/bps/cache/clear", nil)
 	reqClear.Header.Set("X-API-Key", "secret_bps_route_key")
 	respClear, err := server.app.Test(reqClear)

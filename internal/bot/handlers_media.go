@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
+	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -39,13 +41,75 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 	switch idx {
 	case 1:
 		title = "📰 Berita Resmi Statistik (BRS)"
-		content = "📢 *Berita Resmi Statistik (BRS)*\n\nBRS memuat rilis data statistik terkini seputar inflasi, ketenagakerjaan, kemiskinan, pertumbuhan ekonomi, dan indikator strategis lainnya.\n\n🌐 *Akses BRS Online*:\nhttps://bangkabaratkab.bps.go.id/id/pressrelease"
+		var sb strings.Builder
+		sb.WriteString("📢 *Berita Resmi Statistik (BRS) — BPS Bangka Barat*\n\n")
+
+		// Tarik data rilis BRS live dari Web API BPS Bangka Barat (domain: 1903)
+		if r.bps != nil {
+			brsRes, err := r.bps.GetPressReleases(ctx, bpsapi.ListParams{
+				Domain: "1903",
+				Page:   1,
+			})
+			if err == nil && len(brsRes.Items) > 0 {
+				sb.WriteString("✨ *Daftar Rilis BRS Terbaru (Live Portal)*:\n\n")
+				limit := 4
+				if len(brsRes.Items) < limit {
+					limit = len(brsRes.Items)
+				}
+				for i := 0; i < limit; i++ {
+					item := brsRes.Items[i]
+					sb.WriteString(fmt.Sprintf("%d. 📄 *%s*\n", i+1, item.Title))
+					if item.RlDate != "" {
+						sb.WriteString(fmt.Sprintf("   🗓️ Rilis: %s\n", item.RlDate))
+					}
+					if item.Pdf != "" {
+						sb.WriteString(fmt.Sprintf("   📥 Unduh PDF: %s\n", item.Pdf))
+					}
+					sb.WriteString("\n")
+				}
+			}
+		}
+
+		sb.WriteString("🌐 *Portal BRS Bangka Barat*:\nhttps://bangkabaratkab.bps.go.id/id/pressrelease")
+		content = sb.String()
+
 	case 2:
 		title = "📚 Publikasi BPS"
-		content = "📖 *Publikasi Resmi BPS Kabupaten Bangka Barat*\n\nUnduh buku statistik resmi seperti *Kabupaten Bangka Barat Dalam Angka (DDA)*, *Statistik Daerah*, dan publikasi sektoral lainnya secara gratis!\n\n🌐 *Akses Katalog Publikasi*:\nhttps://bangkabaratkab.bps.go.id/id/publication"
+		var sb strings.Builder
+		sb.WriteString("📖 *Publikasi Resmi BPS Kabupaten Bangka Barat*\n\n")
+
+		// Tarik katalog buku publikasi live dari Web API BPS Bangka Barat (domain: 1903)
+		if r.bps != nil {
+			pubRes, err := r.bps.GetPublications(ctx, bpsapi.ListParams{
+				Domain: "1903",
+				Page:   1,
+			})
+			if err == nil && len(pubRes.Items) > 0 {
+				sb.WriteString("✨ *Publikasi Terbaru (Live Portal)*:\n\n")
+				limit := 4
+				if len(pubRes.Items) < limit {
+					limit = len(pubRes.Items)
+				}
+				for i := 0; i < limit; i++ {
+					item := pubRes.Items[i]
+					sb.WriteString(fmt.Sprintf("%d. 📕 *%s*\n", i+1, item.Title))
+					if item.RlDate != "" {
+						sb.WriteString(fmt.Sprintf("   🗓️ Rilis: %s\n", item.RlDate))
+					}
+					if item.Pdf != "" {
+						sb.WriteString(fmt.Sprintf("   📥 Unduh: %s\n", item.Pdf))
+					}
+					sb.WriteString("\n")
+				}
+			}
+		}
+
+		sb.WriteString("🌐 *Katalog Lengkap Publikasi*:\nhttps://bangkabaratkab.bps.go.id/id/publication")
+		content = sb.String()
+
 	case 3:
 		title = "💾 Layanan Data Mikro"
-		content = "🔬 *Akses Data Mikro BPS*\n\nBPS menyediakan data mikro (raw data) level individu/rumah tangga/usaha yang telah di-anonymize untuk keperluan penelitian akademis dan perumusan kebijakan.\n\n🌐 *Akses Portal SILASTIK BPS*:\nhttps://silastik.bps.go.id/"
+		content = "🔬 *Akses Data Mikro BPS*\n\nBPS menyediakan data mikro (raw data) level individu/rumah tangga/usaha yang telah di-anonymize untuk keperluan penelitian akademis dan perumusan kebijakan.\n\n🌐 *Akses Portal SILASTIK BPS*:\nhttps://silastik.bps.go.id/\n🌐 *Website BPS Bangka Barat*:\nhttps://bangkabaratkab.bps.go.id/"
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -140,10 +204,44 @@ func (r *BotRouter) HandleMenu5_Infografik(ctx context.Context, s *UserSession, 
 }
 
 func (r *BotRouter) HandleInfografikDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
+	// 1. Coba tarik infografik live dari Web API BPS Bangka Barat (domain: 1903)
+	if r.bps != nil {
+		infoRes, err := r.bps.GetInfographics(ctx, bpsapi.ListParams{
+			Domain: "1903",
+			Page:   1,
+		})
+		if err == nil && len(infoRes.Items) > 0 {
+			_ = r.sender.SendTextMessage(ctx, p.JID, "🖼️ Menyiapkan infografik terbaru langsung dari portal BPS Bangka Barat... 🚀")
+			limit := 2
+			if len(infoRes.Items) < limit {
+				limit = len(infoRes.Items)
+			}
+			for i := 0; i < limit; i++ {
+				item := infoRes.Items[i]
+				caption := fmt.Sprintf("📊 *%s*\n🌐 https://bangkabaratkab.bps.go.id/id/infographic", item.Title)
+				if item.Img != "" {
+					_ = r.sender.SendImageFromURL(ctx, p.JID, item.Img, caption)
+				}
+			}
+
+			navMsg := whatsapp.BuildQuickReplyButtons(
+				"Navigasi Infografik",
+				"Selesai menampilkan infografik dari portal BPS Bangka Barat. Silakan pilih menu berikutnya:",
+				"PST BPS Kabupaten Bangka Barat",
+				[]whatsapp.QuickReplyButton{
+					{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
+					{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
+				},
+			)
+			return r.sender.SendInteractiveMessage(ctx, p.JID, navMsg)
+		}
+	}
+
+	// 2. Fallback ke Google Sheets jika API BPS belum tersedia/kembalikan kosong
 	noStr := strconv.Itoa(idx)
 	titles, urls, err := r.gsheet.GetInfografik(noStr)
 	if err != nil || len(urls) == 0 {
-		return r.sender.SendTextMessage(ctx, p.JID, "🖼️ Belum ada infografik terbaru untuk kategori ini.\nKetik *99* untuk kembali atau *0* ke menu utama.")
+		return r.sender.SendTextMessage(ctx, p.JID, "🖼️ Belum ada infografik terbaru untuk kategori ini.\n🌐 Cek infografik lengkap di: https://bangkabaratkab.bps.go.id/id/infographic\n\nKetik *99* untuk kembali atau *0* ke menu utama.")
 	}
 
 	_ = r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("🖼️ Menampilkan %d infografik...", len(urls)))

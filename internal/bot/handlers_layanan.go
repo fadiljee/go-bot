@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/locale"
 	"bot-istimewa/internal/whatsapp"
@@ -160,19 +161,75 @@ func (r *BotRouter) HandleLayananSub_SearchPrompt(ctx context.Context, s *UserSe
 	return r.sender.SendTextMessage(ctx, p.JID, text)
 }
 
-// HandleSearchKeyword executes search across all 6 sheets
-func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	query := strings.TrimSpace(p.Text)
-	results, err := r.gsheet.SearchAll(query)
-	if err != nil {
-		return r.sender.SendTextMessage(ctx, p.JID, "❌ Maaf sobat data, terjadi kendala saat memproses pencarian. Silakan coba lagi nanti.")
+// fetchBPSTablesForTopic queries BPS Web API for Bangka Barat (domain: 1903) static tables
+func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) string {
+	if r.bps == nil || keyword == "" {
+		return ""
+	}
+	res, err := r.bps.GetStaticTables(ctx, bpsapi.ListParams{
+		Domain:  "1903",
+		Keyword: keyword,
+		Page:    1,
+	})
+	if err != nil || len(res.Items) == 0 {
+		return ""
 	}
 
+	var sb strings.Builder
+	sb.WriteString("📑 *Tabel Statistik BPS Bangka Barat (Live Portal)*:\n")
+	limit := 3
+	if len(res.Items) < limit {
+		limit = len(res.Items)
+	}
+	for i := 0; i < limit; i++ {
+		table := res.Items[i]
+		sb.WriteString(fmt.Sprintf("%d. 📊 %s\n", i+1, table.Title))
+		if table.Excel != "" {
+			sb.WriteString(fmt.Sprintf("   📥 Unduh Excel: %s\n", table.Excel))
+		}
+	}
+	sb.WriteString("🌐 *Katalog Tabel*: https://bangkabaratkab.bps.go.id/id/statistics-table\n\n")
+	return sb.String()
+}
+
+// HandleSearchKeyword executes search across BPS Bangka Barat portal and local catalog
+func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	query := strings.TrimSpace(p.Text)
+
+	var sb strings.Builder
+
+	// 1. Live search from BPS Bangka Barat Web API (domain: 1903)
+	if r.bps != nil {
+		liveTables, err := r.bps.GetStaticTables(ctx, bpsapi.ListParams{
+			Domain:  "1903",
+			Keyword: query,
+			Page:    1,
+		})
+		if err == nil && len(liveTables.Items) > 0 {
+			sb.WriteString("🌐 *Tabel BPS Bangka Barat (Live Portal)*:\n")
+			limit := 3
+			if len(liveTables.Items) < limit {
+				limit = len(liveTables.Items)
+			}
+			for i := 0; i < limit; i++ {
+				t := liveTables.Items[i]
+				sb.WriteString(fmt.Sprintf("• 📊 *%s*\n", t.Title))
+				if t.Excel != "" {
+					sb.WriteString(fmt.Sprintf("  📥 Unduh Excel: %s\n", t.Excel))
+				}
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	// 2. Search local dataset / Google Sheet fallback
+	results, _ := r.gsheet.SearchAll(query)
 	formatted := gsheet.FormatSearchResults(query, results)
+	sb.WriteString(formatted)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"🔍 Hasil Pencarian Data",
-		formatted,
+		sb.String(),
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
 			{ID: "99", DisplayText: "↩️ Cari Kata Kunci Lain"},
@@ -190,9 +247,34 @@ func (r *BotRouter) HandleSosdukTopic(ctx context.Context, s *UserSession, p *wh
 	cakupan := locale.T(cakupKey)
 	link := locale.T(linkKey)
 
-	// Fetch dynamic tables from Sheet if available
-	sheetCode := fmt.Sprintf("11%d", topicIdx)
-	tableData, _ := r.gsheet.GetLayananData(sheetCode)
+	// Keyword mapping for BPS Bangka Barat portal
+	var topicKeyword string
+	switch topicIdx {
+	case 1:
+		topicKeyword = "kependudukan"
+	case 2:
+		topicKeyword = "kemiskinan"
+	case 3:
+		topicKeyword = "tenaga kerja"
+	case 4:
+		topicKeyword = "pendidikan"
+	case 5:
+		topicKeyword = "kesehatan"
+	case 6:
+		topicKeyword = "konsumsi"
+	case 7:
+		topicKeyword = "perumahan"
+	case 8:
+		topicKeyword = "budaya"
+	case 9:
+		topicKeyword = "politik"
+	case 10:
+		topicKeyword = "geografi"
+	case 11:
+		topicKeyword = "gender"
+	case 12:
+		topicKeyword = "informasi"
+	}
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("📖 *Detail Statistik: %s*\n\n", locale.T(fmt.Sprintf("menu11%dSosduk", topicIdx))))
@@ -202,8 +284,18 @@ func (r *BotRouter) HandleSosdukTopic(ctx context.Context, s *UserSession, p *wh
 	if link != "" && link != linkKey {
 		sb.WriteString(fmt.Sprintf("🌐 *Kunjungi Website BPS*:\n%s\n\n", link))
 	}
-	if tableData != "" {
-		sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+
+	// 1. Live tables from BPS Bangka Barat portal
+	liveTables := r.fetchBPSTablesForTopic(ctx, topicKeyword)
+	if liveTables != "" {
+		sb.WriteString(liveTables)
+	} else {
+		// 2. Fallback to Google Sheets
+		sheetCode := fmt.Sprintf("11%d", topicIdx)
+		tableData, _ := r.gsheet.GetLayananData(sheetCode)
+		if tableData != "" {
+			sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+		}
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -226,8 +318,29 @@ func (r *BotRouter) HandleEkonomiTopic(ctx context.Context, s *UserSession, p *w
 	cakupan := locale.T(cakupKey)
 	link := locale.T(linkKey)
 
-	sheetCode := fmt.Sprintf("12%d", topicIdx)
-	tableData, _ := r.gsheet.GetLayananData(sheetCode)
+	var topicKeyword string
+	switch topicIdx {
+	case 1:
+		topicKeyword = "pdrb"
+	case 2:
+		topicKeyword = "industri"
+	case 3:
+		topicKeyword = "keuangan"
+	case 4:
+		topicKeyword = "harga"
+	case 5:
+		topicKeyword = "upah"
+	case 6:
+		topicKeyword = "energi"
+	case 7:
+		topicKeyword = "pertambangan"
+	case 8:
+		topicKeyword = "transportasi"
+	case 9:
+		topicKeyword = "pariwisata"
+	case 10:
+		topicKeyword = "keuangan"
+	}
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("💰 *Detail Statistik: %s*\n\n", locale.T(fmt.Sprintf("menu12%dEkonomi", topicIdx))))
@@ -237,8 +350,18 @@ func (r *BotRouter) HandleEkonomiTopic(ctx context.Context, s *UserSession, p *w
 	if link != "" && link != linkKey {
 		sb.WriteString(fmt.Sprintf("🌐 *Kunjungi Website BPS*:\n%s\n\n", link))
 	}
-	if tableData != "" {
-		sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+
+	// 1. Live tables from BPS Bangka Barat portal
+	liveTables := r.fetchBPSTablesForTopic(ctx, topicKeyword)
+	if liveTables != "" {
+		sb.WriteString(liveTables)
+	} else {
+		// 2. Fallback to Google Sheets
+		sheetCode := fmt.Sprintf("12%d", topicIdx)
+		tableData, _ := r.gsheet.GetLayananData(sheetCode)
+		if tableData != "" {
+			sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+		}
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -261,8 +384,17 @@ func (r *BotRouter) HandlePertanianTopic(ctx context.Context, s *UserSession, p 
 	cakupan := locale.T(cakupKey)
 	link := locale.T(linkKey)
 
-	sheetCode := fmt.Sprintf("13%d", topicIdx)
-	tableData, _ := r.gsheet.GetLayananData(sheetCode)
+	var topicKeyword string
+	switch topicIdx {
+	case 1:
+		topicKeyword = "padi"
+	case 2:
+		topicKeyword = "hortikultura"
+	case 3:
+		topicKeyword = "sawit"
+	default:
+		topicKeyword = "pertanian"
+	}
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("🌾 *Detail Statistik: %s*\n\n", locale.T(fmt.Sprintf("menu13%dPertanian", topicIdx))))
@@ -272,8 +404,18 @@ func (r *BotRouter) HandlePertanianTopic(ctx context.Context, s *UserSession, p 
 	if link != "" && link != linkKey {
 		sb.WriteString(fmt.Sprintf("🌐 *Kunjungi Website BPS*:\n%s\n\n", link))
 	}
-	if tableData != "" {
-		sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+
+	// 1. Live tables from BPS Bangka Barat portal
+	liveTables := r.fetchBPSTablesForTopic(ctx, topicKeyword)
+	if liveTables != "" {
+		sb.WriteString(liveTables)
+	} else {
+		// 2. Fallback to Google Sheets
+		sheetCode := fmt.Sprintf("13%d", topicIdx)
+		tableData, _ := r.gsheet.GetLayananData(sheetCode)
+		if tableData != "" {
+			sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+		}
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
