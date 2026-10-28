@@ -1,0 +1,86 @@
+version: 1
+
+pressrelease:
+  list_url: "/{lang}/pressrelease.html?page={page}"
+  list:
+    item: ".brs-item, .card-brs, .list-group-item"
+    title: ".title, h4 a, .card-title a, a.brs-title"
+    link: "a.brs-title, h4 a, .card-title a, a[href*='/pressrelease/']"
+    date: ".date, .release-date, .text-muted, time"
+    next_page: ".pagination .page-item:not(.disabled) a[rel='next'], .pagination a.next"
+  detail:
+    abstract: ".abstract, .abstraksi, #abstraksi, .card-text"
+    release_date: ".release-date, .tanggal-rilis, .meta-date"
+    file_size: ".file-size, .ukuran-file"
+    file_link: "a.download-pdf, a[href$='.pdf'], a[href*='download']"
+    image_link: ""
+  required_markers:
+    - "Badan Pusat Statistik"
+
+publication:
+  list_url: "/publication.html?page={page}"
+  list:
+    item: ".pub-item, .card-publication, .list-group-item"
+    title: ".title, h4 a, .card-title a, a.pub-title"
+    link: "a.pub-title, h4 a, .card-title a, a[href*='/publication/']"
+    date: ".date, .release-date, .text-muted, time"
+    next_page: ".pagination .page-item:not(.disabled) a[rel='next'], .pagination a.next"
+  detail:
+    abstract: ".abstract, .abstraksi, #abstraksi, .card-text"
+    release_date: ".release-date, .tanggal-rilis"
+    file_size: ".file-size, .ukuran-file"
+    file_link: "a.download-pdf, a[href$='.pdf'], a[href*='download']"
+    image_link: ".cover-img img, .thumbnail img"
+  required_markers:
+    - "Badan Pusat Statistik"
+
+infographic:
+  list_url: "/infographic.html?page={page}"
+  list:
+    item: ".infographic-item, .card-infographic, .grid-item"
+    title: ".title, .card-title, h4"
+    link: "a.info-link, a[href*='/infographic/'], a"
+    date: ".date, .text-muted, time"
+    next_page: ".pagination .page-item:not(.disabled) a[rel='next'], .pagination a.next"
+  detail:
+    abstract: ".caption, .desc, .card-text"
+    release_date: ".date"
+    file_size: ""
+    file_link: ""
+    image_link: ".img-fluid, .infographic-image img, img.main-image"
+  required_markers:
+    - "Badan Pusat Statistik"
+
+statictable:
+  list_url: "/statictable.html?page={page}"
+  list:
+    item: ".table-item, tr.table-row, .card-statictable, .list-group-item"
+    title: "a.table-title, .title, td.title a, .card-title a"
+    link: "a.table-title, td.title a, a[href*='/statictable/'], a"
+    date: ".date, td.updated-date, .text-muted"
+    next_page: ".pagination .page-item:not(.disabled) a[rel='next'], .pagination a.next"
+  detail:
+    abstract: ".abstract, .table-description, .card-text"
+    release_date: ".date, .updated-date"
+    file_size: ".file-size"
+    file_link: "a.download-excel, a[href$='.xlsx'], a[href$='.xls'], a[href*='download']"
+    image_link: ""
+  required_markers:
+    - "Badan Pusat Statistik"
+
+news:
+  list_url: "/news.html?page={page}"
+  list:
+    item: ".news-item, .card-news, .list-group-item"
+    title: ".title, h4 a, .card-title a"
+    link: "a.news-title, h4 a, a[href*='/news/']"
+    date: ".date, .text-muted, time"
+    next_page: ".pagination .page-item:not(.disabled) a[rel='next']"
+  detail:
+    abstract: ".news-body, .card-text"
+    release_date: ".date"
+    file_size: ""
+    file_link: ""
+    image_link: ".news-image img"
+  required_markers:
+    - "Badan Pusat Statistik"

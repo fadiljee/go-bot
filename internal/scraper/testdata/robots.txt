@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Allow: /id/pressrelease.html
+Allow: /publication.html
+Allow: /infographic.html
+Allow: /statictable.html

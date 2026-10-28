@@ -50,6 +50,32 @@ type Config struct {
 	BPSDefaultDomain   string
 	BPSDefaultLang     string
 	BPSCacheTTLMinutes int
+
+	// Scraper BPS (bangkabaratkab.bps.go.id)
+	AppEnv                     string
+	ScraperEnabled             bool
+	ScraperBaseURL             string
+	ScraperAllowedHosts        []string
+	ScraperUserAgent           string
+	ScraperDBPath              string
+	ScraperSelectorsPath       string
+	ScraperCronSpec            string
+	ScraperTimezone            string
+	ScraperRunTimeoutMinutes   int
+	ScraperStartupCatchupHours int
+	ScraperManualCooldownMinutes int
+	ScraperEnabledKinds        []string
+	ScraperMinDelayMs          int
+	ScraperJitterMs            int
+	ScraperHTTPTimeoutSeconds  int
+	ScraperMaxPageBytes        int64
+	ScraperMaxListPages        int
+	ScraperMaxRequestsPerRun   int
+	ScraperRespectRobots       bool
+	ScraperMaxStaleHours       int
+	DataSourceOrder            []string
+	ScraperNotifyAdmin         bool
+	ScraperNotifyAfterFailures int
 }
 
 func LoadConfig() *Config {
@@ -139,6 +165,31 @@ func LoadConfig() *Config {
 		BPSDefaultDomain:   getEnv("BPS_DEFAULT_DOMAIN", "1903"),
 		BPSDefaultLang:     getEnv("BPS_DEFAULT_LANG", "ind"),
 		BPSCacheTTLMinutes: getEnvInt("BPS_CACHE_TTL_MINUTES", 15),
+
+		AppEnv:                     getEnv("APP_ENV", "production"),
+		ScraperEnabled:             getEnvBool("SCRAPER_ENABLED", true),
+		ScraperBaseURL:             getEnv("SCRAPER_BASE_URL", "https://bangkabaratkab.bps.go.id"),
+		ScraperAllowedHosts:        getEnvSlice("SCRAPER_ALLOWED_HOSTS", []string{"bangkabaratkab.bps.go.id"}),
+		ScraperUserAgent:           getEnv("SCRAPER_USER_AGENT", "BotIstimewa/3.1 (+https://bangkabaratkab.bps.go.id; kontak: bps1903@bps.go.id)"),
+		ScraperDBPath:              getEnv("SCRAPER_DB_PATH", "./storage/scraper.db"),
+		ScraperSelectorsPath:       getEnv("SCRAPER_SELECTORS_PATH", "./configs/scraper_selectors.yaml"),
+		ScraperCronSpec:            getEnv("SCRAPER_CRON_SPEC", "0 */6 * * *"),
+		ScraperTimezone:            getEnv("SCRAPER_TIMEZONE", "Asia/Jakarta"),
+		ScraperRunTimeoutMinutes:   getEnvInt("SCRAPER_RUN_TIMEOUT_MINUTES", 10),
+		ScraperStartupCatchupHours: getEnvInt("SCRAPER_STARTUP_CATCHUP_HOURS", 6),
+		ScraperManualCooldownMinutes: getEnvInt("SCRAPER_MANUAL_COOLDOWN_MINUTES", 5),
+		ScraperEnabledKinds:        getEnvSlice("SCRAPER_ENABLED_KINDS", []string{"pressrelease", "publication", "infographic", "statictable"}),
+		ScraperMinDelayMs:          getEnvInt("SCRAPER_MIN_DELAY_MS", 3000),
+		ScraperJitterMs:            getEnvInt("SCRAPER_JITTER_MS", 1000),
+		ScraperHTTPTimeoutSeconds:  getEnvInt("SCRAPER_HTTP_TIMEOUT_SECONDS", 20),
+		ScraperMaxPageBytes:        int64(getEnvInt("SCRAPER_MAX_PAGE_BYTES", 3145728)),
+		ScraperMaxListPages:        getEnvInt("SCRAPER_MAX_LIST_PAGES", 5),
+		ScraperMaxRequestsPerRun:   getEnvInt("SCRAPER_MAX_REQUESTS_PER_RUN", 60),
+		ScraperRespectRobots:       getEnvBool("SCRAPER_RESPECT_ROBOTS", true),
+		ScraperMaxStaleHours:       getEnvInt("SCRAPER_MAX_STALE_HOURS", 48),
+		DataSourceOrder:            getEnvSlice("DATA_SOURCE_ORDER", []string{"bpsapi", "scraper", "gsheet"}),
+		ScraperNotifyAdmin:         getEnvBool("SCRAPER_NOTIFY_ADMIN", true),
+		ScraperNotifyAfterFailures: getEnvInt("SCRAPER_NOTIFY_AFTER_FAILURES", 2),
 	}
 }
 
@@ -153,6 +204,30 @@ func getEnvInt(key string, defaultVal int) int {
 	if val := os.Getenv(key); val != "" {
 		if i, err := strconv.Atoi(val); err == nil && i > 0 {
 			return i
+		}
+	}
+	return defaultVal
+}
+
+func getEnvBool(key string, defaultVal bool) bool {
+	if val := os.Getenv(key); val != "" {
+		lower := strings.ToLower(strings.TrimSpace(val))
+		return lower == "true" || lower == "1" || lower == "yes"
+	}
+	return defaultVal
+}
+
+func getEnvSlice(key string, defaultVal []string) []string {
+	if val := os.Getenv(key); val != "" {
+		var res []string
+		for _, part := range strings.Split(val, ",") {
+			trimmed := strings.TrimSpace(part)
+			if trimmed != "" {
+				res = append(res, trimmed)
+			}
+		}
+		if len(res) > 0 {
+			return res
 		}
 	}
 	return defaultVal
