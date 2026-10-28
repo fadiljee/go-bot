@@ -2,11 +2,13 @@ package scraper
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 )
@@ -201,6 +203,11 @@ func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error)
 }
 
 func (r *Runner) scrapeKind(ctx context.Context, kind Kind, parser Parser, baseParsed *url.URL) ([]Item, int, error) {
+	// 1. Try Next.js Server Action first (for modern Next.js BPS portal)
+	if saItems, saSkipped, err := r.scrapeServerAction(ctx, kind, baseParsed); err == nil && len(saItems) > 0 {
+		return saItems, saSkipped, nil
+	}
+
 	maxPages := r.cfg.MaxListPages
 	if maxPages <= 0 {
 		maxPages = 5
@@ -269,6 +276,220 @@ func (r *Runner) scrapeKind(ctx context.Context, kind Kind, parser Parser, baseP
 	}
 
 	return allItems, skippedCount, nil
+}
+
+type serverActionDef struct {
+	path        string
+	actionID    string
+	arrayPrefix string
+}
+
+var serverActions = map[Kind]serverActionDef{
+	KindPressRelease: {
+		path:        "/id/pressrelease",
+		actionID:    "60faa5fc36a0363681ae70a99e757ca04fc85e382f",
+		arrayPrefix: `[{"brs_id":`,
+	},
+	KindPublication: {
+		path:        "/id/publication",
+		actionID:    "60624e3a7c825a0b98392f2120a4870bd26b8f90f2",
+		arrayPrefix: `[{"pub_id":`,
+	},
+	KindNews: {
+		path:        "/id/news",
+		actionID:    "608404231d97eefc336168319bc8c592791e348afc",
+		arrayPrefix: `[{"news_id":`,
+	},
+}
+
+func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *url.URL) ([]Item, int, error) {
+	def, ok := serverActions[kind]
+	if !ok {
+		return nil, 0, errors.New("no server action defined for kind")
+	}
+
+	pageURL := fmt.Sprintf("%s://%s%s", baseParsed.Scheme, baseParsed.Host, def.path)
+	// Initial GET to acquire session cookies
+	_, _ = r.fetcher.Get(ctx, pageURL, nil)
+
+	var allItems []Item
+	skippedCount := 0
+
+	maxPages := r.cfg.MaxListPages
+	if maxPages <= 0 {
+		maxPages = 2
+	}
+
+	for page := 1; page <= maxPages; page++ {
+		payload := fmt.Sprintf(`["id",{"page":%d}]`, page)
+		respBody, err := r.fetcher.PostAction(ctx, pageURL, def.actionID, payload)
+		if err != nil {
+			if len(allItems) > 0 {
+				break
+			}
+			return nil, skippedCount, err
+		}
+
+		jsonBlock := extractJSONBlock(string(respBody), def.arrayPrefix)
+		if jsonBlock == nil {
+			break
+		}
+
+		pageItems, err := r.parseServerActionJSON(kind, jsonBlock, baseParsed)
+		if err != nil || len(pageItems) == 0 {
+			break
+		}
+
+		for i := range pageItems {
+			it := &pageItems[i]
+			if valErr := ValidateItem(it, r.cfg.AllowedHosts, r.cfg.AppEnv); valErr != nil {
+				skippedCount++
+				continue
+			}
+			allItems = append(allItems, *it)
+		}
+	}
+
+	return allItems, skippedCount, nil
+}
+
+func (r *Runner) parseServerActionJSON(kind Kind, block []byte, baseParsed *url.URL) ([]Item, error) {
+	switch kind {
+	case KindPressRelease:
+		var raw []struct {
+			ID        int    `json:"brs_id"`
+			Title     string `json:"title"`
+			Abstract  string `json:"abstract"`
+			Date      string `json:"rl_date"`
+			PDF       string `json:"pdf"`
+			Size      string `json:"size"`
+			Thumbnail string `json:"thumbnail"`
+		}
+		if err := json.Unmarshal(block, &raw); err != nil {
+			return nil, err
+		}
+		var items []Item
+		for _, it := range raw {
+			t, _ := time.Parse("2006-01-02", it.Date)
+			u := fmt.Sprintf("%s://%s/id/pressrelease/%s/%d/%s.html",
+				baseParsed.Scheme, baseParsed.Host, strings.ReplaceAll(it.Date, "-", "/"), it.ID, url.PathEscape(it.Title))
+			item := Item{
+				Kind:         KindPressRelease,
+				Lang:         "id",
+				SourceKey:    fmt.Sprintf("%d", it.ID),
+				URL:          u,
+				Title:        it.Title,
+				Abstract:     cleanHTMLText(it.Abstract),
+				ReleaseDate:  &t,
+				FileURL:      it.PDF,
+				FileSizeText: it.Size,
+				ThumbnailURL: it.Thumbnail,
+				ImageURL:     it.Thumbnail,
+				IsActive:     true,
+			}
+			item.ContentHash = CalculateContentHash(&item)
+			items = append(items, item)
+		}
+		return items, nil
+
+	case KindPublication:
+		var raw []struct {
+			ID       string `json:"pub_id"`
+			Title    string `json:"title"`
+			Abstract string `json:"abstract"`
+			Date     string `json:"rl_date"`
+			Cover    string `json:"cover"`
+			PDF      string `json:"pdf"`
+			Size     string `json:"size"`
+		}
+		if err := json.Unmarshal(block, &raw); err != nil {
+			return nil, err
+		}
+		var items []Item
+		for _, it := range raw {
+			t, _ := time.Parse("2006-01-02", it.Date)
+			u := fmt.Sprintf("%s://%s/id/publication/%s/%s.html",
+				baseParsed.Scheme, baseParsed.Host, strings.ReplaceAll(it.Date, "-", "/"), it.ID)
+			item := Item{
+				Kind:         KindPublication,
+				Lang:         "id",
+				SourceKey:    it.ID,
+				URL:          u,
+				Title:        it.Title,
+				Abstract:     cleanHTMLText(it.Abstract),
+				ReleaseDate:  &t,
+				FileURL:      it.PDF,
+				FileSizeText: it.Size,
+				ThumbnailURL: it.Cover,
+				ImageURL:     it.Cover,
+				IsActive:     true,
+			}
+			item.ContentHash = CalculateContentHash(&item)
+			items = append(items, item)
+		}
+		return items, nil
+
+	case KindNews:
+		var raw []struct {
+			ID      int    `json:"news_id"`
+			Title   string `json:"title"`
+			News    string `json:"news"`
+			Date    string `json:"rl_date"`
+			Picture string `json:"picture"`
+		}
+		if err := json.Unmarshal(block, &raw); err != nil {
+			return nil, err
+		}
+		var items []Item
+		for _, it := range raw {
+			t, _ := time.Parse("2006-01-02", it.Date)
+			u := fmt.Sprintf("%s://%s/id/news/%s/%d/%s.html",
+				baseParsed.Scheme, baseParsed.Host, strings.ReplaceAll(it.Date, "-", "/"), it.ID, url.PathEscape(it.Title))
+			item := Item{
+				Kind:         KindNews,
+				Lang:         "id",
+				SourceKey:    fmt.Sprintf("%d", it.ID),
+				URL:          u,
+				Title:        it.Title,
+				Abstract:     cleanHTMLText(it.News),
+				ReleaseDate:  &t,
+				ThumbnailURL: it.Picture,
+				ImageURL:     it.Picture,
+				IsActive:     true,
+			}
+			item.ContentHash = CalculateContentHash(&item)
+			items = append(items, item)
+		}
+		return items, nil
+	}
+	return nil, errors.New("unsupported kind for server action")
+}
+
+func extractJSONBlock(resp string, prefix string) []byte {
+	start := strings.Index(resp, prefix)
+	if start == -1 {
+		return nil
+	}
+	for end := len(resp); end > start+10; end-- {
+		sub := resp[start:end]
+		if sub[len(sub)-1] == ']' {
+			var check []interface{}
+			if err := json.Unmarshal([]byte(sub), &check); err == nil {
+				return []byte(sub)
+			}
+		}
+	}
+	return nil
+}
+
+func cleanHTMLText(s string) string {
+	s = strings.ReplaceAll(s, "<p>", "")
+	s = strings.ReplaceAll(s, "</p>", "\n")
+	s = strings.ReplaceAll(s, "<br>", "\n")
+	s = strings.ReplaceAll(s, "<br/>", "\n")
+	s = strings.ReplaceAll(s, "&nbsp;", " ")
+	s = strings.ReplaceAll(s, "\r", "")
+	return strings.TrimSpace(s)
 }
 
 func (r *Runner) sendAdminNotification(ctx context.Context, msg string) {

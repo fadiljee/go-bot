@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"sync"
@@ -85,7 +86,9 @@ func NewFetcher(cfg *Config, robots *RobotsManager, customClient ...*http.Client
 			IdleConnTimeout:     30 * time.Second,
 		}
 
+		jar, _ := cookiejar.New(nil)
 		client = &http.Client{
+			Jar:       jar,
 			Transport: transport,
 			Timeout:   time.Duration(cfg.HTTPTimeoutSeconds) * time.Second,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -237,6 +240,62 @@ func (f *Fetcher) Get(ctx context.Context, rawURL string, cond *Conditional) (*R
 		LastModified: resp.Header.Get("Last-Modified"),
 		FetchedAt:    time.Now(),
 	}, nil
+}
+
+// PostAction executes a polite POST request with Next-Action header for Next.js Server Actions.
+func (f *Fetcher) PostAction(ctx context.Context, actionURL string, actionID string, payload string) ([]byte, error) {
+	u, err := f.ValidateURL(actionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if f.robots != nil && !f.robots.Allowed(ctx, u) {
+		return nil, ErrRobotsDisallowed
+	}
+
+	f.countMu.Lock()
+	if f.cfg.MaxRequestsPerRun > 0 && f.requestCount >= f.cfg.MaxRequestsPerRun {
+		f.countMu.Unlock()
+		return nil, ErrBudgetExceeded
+	}
+	f.requestCount++
+	f.countMu.Unlock()
+
+	f.applyRateLimit(ctx)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), strings.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	ua := f.cfg.UserAgent
+	if !strings.Contains(ua, "Chrome") {
+		ua = "Mozilla/5.0 (compatible; BotIstimewa/3.1; Chrome/130.0.0.0)"
+	}
+	req.Header.Set("User-Agent", ua)
+	req.Header.Set("Next-Action", actionID)
+	req.Header.Set("Content-Type", "text/plain;charset=UTF-8")
+
+	resp, err := f.doWithRetry(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrBlocked
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("scraper: http %d untuk %s", resp.StatusCode, u.String())
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, f.cfg.MaxPageBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }
 
 func (f *Fetcher) applyRateLimit(ctx context.Context) {
