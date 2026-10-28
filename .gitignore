@@ -26,6 +26,7 @@ state/
 
 # 3. Compiled Go Binaries & Executables
 bot-istimewa
+scraper-cli
 /bin/
 /dist/
 *.exe
