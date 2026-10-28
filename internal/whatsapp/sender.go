@@ -309,3 +309,76 @@ func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, 
 
 	return err
 }
+
+// SendVideoFromFile sends an MP4 video from local disk path with in-memory upload caching
+func (s *Sender) SendVideoFromFile(ctx context.Context, jid types.JID, filePath, caption string) error {
+	if s == nil {
+		return nil
+	}
+
+	// In test environments where client & queue are nil, safely mock success
+	if s.client == nil && s.queue == nil {
+		log.Printf("ℹ️ [SENDER MOCK] Melewati upload video ke %s (client & queue nil)", jid.String())
+		return nil
+	}
+
+	s.mediaMu.RLock()
+	cached, found := s.mediaCache[filePath]
+	s.mediaMu.RUnlock()
+
+	if !found {
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("read video file %s: %w", filePath, err)
+		}
+
+		if s.client == nil {
+			return fmt.Errorf("whatsmeow client is nil")
+		}
+
+		uploaded, err := s.client.Upload(ctx, data, whatsmeow.MediaVideo)
+		if err != nil {
+			return fmt.Errorf("upload video: %w", err)
+		}
+
+		cached = &CachedMedia{
+			URL:           uploaded.URL,
+			DirectPath:    uploaded.DirectPath,
+			MediaKey:      uploaded.MediaKey,
+			FileSHA256:    uploaded.FileSHA256,
+			FileEncSHA256: uploaded.FileEncSHA256,
+			FileLength:    uploaded.FileLength,
+		}
+
+		s.mediaMu.Lock()
+		s.mediaCache[filePath] = cached
+		s.mediaMu.Unlock()
+	}
+
+	msg := &waE2E.Message{
+		VideoMessage: &waE2E.VideoMessage{
+			URL:           proto.String(cached.URL),
+			DirectPath:    proto.String(cached.DirectPath),
+			MediaKey:      cached.MediaKey,
+			Mimetype:      proto.String("video/mp4"),
+			Caption:       proto.String(caption),
+			FileSHA256:    cached.FileSHA256,
+			FileEncSHA256: cached.FileEncSHA256,
+			FileLength:    proto.Uint64(cached.FileLength),
+		},
+	}
+
+	var err error
+	if s.queue != nil {
+		err = s.queue.SendInteractiveSync(ctx, jid, msg, nil)
+	} else if s.client != nil {
+		_, err = s.client.SendMessage(ctx, jid, msg)
+	}
+
+	if err != nil {
+		log.Printf("❌ [SENDER ERROR] Gagal mengirim video ke %s: %v", jid.String(), err)
+		return err
+	}
+	log.Printf("✅ [SENDER OK] Video berhasil terkirim ke %s (%s)", jid.String(), filePath)
+	return nil
+}

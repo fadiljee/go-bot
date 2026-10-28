@@ -27,6 +27,8 @@ const (
 	StateMenu2           = "menu2"
 	StateMenu3           = "menu3"
 	StateMenu4           = "menu4"
+	StateMenu4_Sosduk    = "menu4_sosduk"
+	StateMenu4_Ekonomi   = "menu4_ekonomi"
 	StateMenu5           = "menu5"
 	StateMenu6           = "menu6"
 	StateMenu6_Booking   = "menu6_booking"
@@ -317,6 +319,22 @@ func (r *BotRouter) registerRoutes() {
 		idx := i
 		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu4, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 			return r.HandleVideoDetail(ctx, s, p, idx)
+		}
+	}
+
+	// Level 3: Video Sub-Menu Sosduk (1 - 5)
+	for i := 1; i <= 5; i++ {
+		idx := i
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu4_Sosduk, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+			return r.HandleVideoDetail_Sosduk(ctx, s, p, idx)
+		}
+	}
+
+	// Level 3: Video Sub-Menu Ekonomi (1 - 5)
+	for i := 1; i <= 5; i++ {
+		idx := i
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu4_Ekonomi, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+			return r.HandleVideoDetail_Ekonomi(ctx, s, p, idx)
 		}
 	}
 

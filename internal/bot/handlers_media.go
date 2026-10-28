@@ -3,11 +3,14 @@ package bot
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
+	"go.mau.fi/whatsmeow/types"
 )
 
 // HandleMenu3_Produk renders Produk Statistik menu
@@ -217,45 +220,205 @@ func (r *BotRouter) HandleMenu4_Video(ctx context.Context, s *UserSession, p *wh
 }
 
 func (r *BotRouter) HandleVideoDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
-	var topicTitle, videoURL string
 	switch idx {
 	case 1:
-		topicTitle = "Sensus & Survei BPS"
-		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+		// Sub-menu for Sosial Kependudukan (5 videos)
+		return r.HandleVideoSub_Sosduk(ctx, s, p)
 	case 2:
-		topicTitle = "Memahami Inflasi & IHK Daerah"
-		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+		// Pertanian - Belum ada video lokal
+		text := "🌾 *Video Literasi: Statistik Pertanian*\n\nVideo edukasi sektor pertanian sedang dalam tahap penyusunan oleh tim Diseminasi BPS Bangka Barat.\n\n📺 Tonton video rilis lainnya di kanal resmi YouTube:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		return r.sendVideoPlaceholder(ctx, p.JID, "Statistik Pertanian", text)
 	case 3:
-		topicTitle = "Menghitung Pertumbuhan Ekonomi & PDRB"
-		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+		// Sub-menu for Ekonomi (5 videos)
+		return r.HandleVideoSub_Ekonomi(ctx, s, p)
 	case 4:
-		topicTitle = "Indeks Pembangunan Manusia (IPM)"
-		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+		// Sensus - Belum ada video lokal
+		text := "👷‍♀️ *Video Literasi: Sensus BPS*\n\nVideo edukasi Sensus Penduduk dan Sensus Pertanian sedang dipersiapkan.\n\n📺 Tonton video resmi BPS di kanal YouTube:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		return r.sendVideoPlaceholder(ctx, p.JID, "Sensus BPS", text)
 	case 5:
-		topicTitle = "Kemiskinan & Garis Kemiskinan"
-		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+		// Statistik Sektoral (1 video)
+		return r.sendVideoResponse(ctx, p.JID,
+			"storage/videos/Statistik Sektoral - Statistik Sektoral dan Aplikasi Romantik Badan Pusat Statistik.mp4",
+			"Statistik Sektoral & Aplikasi Romantik",
+			"Video panduan penyelenggaraan statistik sektoral bagi OPD serta pengajuan rekomendasi kegiatan statistik lewat portal Romantik BPS.",
+		)
+	case 6:
+		// Statistik Khusus (1 video)
+		return r.sendVideoResponse(ctx, p.JID,
+			"storage/videos/Statistik Khusus - Kenalan dengan Statistik Khusus.mp4",
+			"Kenalan dengan Statistik Khusus",
+			"Video edukasi mengenai definisi, pemanfaatan, dan tata kelola statistik khusus di lingkungan BPS.",
+		)
+	case 7:
+		// Metodologi - Belum ada video lokal
+		text := "🖊️ *Video Literasi: Metodologi Statistik*\n\nVideo konsep & metodologi pengumpulan data sedang dipersiapkan.\n\n📺 Kunjungi kanal YouTube BPS Bangka Barat:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		return r.sendVideoPlaceholder(ctx, p.JID, "Metodologi Statistik", text)
+	case 8:
+		// Tips & Trik - Belum ada video lokal
+		text := "🪄 *Video Literasi: Tips & Trik Statistik*\n\nVideo panduan tips & trik membaca data statistik segera hadir.\n\n📺 Kunjungi kanal YouTube BPS Bangka Barat:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		return r.sendVideoPlaceholder(ctx, p.JID, "Tips & Trik Statistik", text)
 	default:
-		topicTitle = "Literasi Statistik BPS"
-		videoURL = r.cfg.TentangBPSVideoURL
+		return r.HandleMenu4_Video(ctx, s, p)
+	}
+}
+
+// HandleVideoSub_Sosduk renders sub-list for Sosial Kependudukan videos
+func (r *BotRouter) HandleVideoSub_Sosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu4_Sosduk)
+
+	items := []whatsapp.ListRow{
+		{ID: "1", Title: "1️⃣  Garis Kemiskinan", Description: "Konsep penentuan batas garis kemiskinan"},
+		{ID: "2", Title: "2️⃣  Indeks Pembangunan Manusia", Description: "Memahami indikator IPM BPS"},
+		{ID: "3", Title: "3️⃣  Ketenagakerjaan", Description: "Definisi angkatan kerja & konsep kerja"},
+		{ID: "4", Title: "4️⃣  Pengangguran Kota vs Desa", Description: "Mengapa pengangguran kota lebih tinggi"},
+		{ID: "5", Title: "5️⃣  Hitung Angka Kemiskinan", Description: "Metode penghitungan angka kemiskinan"},
 	}
 
-	videoData := fmt.Sprintf("🎬 *Video Literasi Statistik: %s*\n\n"+
-		"Yuk tonton video edukasi resmi dari BPS untuk memahami konsep statistik dengan cara menyenangkan! 😊\n\n"+
-		"▶️ *Tonton Video di YouTube*:\n%s\n\n"+
-		"📺 *Kanal Resmi BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n\n"+
-		"💡 _Tips: Tautan di atas dapat langsung diputar di WhatsApp._", topicTitle, videoURL)
+	introText := "📽️ *Video Literasi: Statistik Sosial Kependudukan*\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp 🎬:\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●"
+	body := whatsapp.BuildBodyText(introText, items, "\n*99.* ↩️ Menu Sebelumnya\n*0.* 📑 Menu Awal")
 
-	msg := whatsapp.BuildQuickReplyButtons(
-		"🎬 Video Literasi",
-		videoData,
+	msg := whatsapp.BuildInteractiveList(
+		"📽️ Video Sosial Kependudukan",
+		body,
+		"PST BPS Kabupaten Bangka Barat",
+		"Pilih Judul Video 🎬",
+		[]whatsapp.ListSection{
+			{Title: "Daftar Video Sosduk", Rows: items},
+		},
+	)
+
+	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
+}
+
+func (r *BotRouter) HandleVideoDetail_Sosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
+	var filePath, title, desc string
+	switch idx {
+	case 1:
+		filePath = "storage/videos/Sosduk - Garis Kemiskinan.mp4"
+		title = "Garis Kemiskinan"
+		desc = "Video edukasi resmi BPS Bangka Barat tentang penentuan garis kemiskinan."
+	case 2:
+		filePath = "storage/videos/Sosduk - Indeks Pembangungn Manusia (IPM).mp4"
+		title = "Indeks Pembangunan Manusia (IPM)"
+		desc = "Video edukasi resmi BPS Bangka Barat tentang komponen IPM (kesehatan, pendidikan, pengeluaran)."
+	case 3:
+		filePath = "storage/videos/Sosduk - Ketenagakerjaan.mp4"
+		title = "Ketenagakerjaan"
+		desc = "Video edukasi resmi BPS Bangka Barat tentang ketenagakerjaan dan angkatan kerja."
+	case 4:
+		filePath = "storage/videos/Sosduk - Kok Bisa Pengangguran Perkotaan Lebih Tinggi dari Perdesaan.mp4"
+		title = "Pengangguran Perkotaan vs Perdesaan"
+		desc = "Video edukasi fenomena dan penyebab tingkat pengangguran perkotaan lebih tinggi dari perdesaan."
+	case 5:
+		filePath = "storage/videos/Sosduk_Memahami_Penghitungan_Angka_Kemiskinan.mp4"
+		title = "Memahami Penghitungan Angka Kemiskinan"
+		desc = "Video edukasi metodologi dan survei Susenas dalam menghitung angka kemiskinan."
+	default:
+		return r.HandleVideoSub_Sosduk(ctx, s, p)
+	}
+
+	return r.sendVideoResponse(ctx, p.JID, filePath, title, desc)
+}
+
+// HandleVideoSub_Ekonomi renders sub-list for Ekonomi videos
+func (r *BotRouter) HandleVideoSub_Ekonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu4_Ekonomi)
+
+	items := []whatsapp.ListRow{
+		{ID: "1", Title: "1️⃣  Membaca PDRB Lapangan Usaha", Description: "Struktur ekonomi & sektor unggulan daerah"},
+		{ID: "2", Title: "2️⃣  Memahami PDB per Kapita", Description: "Pendapatan rata-rata dan kesejahteraan"},
+		{ID: "3", Title: "3️⃣  Memaknai Data Inflasi", Description: "Indeks Harga Konsumen & laju inflasi"},
+		{ID: "4", Title: "4️⃣  Kualitas Hidup dengan IPM", Description: "Kaitan ekonomi dengan pembangunan manusia"},
+		{ID: "5", Title: "5️⃣  Pertumbuhan Ekonomi", Description: "Konsep laju pertumbuhan ekonomi daerah"},
+	}
+
+	introText := "📽️ *Video Literasi: Statistik Ekonomi*\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp 🎬:\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●"
+	body := whatsapp.BuildBodyText(introText, items, "\n*99.* ↩️ Menu Sebelumnya\n*0.* 📑 Menu Awal")
+
+	msg := whatsapp.BuildInteractiveList(
+		"📽️ Video Statistik Ekonomi",
+		body,
+		"PST BPS Kabupaten Bangka Barat",
+		"Pilih Judul Video 🎬",
+		[]whatsapp.ListSection{
+			{Title: "Daftar Video Ekonomi", Rows: items},
+		},
+	)
+
+	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
+}
+
+func (r *BotRouter) HandleVideoDetail_Ekonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
+	var filePath, title, desc string
+	switch idx {
+	case 1:
+		filePath = "storage/videos/Ekonomi - Cara Membaca PDRB Menurut Lapangan Usaha.mp4"
+		title = "Membaca PDRB Menurut Lapangan Usaha"
+		desc = "Video edukasi resmi BPS Bangka Barat cara membaca kontribusi sektor ekonomi terhadap PDRB."
+	case 2:
+		filePath = "storage/videos/Ekonomi - Memahami PDB per Kapita.mp4"
+		title = "Memahami PDB per Kapita"
+		desc = "Video edukasi resmi BPS Bangka Barat tentang PDB/PDRB per kapita dan maknanya."
+	case 3:
+		filePath = "storage/videos/Ekonomi - Memaknai Data Inflasi.mp4"
+		title = "Memaknai Data Inflasi"
+		desc = "Video edukasi resmi BPS Bangka Barat cara memahami inflasi dan dampaknya ke masyarakat."
+	case 4:
+		filePath = "storage/videos/Ekonomi - Mengukur Kualitas Hidup dengan Indeks Pembangunan Manusia.mp4"
+		title = "Mengukur Kualitas Hidup dengan IPM"
+		desc = "Video edukasi hubungan pertumbuhan ekonomi dan kualitas hidup manusia."
+	case 5:
+		filePath = "storage/videos/vid4wwhatappweb Ekonomi - Pertumbuhan Ekonomi.mp4"
+		title = "Pertumbuhan Ekonomi"
+		desc = "Video edukasi resmi BPS tentang perhitungan dan makna pertumbuhan ekonomi."
+	default:
+		return r.HandleVideoSub_Ekonomi(ctx, s, p)
+	}
+
+	return r.sendVideoResponse(ctx, p.JID, filePath, title, desc)
+}
+
+func (r *BotRouter) sendVideoResponse(ctx context.Context, jid types.JID, filePath, title, desc string) error {
+	caption := fmt.Sprintf("🎬 *Video Literasi: %s*\n\n%s\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Badan Pusat Statistik Kabupaten Bangka Barat```", title, desc)
+
+	// Check if local compressed video exists
+	if _, err := os.Stat(filePath); err == nil {
+		_ = r.sender.SendTextMessage(ctx, jid, fmt.Sprintf("📽️ *Menyiapkan video '%s'...*\nMohon tunggu beberapa detik, video akan otomatis terkirim dan dapat diputar langsung di WhatsApp 🚀", title))
+
+		if err := r.sender.SendVideoFromFile(ctx, jid, filePath, caption); err != nil {
+			log.Printf("⚠️ [VIDEO] Gagal kirim file video: %v, fallback ke teks info", err)
+			_ = r.sender.SendTextMessage(ctx, jid, caption)
+		}
+	} else {
+		log.Printf("ℹ️ [VIDEO] File video %s tidak ditemukan di disk, kirim teks deskripsi", filePath)
+		fallbackText := fmt.Sprintf("%s\n\n📺 *Tonton di Kanal YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg", caption)
+		_ = r.sender.SendTextMessage(ctx, jid, fallbackText)
+	}
+
+	// Follow with interactive navigation buttons
+	navMsg := whatsapp.BuildQuickReplyButtons(
+		"Navigasi Video",
+		"Selesai memuat video edukasi. Silakan pilih menu berikutnya:",
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
 			{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
 			{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
 		},
 	)
+	return r.sender.SendInteractiveMessage(ctx, jid, navMsg)
+}
 
-	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
+func (r *BotRouter) sendVideoPlaceholder(ctx context.Context, jid types.JID, title, text string) error {
+	msg := whatsapp.BuildQuickReplyButtons(
+		title,
+		text,
+		"PST BPS Kabupaten Bangka Barat",
+		[]whatsapp.QuickReplyButton{
+			{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
+			{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
+		},
+	)
+	return r.sender.SendInteractiveMessage(ctx, jid, msg)
 }
 
 // HandleMenu5_Infografik renders Infografik menu
@@ -375,6 +538,15 @@ func (r *BotRouter) HandleInfografikDetail(ctx context.Context, s *UserSession, 
 // HandleMenu11_TentangBPS handles Tentang BPS (Resolves TD-01 & TD-06)
 func (r *BotRouter) HandleMenu11_TentangBPS(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu11_About)
+
+	videoPath := "storage/videos/menu11_TentangBPS.mp4"
+	if _, err := os.Stat(videoPath); err == nil {
+		_ = r.sender.SendTextMessage(ctx, p.JID, "🏢 *Menyiapkan video profil resmi BPS Kabupaten Bangka Barat...* 🎬\nMohon tunggu beberapa detik, video akan terkirim dan bisa langsung diputar di WhatsApp.")
+		caption := "🏢 *Mengenal BPS Lebih Dekat*\n\nProfil Resmi Badan Pusat Statistik Kabupaten Bangka Barat.\n\n📍 Komplek Perkantoran Pemda Terpadu Bangka Barat"
+		if err := r.sender.SendVideoFromFile(ctx, p.JID, videoPath, caption); err != nil {
+			log.Printf("⚠️ [VIDEO] Gagal kirim video profil: %v", err)
+		}
+	}
 
 	text := fmt.Sprintf("🏢 *Mengenal BPS Lebih Dekat*\n\nSetelah menjelajahi banyak data di menu sebelumnya, apakah Sahabat Data sudah mengenal lebih dekat Badan Pusat Statistik (BPS)? 😊\n\nSeperti kata pepatah _'Tak Kenal Maka Tak Sayang'_. Yuk kita mengenal BPS kita tercinta lebih dalam.\n\n🎥 *Tonton Video Profil BPS*:\n%s\n\n📍 *Alamat Kantor*:\nKomplek Perkantoran Pemerintah Daerah Terpadu\nKabupaten Bangka Barat, Kepulauan Bangka Belitung", r.cfg.TentangBPSVideoURL)
 
