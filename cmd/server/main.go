@@ -136,8 +136,14 @@ func main() {
 	clientMgr.Client.AddEventHandler(func(rawEvt interface{}) {
 		switch evt := rawEvt.(type) {
 		case *events.Message:
-			// Strict Source Filtering (Lapis 2): ignore self, groups, status/broadcasts
-			if evt.Info.IsFromMe || evt.Info.IsGroup || evt.Info.Chat.Server == "broadcast" || evt.Info.Chat.Server == "newsletter" {
+			// Log Group JID to console so developers can easily copy-paste it to .env
+			if evt.Info.IsGroup {
+				log.Printf("👥 [INFO GRUP WA] Pesan masuk di Grup JID: %s (Pengirim: %s)", evt.Info.Chat.String(), evt.Info.Sender.User)
+				return
+			}
+
+			// Strict Source Filtering (Lapis 2): ignore self, status/broadcasts
+			if evt.Info.IsFromMe || evt.Info.Chat.Server == "broadcast" || evt.Info.Chat.Server == "newsletter" {
 				return
 			}
 			// Historical message filter: ignore messages sent before bot startup
@@ -153,6 +159,19 @@ func main() {
 		case *events.Connected:
 			clientMgr.IsLoggedIn = true
 			log.Println("📶 [WHATSAPP] Terhubung ke server WhatsApp.")
+
+			// Auto-discover joined groups on connect (helpful for developer to find INTERNAL_PST_GROUP_JID)
+			go func() {
+				time.Sleep(3 * time.Second)
+				groups, err := clientMgr.Client.GetJoinedGroups(context.Background())
+				if err == nil && len(groups) > 0 {
+					log.Printf("📋 [DAFTAR GRUP WA BOT (%d grup)]:", len(groups))
+					for i, g := range groups {
+						log.Printf("   %d. 🏷️ Nama: '%s' ➡️ JID: %s", i+1, g.GroupName.Name, g.JID.String())
+					}
+					log.Println("💡 [TIPS] Copy salah satu JID di atas dan masukkan ke .env (INTERNAL_PST_GROUP_JID=...)")
+				}
+			}()
 
 		case *events.LoggedOut:
 			clientMgr.IsLoggedIn = false
