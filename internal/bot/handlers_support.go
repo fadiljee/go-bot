@@ -42,16 +42,35 @@ func (r *BotRouter) HandleMenu6_Konsultasi(ctx context.Context, s *UserSession, 
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
+func normalizePhone(raw string) string {
+	raw = strings.TrimSpace(raw)
+	var digits strings.Builder
+	for _, r := range raw {
+		if r >= '0' && r <= '9' {
+			digits.WriteRune(r)
+		}
+	}
+	d := digits.String()
+	if strings.HasPrefix(d, "08") {
+		return "62" + d[1:]
+	}
+	if strings.HasPrefix(d, "8") && len(d) >= 9 {
+		return "62" + d
+	}
+	return d
+}
+
 // HandleMenu6_BookingPrompt prompts user to submit consultation booking details
 func (r *BotRouter) HandleMenu6_BookingPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu6_Booking)
 
 	prompt := "📅 *Pengajuan Jadwal Konsultasi Statistik*\n\n" +
 		"Silakan kirimkan data permohonan konsultasi Sahabat dengan membalas pesan ini menggunakan format berikut:\n\n" +
-		"```Nama:\nInstansi / Asal:\nTopik / Kebutuhan Data:\nRencana Hari / Jam:```\n\n" +
+		"```Nama:\nInstansi / Asal:\nNo. WhatsApp / HP:\nTopik / Kebutuhan Data:\nRencana Hari / Jam:```\n\n" +
 		"📌 *Contoh Pengisian*:\n" +
 		"Nama: Ahmad Fauzi\n" +
 		"Instansi: Dinas Pertanian Bangka Barat\n" +
+		"No. WhatsApp / HP: 082164302643\n" +
 		"Topik: Data Produksi Padi & Sawit 2025\n" +
 		"Rencana Hari / Jam: Kamis, 29 Okt jam 10.00 WIB\n\n" +
 		"*(Atau cukup ketik informasi di atas secara bebas)*\n\n" +
@@ -69,7 +88,7 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 
 	// Simple parser for key-value or lines
 	lines := strings.Split(input, "\n")
-	var name, instansi, topic, preferredTime string
+	var name, instansi, topic, preferredTime, phoneInput string
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -80,6 +99,11 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 			parts := strings.SplitN(trimmed, ":", 2)
 			if len(parts) == 2 {
 				instansi = strings.TrimSpace(parts[1])
+			}
+		} else if strings.HasPrefix(lower, "no wa:") || strings.HasPrefix(lower, "no. wa:") || strings.HasPrefix(lower, "no whatsapp:") || strings.HasPrefix(lower, "no. whatsapp:") || strings.HasPrefix(lower, "no hp:") || strings.HasPrefix(lower, "no. hp:") || strings.HasPrefix(lower, "telepon:") || strings.HasPrefix(lower, "kontak:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				phoneInput = normalizePhone(parts[1])
 			}
 		} else if strings.HasPrefix(lower, "topik:") || strings.HasPrefix(lower, "kebutuhan data:") || strings.HasPrefix(lower, "topik / kebutuhan data:") {
 			parts := strings.SplitN(trimmed, ":", 2)
@@ -94,12 +118,34 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 		}
 	}
 
+	// Determine final phone number:
+	// Priority 1: User typed in the booking message
+	// Priority 2: Parsed Phone Number from WhatsApp (SenderAlt / Phone JID)
+	// Priority 3: Fallback if JID is phone number
+	phone := phoneInput
+	if phone == "" && p.PhoneNumber != "" {
+		phone = normalizePhone(p.PhoneNumber)
+	}
+	if phone == "" && p.JID.Server == "s.whatsapp.net" {
+		phone = normalizePhone(p.JID.User)
+	}
+
+	var waContact string
+	if phone != "" && strings.HasPrefix(phone, "62") {
+		waContact = fmt.Sprintf("https://wa.me/%s", phone)
+	} else if phone != "" {
+		waContact = fmt.Sprintf("+%s (https://wa.me/%s)", phone, phone)
+	} else {
+		// In case user is on WhatsApp LID addressing without visible phone number
+		waContact = fmt.Sprintf("%s (Akun WhatsApp Pengirim)", p.JID.User)
+	}
+
 	// Fallback if user submitted freeform single line or text without labels
 	if name == "" {
 		if p.Name != "" {
 			name = p.Name
 		} else {
-			name = "Sahabat Data (" + p.JID.User + ")"
+			name = "Sahabat Data"
 		}
 	}
 	if instansi == "" {
@@ -161,13 +207,13 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 				"🎫 *No. Tiket*: `%s`\n"+
 				"👤 *Nama Pemohon*: %s\n"+
 				"🏢 *Instansi / Asal*: %s\n"+
-				"📱 *Kontak WhatsApp*: https://wa.me/%s\n"+
+				"📱 *Kontak WhatsApp*: %s\n"+
 				"📊 *Bidang / Topik*: %s\n"+
 				"⏰ *Rencana Jadwal*: %s\n"+
 				"🗓️ *Waktu Masuk*: %s WIB\n\n"+
 				"📝 *Pesan Lengkap*:\n_%s_\n\n"+
 				"📌 *Dimohon petugas piket PST dan pakar terkait untuk menindaklanjuti dan mempersiapkan bahan data. Terima kasih!* 🤝",
-				ticketNo, name, instansi, p.JID.User, topic, preferredTime, time.Now().Format("02 Jan 2006 15:04"), input)
+				ticketNo, name, instansi, waContact, topic, preferredTime, time.Now().Format("02 Jan 2006 15:04"), input)
 
 			if sendErr := r.sender.SendTextMessage(ctx, groupJID, groupMsg); sendErr != nil {
 				log.Printf("❌ [PST GROUP] Gagal mengirim notifikasi ke grup %s: %v", r.cfg.InternalPSTGroupJID, sendErr)
@@ -303,7 +349,11 @@ func (r *BotRouter) HandleMenu8_Pengaduan(ctx context.Context, s *UserSession, p
 
 // HandleMenu9_HubDev renders developer contact
 func (r *BotRouter) HandleMenu9_HubDev(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "⚙️ *Hubungi Pengembang Bot ISTIMEWA*\n\nJika Sahabat Data mengalami kendala teknis, bot tidak merespons, atau memiliki ide peningkatan fitur untuk BOT ISTIMEWA, silakan hubungi tim IT BPS Kabupaten Bangka Barat:\n\n📞 *Kontak Developer*:\nhttps://wa.me/6285860125305\n\n📧 *Email*:\nbps1903@bps.go.id"
+	devPhone := r.cfg.DeveloperPhone
+	if devPhone == "" {
+		devPhone = "6281234567890"
+	}
+	text := fmt.Sprintf("⚙️ *Hubungi Pengembang Bot ISTIMEWA*\n\nJika Sahabat Data mengalami kendala teknis, bot tidak merespons, atau memiliki ide peningkatan fitur untuk BOT ISTIMEWA, silakan hubungi tim IT BPS Kabupaten Bangka Barat:\n\n📞 *Kontak Developer*:\nhttps://wa.me/%s\n\n📧 *Email*:\nbps1903@bps.go.id", devPhone)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"⚙️ Kontak Pengembang",

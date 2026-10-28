@@ -158,6 +158,13 @@ func main() {
 
 			parsed := whatsapp.ParseIncomingMessage(evt)
 			if parsed != nil {
+				if parsed.PhoneNumber == "" && clientMgr.Client != nil && clientMgr.Client.Store != nil && clientMgr.Client.Store.LIDs != nil {
+					if pn, err := clientMgr.Client.Store.LIDs.GetPNForLID(context.Background(), parsed.JID); err == nil && pn.User != "" {
+						parsed.PhoneNumber = pn.User
+					} else if pn, err := clientMgr.Client.Store.LIDs.GetPNForLID(context.Background(), parsed.SenderJID); err == nil && pn.User != "" {
+						parsed.PhoneNumber = pn.User
+					}
+				}
 				go botRouter.Dispatch(context.Background(), parsed)
 			}
 

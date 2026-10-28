@@ -10,13 +10,15 @@ import (
 )
 
 type ParsedMessage struct {
-	JID       types.JID
-	SenderJID types.JID
-	Name      string
-	IsFromMe  bool
-	IsGroup   bool
-	Text      string
-	Raw       *waE2E.Message
+	JID         types.JID
+	SenderJID   types.JID
+	SenderAlt   types.JID
+	PhoneNumber string
+	Name        string
+	IsFromMe    bool
+	IsGroup     bool
+	Text        string
+	Raw         *waE2E.Message
 }
 
 type nativeFlowParams struct {
@@ -34,13 +36,24 @@ func ParseIncomingMessage(evt *events.Message) *ParsedMessage {
 	info := evt.Info
 	msg := evt.Message
 
+	var phone string
+	if info.SenderAlt.Server == "s.whatsapp.net" && info.SenderAlt.User != "" {
+		phone = info.SenderAlt.User
+	} else if info.Sender.Server == "s.whatsapp.net" && info.Sender.User != "" {
+		phone = info.Sender.User
+	} else if info.Chat.Server == "s.whatsapp.net" && info.Chat.User != "" {
+		phone = info.Chat.User
+	}
+
 	parsed := &ParsedMessage{
-		JID:       info.Chat,
-		SenderJID: info.Sender,
-		Name:      info.PushName,
-		IsFromMe:  info.IsFromMe,
-		IsGroup:   info.IsGroup,
-		Raw:       msg,
+		JID:         info.Chat,
+		SenderJID:   info.Sender,
+		SenderAlt:   info.SenderAlt,
+		PhoneNumber: phone,
+		Name:        info.PushName,
+		IsFromMe:    info.IsFromMe,
+		IsGroup:     info.IsGroup,
+		Raw:         msg,
 	}
 
 	// Unwrap viewOnceMessage / ephemeralMessage if present

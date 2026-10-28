@@ -30,8 +30,8 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 	provider := scraper.NewProvider(store, 24)
 
 	cfg := &config.Config{
-		InternalPSTGroupJID:   "120363294829103948@g.us",
-		AdminWhitelistNumbers: []string{"6282164302643"},
+		InternalPSTGroupJID:   "120363999999999999@g.us",
+		AdminWhitelistNumbers: []string{"6281234567890"},
 		IdleTimeoutMinutes:    30,
 	}
 
@@ -65,6 +65,7 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 	// 3. User submits consultation booking format
 	bookingInput := "Nama: Budi Santoso\n" +
 		"Instansi: Dinas Pertanian Bangka Barat\n" +
+		"No. WhatsApp: 081234567890\n" +
 		"Topik: Data Produksi Kelapa Sawit 2024\n" +
 		"Rencana Hari / Jam: Kamis, 29 Okt jam 10.00 WIB"
 

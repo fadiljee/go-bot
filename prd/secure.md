@@ -237,9 +237,9 @@ ALLOWED_NUMBERS=
 # 3. KEAMANAN ADMIN CHAT
 # ==========================================
 ADMIN_TRIGGER_KEYWORD="login admin - 1903"
-ADMIN_PASSWORD=ganti_password_admin_yang_kuat_1903
+ADMIN_PASSWORD=ganti_dengan_password_admin_yang_kuat
 # Hanya nomor di bawah ini yang bisa login admin di chat WA (format 628xxx)
-ADMIN_WHITELIST_NUMBERS=6285860125305
+ADMIN_WHITELIST_NUMBERS=6281234567890
 ADMIN_MAX_RETRY=3
 ADMIN_LOCKOUT_MINUTES=60
 
