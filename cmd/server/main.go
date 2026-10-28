@@ -131,6 +131,11 @@ func main() {
 	}
 
 	botStartTime := time.Now()
+	if cfg.InternalPSTGroupJID != "" {
+		log.Printf("📢 [CONFIG] Target Grup PST Internal aktif: %s", cfg.InternalPSTGroupJID)
+	} else {
+		log.Printf("ℹ️ [CONFIG] INTERNAL_PST_GROUP_JID kosong di .env")
+	}
 
 	// 6. Register Event Listener
 	clientMgr.Client.AddEventHandler(func(rawEvt interface{}) {
