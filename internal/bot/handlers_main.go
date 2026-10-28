@@ -121,7 +121,7 @@ func (r *BotRouter) HandleBack(ctx context.Context, s *UserSession, p *whatsapp.
 		return r.HandleMenu4_Video(ctx, s, p)
 	case StateMenu5:
 		return r.HandleMenu5_Infografik(ctx, s, p)
-	case StateMenu6:
+	case StateMenu6, StateMenu6_Booking:
 		return r.HandleMenu6_Konsultasi(ctx, s, p)
 	case StateMenu6_Pakar:
 		return r.HandleKonsultasiPakarList(ctx, s, p)

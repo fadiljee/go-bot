@@ -3,9 +3,16 @@ package bot
 import (
 	"context"
 	"fmt"
+	"log"
+	"math/rand"
 	"strconv"
+	"strings"
+	"time"
+
+	"go.mau.fi/whatsmeow/types"
 
 	"bot-istimewa/internal/gsheet"
+	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -14,24 +21,169 @@ func (r *BotRouter) HandleMenu6_Konsultasi(ctx context.Context, s *UserSession, 
 	s.PushState(StateMenu6)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1️⃣  Konsultasi Umum", Description: "Konsultasi seputar data & statistik"},
+		{ID: "1", Title: "1️⃣  Ajukan Jadwal Konsultasi", Description: "Reservasi jadwal konsultasi tatap muka/online"},
 		{ID: "2", Title: "2️⃣  Tanya Para Pakar", Description: "Hubungi pakar statistik BPS langsung"},
+		{ID: "3", Title: "3️⃣  Informasi PST & Jam Layanan", Description: "Jadwal operasional & kontak petugas PST"},
 	}
 
-	introText := "👩‍🏫 *Konsultasi Statistik*\nAda yang ingin Sahabat tanyakan seputar data & statistik? 🙋‍♀️\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n📋 *Pilih jenis konsultasi:*"
+	introText := "👩‍🏫 *Konsultasi Statistik*\nAda yang ingin Sahabat tanyakan seputar data & statistik? 🙋‍♀️\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n📋 *Pilih jenis layanan konsultasi:*"
 	body := whatsapp.BuildBodyText(introText, items, "\n*0.* 📑 Menu Awal\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
 
 	msg := whatsapp.BuildInteractiveList(
 		"👩‍🏫 Konsultasi Statistik",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Jenis Konsultasi 💬",
+		"Pilih Layanan Konsultasi 💬",
 		[]whatsapp.ListSection{
 			{Title: "Layanan Konsultasi", Rows: items},
 		},
 	)
 
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
+}
+
+// HandleMenu6_BookingPrompt prompts user to submit consultation booking details
+func (r *BotRouter) HandleMenu6_BookingPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu6_Booking)
+
+	prompt := "📅 *Pengajuan Jadwal Konsultasi Statistik*\n\n" +
+		"Silakan kirimkan data permohonan konsultasi Sahabat dengan membalas pesan ini menggunakan format berikut:\n\n" +
+		"```Nama:\nInstansi / Asal:\nTopik / Kebutuhan Data:\nRencana Hari / Jam:```\n\n" +
+		"📌 *Contoh Pengisian*:\n" +
+		"Nama: Ahmad Fauzi\n" +
+		"Instansi: Dinas Pertanian Bangka Barat\n" +
+		"Topik: Data Produksi Padi & Sawit 2025\n" +
+		"Rencana Hari / Jam: Kamis, 29 Okt jam 10.00 WIB\n\n" +
+		"*(Atau cukup ketik informasi di atas secara bebas)*\n\n" +
+		"Ketik *0* untuk batal dan kembali ke Menu Utama."
+
+	return r.sender.SendTextMessage(ctx, p.JID, prompt)
+}
+
+// HandleProcessBooking processes user booking input, stores to SQLite, notifies user, and alerts office group
+func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	input := strings.TrimSpace(p.Text)
+	if input == "" {
+		return r.sender.SendTextMessage(ctx, p.JID, "⚠️ Mohon ketikkan data permohonan konsultasi Sahabat, atau ketik *0* untuk kembali.")
+	}
+
+	// Simple parser for key-value or lines
+	lines := strings.Split(input, "\n")
+	var name, instansi, topic, preferredTime string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(trimmed)
+		if strings.HasPrefix(lower, "nama:") {
+			name = strings.TrimSpace(trimmed[5:])
+		} else if strings.HasPrefix(lower, "instansi:") || strings.HasPrefix(lower, "asal:") || strings.HasPrefix(lower, "instansi / asal:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				instansi = strings.TrimSpace(parts[1])
+			}
+		} else if strings.HasPrefix(lower, "topik:") || strings.HasPrefix(lower, "kebutuhan data:") || strings.HasPrefix(lower, "topik / kebutuhan data:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				topic = strings.TrimSpace(parts[1])
+			}
+		} else if strings.HasPrefix(lower, "rencana hari / jam:") || strings.HasPrefix(lower, "rencana hari/jam:") || strings.HasPrefix(lower, "jadwal:") || strings.HasPrefix(lower, "waktu:") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			if len(parts) == 2 {
+				preferredTime = strings.TrimSpace(parts[1])
+			}
+		}
+	}
+
+	// Fallback if user submitted freeform single line or text without labels
+	if name == "" {
+		if p.Name != "" {
+			name = p.Name
+		} else {
+			name = "Sahabat Data (" + p.JID.User + ")"
+		}
+	}
+	if instansi == "" {
+		instansi = "Masyarakat / Umum"
+	}
+	if topic == "" {
+		if len(lines) > 0 && lines[0] != "" {
+			topic = lines[0]
+		} else {
+			topic = input
+		}
+	}
+	if preferredTime == "" {
+		preferredTime = "Hari & jam kerja PST (08.00 - 15.30 WIB)"
+	}
+
+	// Generate ticket number: e.g. PST-261028-123
+	ticketNo := fmt.Sprintf("PST-%s-%03d", time.Now().Format("060102"), rand.Intn(900)+100)
+
+	booking := &scraper.ConsultationBooking{
+		TicketNo:      ticketNo,
+		UserJID:       p.JID.String(),
+		UserName:      name,
+		Institution:   instansi,
+		Topic:         topic,
+		PreferredTime: preferredTime,
+		Notes:         input,
+		CreatedAt:     time.Now(),
+	}
+
+	// 1. Save to SQLite DB
+	if r.scraper != nil {
+		if err := r.scraper.CreateConsultationBooking(ctx, booking); err != nil {
+			log.Printf("⚠️ [BOOKING] Gagal menyimpan ke SQLite: %v", err)
+		}
+	}
+
+	// 2. Reply confirmation to user
+	userReply := fmt.Sprintf("✅ *Pengajuan Jadwal Konsultasi Diterima!*\n\n"+
+		"Terima kasih Bapak/Ibu *%s*, permohonan konsultasi statistik Anda telah berhasil dicatat dan diteruskan ke Tim Pelayanan Statistik Terpadu (PST) BPS Kabupaten Bangka Barat.\n\n"+
+		"📋 *Rincian Tiket Konsultasi*:\n"+
+		"• 🎫 *No. Tiket*: `%s`\n"+
+		"• 👤 *Nama*: %s\n"+
+		"• 🏢 *Instansi*: %s\n"+
+		"• 📊 *Topik Data*: %s\n"+
+		"• ⏰ *Rencana Jadwal*: %s\n\n"+
+		"Petugas PST atau pakar terkait kami akan menghubungi Anda pada kontak WhatsApp ini untuk konfirmasi persiapan data. Sampai jumpa di PST BPS Bangka Barat! 🙏\n\n"+
+		"Ketik *0* untuk kembali ke Menu Utama.",
+		name, ticketNo, name, instansi, topic, preferredTime)
+
+	_ = r.sender.SendTextMessage(ctx, p.JID, userReply)
+
+	// 3. Auto-Forward Notification to Office Internal Group
+	if r.cfg.InternalPSTGroupJID != "" {
+		groupJID, err := types.ParseJID(r.cfg.InternalPSTGroupJID)
+		if err == nil {
+			groupMsg := fmt.Sprintf("🔔 *PEMBERITAHUAN JADWAL KONSULTASI BARU (PST BPS)*\n\n"+
+				"Halo Tim PST & Para Pakar BPS Bangka Barat, ada permohonan konsultasi baru masuk melalui WhatsApp Bot:\n\n"+
+				"🎫 *No. Tiket*: `%s`\n"+
+				"👤 *Nama Pemohon*: %s\n"+
+				"🏢 *Instansi / Asal*: %s\n"+
+				"📱 *Kontak WhatsApp*: https://wa.me/%s\n"+
+				"📊 *Bidang / Topik*: %s\n"+
+				"⏰ *Rencana Jadwal*: %s\n"+
+				"🗓️ *Waktu Masuk*: %s WIB\n\n"+
+				"📝 *Pesan Lengkap*:\n_%s_\n\n"+
+				"📌 *Dimohon petugas piket PST dan pakar terkait untuk menindaklanjuti dan mempersiapkan bahan data. Terima kasih!* 🤝",
+				ticketNo, name, instansi, p.JID.User, topic, preferredTime, time.Now().Format("02 Jan 2006 15:04"), input)
+
+			if sendErr := r.sender.SendTextMessage(ctx, groupJID, groupMsg); sendErr != nil {
+				log.Printf("❌ [PST GROUP] Gagal mengirim notifikasi ke grup %s: %v", r.cfg.InternalPSTGroupJID, sendErr)
+			} else {
+				log.Printf("📢 [PST GROUP] Sukses meneruskan jadwal %s ke grup internal kantor %s", ticketNo, r.cfg.InternalPSTGroupJID)
+			}
+		} else {
+			log.Printf("⚠️ [PST GROUP] Format INTERNAL_PST_GROUP_JID (%s) tidak valid: %v", r.cfg.InternalPSTGroupJID, err)
+		}
+	} else {
+		log.Printf("ℹ️ [PST GROUP] INTERNAL_PST_GROUP_JID belum diisi di .env; notifikasi grup dilewati.")
+	}
+
+	// Reset state back to root after booking
+	s.ResetToRoot()
+	return nil
 }
 
 func (r *BotRouter) HandleKonsultasiUmum(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {

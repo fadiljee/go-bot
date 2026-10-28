@@ -60,6 +60,20 @@ type DataProvider interface {
 	LatestInfographics(ctx context.Context, limit int) ([]Item, Freshness, error)
 	SearchStaticTables(ctx context.Context, keyword string, limit int) ([]Item, Freshness, error)
 	SearchItems(ctx context.Context, keyword string, lang string, limit int) ([]Item, Freshness, error)
+	CreateConsultationBooking(ctx context.Context, b *ConsultationBooking) error
+}
+
+// ConsultationBooking represents a consultation schedule request from WhatsApp bot users.
+type ConsultationBooking struct {
+	ID            int64     `json:"id"`
+	TicketNo      string    `json:"ticket_no"`
+	UserJID       string    `json:"user_jid"`
+	UserName      string    `json:"user_name"`
+	Institution   string    `json:"institution"`
+	Topic         string    `json:"topic"`
+	PreferredTime string    `json:"preferred_time"`
+	Notes         string    `json:"notes"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // RunResult tracks the result of a scrape run in SQLite (§9.2).

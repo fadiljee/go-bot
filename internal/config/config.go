@@ -43,6 +43,7 @@ type Config struct {
 	GASCacheTTLMinutes int
 
 	TentangBPSVideoURL string
+	InternalPSTGroupJID string
 
 	// WebAPI BPS (https://webapi.bps.go.id/v1/api/list)
 	BPSAPIBaseURL      string
@@ -159,6 +160,7 @@ func LoadConfig() *Config {
 		GASCacheTTLMinutes: cacheTTL,
 
 		TentangBPSVideoURL: getEnv("TENTANG_BPS_VIDEO_URL", "https://www.youtube.com/watch?v=BFj6yi8HLAg"),
+		InternalPSTGroupJID: getEnv("INTERNAL_PST_GROUP_JID", ""),
 
 		BPSAPIBaseURL:      getEnv("BPS_API_BASE_URL", "https://webapi.bps.go.id/v1/api/list"),
 		BPSAPIKey:          getEnv("BPS_API_KEY", ""),

@@ -29,6 +29,7 @@ const (
 	StateMenu4           = "menu4"
 	StateMenu5           = "menu5"
 	StateMenu6           = "menu6"
+	StateMenu6_Booking   = "menu6_booking"
 	StateMenu6_Pakar     = "menu62"
 	StateMenu7           = "menu7"
 	StateMenu8           = "menu8"
@@ -235,6 +236,14 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
+	// Dynamic handler for Consultation Booking (StateMenu6_Booking)
+	if session.CurrentState == StateMenu6_Booking {
+		if err := r.HandleProcessBooking(ctx, session, p); err != nil {
+			log.Printf("❌ [ERROR] Gagal memproses booking konsultasi: %v", err)
+		}
+		return
+	}
+
 	// Fallback when input not recognized di submenu
 	log.Printf("⚠️ [ROUTER] Input '%s' tidak dikenali di state %s -> Mengirim pesan unavailable", input, session.CurrentState)
 	if err := r.HandleUnavailable(ctx, session, p); err != nil {
@@ -319,9 +328,10 @@ func (r *BotRouter) registerRoutes() {
 		}
 	}
 
-	// Level 2: Konsultasi (1: Umum, 2: Pakar)
-	r.handlerMap[StateMenu6+":1"] = r.HandleKonsultasiUmum
+	// Level 2: Konsultasi (1: Booking Jadwal, 2: Pakar, 3: Info PST & Jam Layanan)
+	r.handlerMap[StateMenu6+":1"] = r.HandleMenu6_BookingPrompt
 	r.handlerMap[StateMenu6+":2"] = r.HandleKonsultasiPakarList
+	r.handlerMap[StateMenu6+":3"] = r.HandleKonsultasiUmum
 
 	// Level 3: Pakar Bidang (1 - 8)
 	for i := 1; i <= 8; i++ {

@@ -124,6 +124,19 @@ func (s *Store) migrate() error {
 		updated_at       TEXT NOT NULL
 	);
 	INSERT OR IGNORE INTO breaker_state (id, consecutive_fail, updated_at) VALUES (1, 0, datetime('now'));
+
+	CREATE TABLE IF NOT EXISTS consultation_bookings (
+		id             INTEGER PRIMARY KEY AUTOINCREMENT,
+		ticket_no      TEXT UNIQUE NOT NULL,
+		user_jid       TEXT NOT NULL,
+		user_name      TEXT NOT NULL,
+		institution    TEXT NOT NULL,
+		topic          TEXT NOT NULL,
+		preferred_time TEXT NOT NULL,
+		notes          TEXT,
+		created_at     TEXT NOT NULL
+	);
+	CREATE INDEX IF NOT EXISTS idx_consultation_created ON consultation_bookings(created_at DESC);
 	`
 	_, err := s.db.Exec(schema)
 	return err
@@ -578,4 +591,25 @@ func (s *Store) GetDataAgeHours(ctx context.Context) (float64, error) {
 		return 0, err
 	}
 	return time.Since(t).Hours(), nil
+}
+
+// CreateConsultationBooking saves a new consultation booking into SQLite
+func (s *Store) CreateConsultationBooking(ctx context.Context, b *ConsultationBooking) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	query := `
+		INSERT INTO consultation_bookings (ticket_no, user_jid, user_name, institution, topic, preferred_time, notes, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	createdStr := b.CreatedAt.Format("2006-01-02 15:04:05")
+	res, err := s.db.ExecContext(ctx, query, b.TicketNo, b.UserJID, b.UserName, b.Institution, b.Topic, b.PreferredTime, b.Notes, createdStr)
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err == nil {
+		b.ID = id
+	}
+	return nil
 }

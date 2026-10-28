@@ -155,3 +155,7 @@ func (p *Provider) SearchItems(ctx context.Context, keyword string, lang string,
 	f := p.calculateFreshness(ctx, items)
 	return items, f, nil
 }
+
+func (p *Provider) CreateConsultationBooking(ctx context.Context, b *ConsultationBooking) error {
+	return p.store.CreateConsultationBooking(ctx, b)
+}
