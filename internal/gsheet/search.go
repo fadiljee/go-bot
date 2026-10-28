@@ -142,11 +142,11 @@ func (c *Client) SearchAll(query string) ([]SearchResultItem, error) {
 // FormatSearchResults formats slice of SearchResultItem into WhatsApp readable text
 func FormatSearchResults(query string, results []SearchResultItem) string {
 	if len(results) == 0 {
-		return fmt.Sprintf("🔍 Hasil pencarian untuk kata kunci *\"%s\"*:\n\n_Mohon maaf sobat data, data dengan kata kunci tersebut tidak ditemukan._\n\nSilakan coba dengan kata kunci lain (contoh: *kemiskinan*, *inflasi*, *penduduk*, *pdrb*).", query)
+		return fmt.Sprintf("Hasil pencarian untuk kata kunci *\"%s\"*:\n\n_Mohon maaf sobat data, data dengan kata kunci tersebut tidak ditemukan._\n\nSilakan coba dengan kata kunci lain (contoh: *kemiskinan*, *inflasi*, *penduduk*, *pdrb*).", query)
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("🔍 Hasil pencarian untuk kata kunci *\"%s\"* (%d hasil ditemukan):\n\n", query, len(results)))
+	sb.WriteString(fmt.Sprintf("Hasil pencarian untuk kata kunci *\"%s\"* (%d hasil ditemukan):\n\n", query, len(results)))
 
 	for i, r := range results {
 		sb.WriteString(fmt.Sprintf("*%d. [%s] %s*\n", i+1, r.Category, r.Title))
@@ -158,7 +158,7 @@ func FormatSearchResults(query string, results []SearchResultItem) string {
 			sb.WriteString(fmt.Sprintf("   _%s_\n", desc))
 		}
 		if r.Link != "" {
-			sb.WriteString(fmt.Sprintf("   🌐 %s\n", r.Link))
+			sb.WriteString(fmt.Sprintf("   %s\n", r.Link))
 		}
 		sb.WriteString("◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n")
 	}

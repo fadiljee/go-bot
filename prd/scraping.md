@@ -173,17 +173,17 @@ Urutan prioritas saat bot membutuhkan data jenis `X`:
 
 ## 5. Inventaris Data yang Di-scrape
 
-> Kolom "Pola URL" bertanda ✔ sudah terverifikasi (F-02/F-05), bertanda ? masih **[ASUMSI]** dan harus dikonfirmasi di Fase 0.
+> Kolom "Pola URL" bertanda [v] sudah terverifikasi (F-02/F-05), bertanda ? masih **[ASUMSI]** dan harus dikonfirmasi di Fase 0.
 
 ### 5.1 Jenis Data (`kind`)
 
 | `kind` | Menu Bot | Halaman Daftar | Halaman Detail | Pola URL |
 |---|---|---|---|---|
-| `pressrelease` | Menu 3 (BRS) | `/id/pressrelease.html?page=N` ? | `/id/pressrelease/{Y}/{M}/{D}/{ID}/{slug}.html` ✔ | ✔ detail / ? daftar |
-| `publication` | Menu 3 (Publikasi) | `/publication.html?page=N` ✔ (pola dari BPS lain) | `/publication/{...}` ? | ? |
+| `pressrelease` | Menu 3 (BRS) | `/id/pressrelease.html?page=N` ? | `/id/pressrelease/{Y}/{M}/{D}/{ID}/{slug}.html` [v] | [v] detail / ? daftar |
+| `publication` | Menu 3 (Publikasi) | `/publication.html?page=N` [v] (pola dari BPS lain) | `/publication/{...}` ? | ? |
 | `infographic` | Menu 5 | `/infographic.html?page=N` ? | `/infographic/{...}` ? | ? |
 | `statictable` | Menu 1 & 1.5 | `/statictable.html?page=N` ? | `/statictable/{...}` ? | ? |
-| `news` | opsional (info kegiatan) | `/news.html?page=N` ? | `/news/{Y}/{M}/{D}/{ID}/{slug}.html` ✔ (pola dari BPS lain) | ? |
+| `news` | opsional (info kegiatan) | `/news.html?page=N` ? | `/news/{Y}/{M}/{D}/{ID}/{slug}.html` [v] (pola dari BPS lain) | ? |
 
 > `news` berstatus **opsional / Fase 3**. Prioritas implementasi: `pressrelease` → `publication` → `infographic` → `statictable` → `news`.
 
@@ -191,11 +191,11 @@ Urutan prioritas saat bot membutuhkan data jenis `X`:
 
 | Field | Tipe | Wajib | Keterangan |
 |---|---|:---:|---|
-| `kind` | enum | ✔ | Salah satu nilai §5.1. |
-| `source_key` | string | ✔ | ID unik dari URL (segmen `{ID}`); jika tidak ada, `sha1(canonical_url_tanpa_slug)`. **Kunci deduplikasi.** |
-| `title` | string | ✔ | Dibersihkan spasi/baris ganda; 1–300 karakter. |
-| `url` | string | ✔ | URL **absolut** `https://bangkabaratkab.bps.go.id/...` ke halaman detail. |
-| `release_date` | date (`YYYY-MM-DD`) | ✱ | Tanggal rilis (zona WIB). Wajib untuk `pressrelease` & `publication`. |
+| `kind` | enum | [v] | Salah satu nilai §5.1. |
+| `source_key` | string | [v] | ID unik dari URL (segmen `{ID}`); jika tidak ada, `sha1(canonical_url_tanpa_slug)`. **Kunci deduplikasi.** |
+| `title` | string | [v] | Dibersihkan spasi/baris ganda; 1–300 karakter. |
+| `url` | string | [v] | URL **absolut** `https://bangkabaratkab.bps.go.id/...` ke halaman detail. |
+| `release_date` | date (`YYYY-MM-DD`) | | Tanggal rilis (zona WIB). Wajib untuk `pressrelease` & `publication`. |
 | `abstract` | string | – | Abstrak/deskripsi, dipotong 600 karakter, tanpa HTML. |
 | `file_url` | string | – | Tautan unduh PDF/XLSX. Divalidasi aturan anti-SSRF (§7.8). |
 | `file_type` | enum | – | `pdf`, `xlsx`, `xls`, `csv`, `png`, `jpg`, `other`. |
@@ -203,10 +203,10 @@ Urutan prioritas saat bot membutuhkan data jenis `X`:
 | `thumbnail_url` | string | – | Untuk `infographic`/`publication` (cover). |
 | `image_url` | string | – | Khusus `infographic`: gambar resolusi penuh. |
 | `subject` | string | – | Subjek/kategori jika tersedia. |
-| `lang` | enum | ✔ | `id` atau `en`. Default `id`. |
-| `content_hash` | string | ✔ | `sha256` dari gabungan field bermakna (title, release_date, abstract, file_url, image_url). Untuk deteksi perubahan. |
-| `first_seen_at` / `last_seen_at` / `last_changed_at` | timestamp | ✔ | Diisi sistem (UTC). |
-| `is_active` | bool | ✔ | Default `true`. |
+| `lang` | enum | [v] | `id` atau `en`. Default `id`. |
+| `content_hash` | string | [v] | `sha256` dari gabungan field bermakna (title, release_date, abstract, file_url, image_url). Untuk deteksi perubahan. |
+| `first_seen_at` / `last_seen_at` / `last_changed_at` | timestamp | [v] | Diisi sistem (UTC). |
+| `is_active` | bool | [v] | Default `true`. |
 
 ---
 
@@ -991,7 +991,7 @@ Umur data tersegar tiap `kind`, jumlah item, status siklus terakhir, status brea
 - Dikirim ke nomor di `ADMIN_WHITELIST_NUMBERS` lewat **InteractiveQueue** (1 pesan ringkas, bukan blast).
 - Kondisi: (a) siklus `blocked`/`layout_changed`/`anomaly_*` ≥ `SCRAPER_NOTIFY_AFTER_FAILURES` kali berturut-turut; (b) data tersegar lebih tua dari `SCRAPER_MAX_STALE_HOURS`; (c) breaker terbuka.
 - **Anti-spam notifikasi:** maksimal 1 pesan per jenis masalah per 12 jam; kirim pesan "pulih" saat siklus kembali sukses.
-- Isi pesan singkat, tanpa data sensitif. Contoh: *"⚠️ Scraper BPS Bangka Barat: diblokir situs 2× berturut-turut. Bot memakai data cadangan. Cek /api/v1/scraper/status."*
+- Isi pesan singkat, tanpa data sensitif. Contoh: *"Scraper BPS Bangka Barat: diblokir situs 2× berturut-turut. Bot memakai data cadangan. Cek /api/v1/scraper/status."*
 
 ---
 

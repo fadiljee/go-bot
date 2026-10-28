@@ -10,7 +10,7 @@
 | **Portal Resmi Daerah** | [bangkabaratkab.bps.go.id](https://bangkabaratkab.bps.go.id/) |
 | **Versi Aplikasi** | 3.1.0 (Go Native Hardened Edition) |
 | **Tanggal Pembaruan** | 28 Oktober 2026 |
-| **Status Keseluruhan** | 🟢 **Siap Produksi & Teruji (All Tests Passed 100%)** |
+| **Status Keseluruhan** | [OK] **Siap Produksi & Teruji (All Tests Passed 100%)** |
 
 ---
 
@@ -40,7 +40,7 @@ Status Komponen Utama:
 - **Penyimpanan Sesi Pure Go**: Driver SQLite `modernc.org/sqlite` tanpa ketergantungan CGO, memungkinkan *cross-compilation* mudah ke arsitektur Linux/ARM.
 - **Anti-Banned Dual Queue (`queue.go`)**:
   - `InteractiveQueue`: Prioritas tinggi untuk balasan interaksi menu warga dengan jeda acak 600–1200 ms dan simulasi mengetik (`ChatPresenceComposing` $\rightarrow$ `ChatPresencePaused`).
-  - `BlastQueue`: Prioritas rendah untuk siaran pesan berkala (5000–10000 ms) dilengkapi tombol wajib *Opt-Out* (`[ 🔕 Berhenti Berlangganan ]`).
+  - `BlastQueue`: Prioritas rendah untuk siaran pesan berkala (5000–10000 ms) dilengkapi tombol wajib *Opt-Out* (`[ Berhenti Berlangganan ]`).
 - **Keamanan Anti-SSRF**: Validasi skema URL (`https://` saja) dan pemblokiran akses ke subnet privat (`localhost`, `127.0.0.1`, `10.0.0.0/8`, dll.) dengan batas unduhan file 16 MB.
 
 ### 2.2 Routing & State Machine Bot (`internal/bot`)

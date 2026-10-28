@@ -112,7 +112,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 	// 1. Per-User Token Bucket Rate Limiting (Anti-Flooding / DDoS Protection)
 	if !r.rateLimiter.Allow(p.JID.User) {
-		log.Printf("⚠️ [RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", p.JID.User)
+		log.Printf("[RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", p.JID.User)
 		return
 	}
 
@@ -159,9 +159,9 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 	// Opt-Out / Berhenti Berlangganan (Anti-Spam Report Protection)
 	if inputLower == "berhenti_langganan" || inputLower == "unsub" || inputLower == "unsubscribe" || inputLower == "stop" {
-		log.Printf("🔕 [UNSUBSCRIBE] Permintaan berhenti berlangganan dari %s", p.JID.User)
+		log.Printf("[UNSUBSCRIBE] Permintaan berhenti berlangganan dari %s", p.JID.User)
 		session.ResetToRoot()
-		msg := "🔕 *Berhenti Berlangganan Berhasil*\n\nNomor Anda telah dicatat untuk berhenti menerima siaran rilis data berkala BPS Kabupaten Bangka Barat.\n\nTerima kasih telah menggunakan layanan kami 🙏\nKetik *0* untuk kembali ke menu utama."
+		msg := "*Berhenti Berlangganan Berhasil*\n\nNomor Anda telah dicatat untuk berhenti menerima siaran rilis data berkala BPS Kabupaten Bangka Barat.\n\nTerima kasih telah menggunakan layanan kami \nKetik *0* untuk kembali ke menu utama."
 		_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 		return
 	}
@@ -170,15 +170,15 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	if inputLower == strings.ToLower(r.cfg.AdminTriggerKeyword) {
 		// Whitelist check: only registered numbers in .env can trigger admin mode
 		if !r.isAdminWhitelisted(p.JID.User) {
-			log.Printf("🔒 [ADMIN AUDIT] Percobaan login admin dari nomor tidak dikenal: %s (silent reject)", p.JID.User)
+			log.Printf("[ADMIN AUDIT] Percobaan login admin dari nomor tidak dikenal: %s (silent reject)", p.JID.User)
 			_ = r.HandleUnavailable(ctx, session, p)
 			return
 		}
 
 		// Lockout check: verify if temporarily locked out due to previous failed attempts
 		if locked, until := r.isAdminLockedOut(p.JID.User); locked {
-			log.Printf("🔒 [ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", p.JID.User, until.Format("15:04:05"))
-			msg := fmt.Sprintf("⛔ Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
+			log.Printf("[ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", p.JID.User, until.Format("15:04:05"))
+			msg := fmt.Sprintf("Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
 			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 			return
 		}
@@ -197,7 +197,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	if session.CurrentState == StateAdminLoggedIn {
 		if input == "1" || input == "2" || input == "3" || input == "4" || input == "5" || input == "6" || input == "7" || input == "8" {
 			key := fmt.Sprintf("menuAdmin%s", input)
-			reply := fmt.Sprintf("📂 *Link Database Admin (%s):*\n\n%s\n\n───────────────────────────\n_Ketik angka lain (1-8) atau ketik *menu* untuk melihat semua link._\n_Ketik *0* untuk keluar ke Menu Utama._", input, locale.T(key))
+			reply := fmt.Sprintf("*Link Database Admin (%s):*\n\n%s\n\n───────────────────────────\n_Ketik angka lain (1-8) atau ketik *menu* untuk melihat semua link._\n_Ketik *0* untuk keluar ke Menu Utama._", input, locale.T(key))
 			_ = r.sender.SendTextMessage(ctx, p.JID, reply)
 			return
 		}
@@ -215,7 +215,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 	if handler, exists := r.handlerMap[routeKey]; exists {
 		if err := handler(ctx, session, p); err != nil {
-			log.Printf("❌ [ERROR] Handler error on %s: %v", routeKey, err)
+			log.Printf("[ERROR] Handler error on %s: %v", routeKey, err)
 		}
 		return
 	}
@@ -223,9 +223,9 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	// Di Menu Awal (StateRoot): Jika input BUKAN nomor menu 1 - 11,
 	// anggap sebagai salam / teks pembuka (misal 'tes', 'halo', 'p', dll.) -> Tampilkan Menu Utama
 	if session.CurrentState == StateRoot {
-		log.Printf("👋 [ROUTER] Pesan pembuka '%s' diterima di menuAwal -> Menampilkan Menu Utama", input)
+		log.Printf("[ROUTER] Pesan pembuka '%s' diterima di menuAwal -> Menampilkan Menu Utama", input)
 		if err := r.HandleWelcomeFull(ctx, session, p); err != nil {
-			log.Printf("❌ [ERROR] Gagal mengirim Welcome Full: %v", err)
+			log.Printf("[ERROR] Gagal mengirim Welcome Full: %v", err)
 		}
 		return
 	}
@@ -233,7 +233,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	// Dynamic handler for Keyword Search (StateMenu1_Search)
 	if session.CurrentState == StateMenu1_Search {
 		if err := r.HandleSearchKeyword(ctx, session, p); err != nil {
-			log.Printf("❌ [ERROR] Gagal memproses pencarian keyword: %v", err)
+			log.Printf("[ERROR] Gagal memproses pencarian keyword: %v", err)
 		}
 		return
 	}
@@ -241,15 +241,15 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	// Dynamic handler for Consultation Booking (StateMenu6_Booking)
 	if session.CurrentState == StateMenu6_Booking {
 		if err := r.HandleProcessBooking(ctx, session, p); err != nil {
-			log.Printf("❌ [ERROR] Gagal memproses booking konsultasi: %v", err)
+			log.Printf("[ERROR] Gagal memproses booking konsultasi: %v", err)
 		}
 		return
 	}
 
 	// Fallback when input not recognized di submenu
-	log.Printf("⚠️ [ROUTER] Input '%s' tidak dikenali di state %s -> Mengirim pesan unavailable", input, session.CurrentState)
+	log.Printf("[ROUTER] Input '%s' tidak dikenali di state %s -> Mengirim pesan unavailable", input, session.CurrentState)
 	if err := r.HandleUnavailable(ctx, session, p); err != nil {
-		log.Printf("❌ [ERROR] Gagal mengirim HandleUnavailable: %v", err)
+		log.Printf("[ERROR] Gagal mengirim HandleUnavailable: %v", err)
 	}
 }
 

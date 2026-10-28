@@ -89,7 +89,7 @@ func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string
 	if s == nil {
 		return nil
 	}
-	log.Printf("📤 [SENDER] Mengirim pesan teks ke %s...", jid.String())
+	log.Printf("[SENDER] Mengirim pesan teks ke %s...", jid.String())
 	msg := &waE2E.Message{
 		Conversation: proto.String(text),
 	}
@@ -102,10 +102,10 @@ func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string
 	}
 
 	if err != nil {
-		log.Printf("❌ [SENDER ERROR] Gagal mengirim pesan teks ke %s: %v", jid.String(), err)
+		log.Printf("[SENDER ERROR] Gagal mengirim pesan teks ke %s: %v", jid.String(), err)
 		return err
 	}
-	log.Printf("✅ [SENDER OK] Pesan teks berhasil terkirim ke %s", jid.String())
+	log.Printf("[SENDER OK] Pesan teks berhasil terkirim ke %s", jid.String())
 	return nil
 }
 
@@ -114,7 +114,7 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 	if s == nil {
 		return nil
 	}
-	log.Printf("📤 [SENDER] Mengirim pesan tombol resmi WhatsApp (Native Flow List / Buttons) ke %s...", jid.String())
+	log.Printf("[SENDER] Mengirim pesan tombol resmi WhatsApp (Native Flow List / Buttons) ke %s...", jid.String())
 
 	extra := &whatsmeow.SendRequestExtra{
 		AdditionalNodes: &[]waBinary.Node{
@@ -144,7 +144,7 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 	}
 
 	if err != nil {
-		log.Printf("⚠️ [SENDER ERROR] Gagal mengirim pesan tombol ke %s: %v. Mengirim versi teks cadangan...", jid.String(), err)
+		log.Printf("[SENDER ERROR] Gagal mengirim pesan tombol ke %s: %v. Mengirim versi teks cadangan...", jid.String(), err)
 		var textToSend string
 		if msg != nil {
 			unwrapped := msg
@@ -169,7 +169,7 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 		return err
 	}
 
-	log.Printf("✅ [SENDER OK] Pesan tombol resmi berhasil terkirim ke %s", jid.String())
+	log.Printf("[SENDER OK] Pesan tombol resmi berhasil terkirim ke %s", jid.String())
 	return nil
 }
 
@@ -224,10 +224,10 @@ func (s *Sender) SendSticker(ctx context.Context, jid types.JID, filePath string
 	}
 
 	if err != nil {
-		log.Printf("❌ [SENDER ERROR] Gagal mengirim stiker ke %s: %v", jid.String(), err)
+		log.Printf("[SENDER ERROR] Gagal mengirim stiker ke %s: %v", jid.String(), err)
 		return err
 	}
-	log.Printf("✅ [SENDER OK] Stiker terkirim ke %s", jid.String())
+	log.Printf("[SENDER OK] Stiker terkirim ke %s", jid.String())
 	return nil
 }
 
@@ -239,7 +239,7 @@ func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, 
 
 	// 1. Anti-SSRF Validation
 	if err := ValidateURLAntiSSRF(imageURL); err != nil {
-		log.Printf("⚠️ [SSRF BLOCKED] Menolak download gambar dari %s: %v", imageURL, err)
+		log.Printf("[SSRF BLOCKED] Menolak download gambar dari %s: %v", imageURL, err)
 		return err
 	}
 
@@ -318,7 +318,7 @@ func (s *Sender) SendVideoFromFile(ctx context.Context, jid types.JID, filePath,
 
 	// In test environments where client & queue are nil, safely mock success
 	if s.client == nil && s.queue == nil {
-		log.Printf("ℹ️ [SENDER MOCK] Melewati upload video ke %s (client & queue nil)", jid.String())
+		log.Printf("ℹ[SENDER MOCK] Melewati upload video ke %s (client & queue nil)", jid.String())
 		return nil
 	}
 
@@ -376,9 +376,9 @@ func (s *Sender) SendVideoFromFile(ctx context.Context, jid types.JID, filePath,
 	}
 
 	if err != nil {
-		log.Printf("❌ [SENDER ERROR] Gagal mengirim video ke %s: %v", jid.String(), err)
+		log.Printf("[SENDER ERROR] Gagal mengirim video ke %s: %v", jid.String(), err)
 		return err
 	}
-	log.Printf("✅ [SENDER OK] Video berhasil terkirim ke %s (%s)", jid.String(), filePath)
+	log.Printf("[SENDER OK] Video berhasil terkirim ke %s (%s)", jid.String(), filePath)
 	return nil
 }

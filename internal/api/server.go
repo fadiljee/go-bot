@@ -178,7 +178,7 @@ func (s *APIServer) handleQRPage(c *fiber.Ctx) error {
 			<head><title>403 Forbidden - BOT ISTIMEWA</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
 			<body style="font-family:sans-serif; text-align:center; padding: 40px; background:#f4f6f9;">
 				<div style="max-width:450px; margin:auto; background:white; padding:30px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
-					<h2 style="color:#d32f2f;">🔒 Akses QR Terkunci (403 Forbidden)</h2>
+					<h2 style="color:#d32f2f;">Akses QR Terkunci (403 Forbidden)</h2>
 					<p>Bot WhatsApp sudah berhasil terhubung dan sesi aktif. Akses pemindaian QR ditutup demi keamanan sistem.</p>
 				</div>
 			</body>
@@ -194,7 +194,7 @@ func (s *APIServer) handleQRPage(c *fiber.Ctx) error {
 			<head><title>BOT ISTIMEWA - QR Code</title><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
 			<body style="font-family:sans-serif; text-align:center; padding: 40px; background:#f4f6f9;">
 				<div style="max-width:450px; margin:auto; background:white; padding:30px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
-					<h2>⏳ Menunggu QR Code WhatsApp...</h2>
+					<h2> Menunggu QR Code WhatsApp...</h2>
 					<p>Halaman ini akan me-refresh otomatis setiap 3 detik.</p>
 				</div>
 			</body>
@@ -289,9 +289,9 @@ func (s *APIServer) handleBlast(c *fiber.Ctx) error {
 
 	// Build blast message with Opt-Out quick reply button to prevent report/spam ban
 	optOutButtons := []whatsapp.QuickReplyButton{
-		{ID: "berhenti_langganan", DisplayText: "🔕 Berhenti Berlangganan"},
+		{ID: "berhenti_langganan", DisplayText: "Berhenti Berlangganan"},
 	}
-	blastMsg := whatsapp.BuildQuickReplyButtons("📢 Rilis Data BPS Bangka Barat", req.Message, "PST BPS Kabupaten Bangka Barat", optOutButtons)
+	blastMsg := whatsapp.BuildQuickReplyButtons("Rilis Data BPS Bangka Barat", req.Message, "PST BPS Kabupaten Bangka Barat", optOutButtons)
 
 	extra := &whatsmeow.SendRequestExtra{
 		AdditionalNodes: &[]waBinary.Node{
@@ -707,7 +707,7 @@ func (s *APIServer) handleScraperBreakerReset(c *fiber.Ctx) error {
 	}
 
 	s.scraperBreaker.Reset()
-	log.Println("⚡ [SCRAPER] Circuit breaker manually reset by admin via REST API")
+	log.Println("[SCRAPER] Circuit breaker manually reset by admin via REST API")
 
 	return c.JSON(fiber.Map{
 		"success": true,

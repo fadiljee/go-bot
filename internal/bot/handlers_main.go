@@ -13,17 +13,17 @@ import (
 
 func getRootMenuItems() []whatsapp.ListRow {
 	return []whatsapp.ListRow{
-		{ID: "1", Title: "1️⃣  Layanan Data", Description: "Statistik Sosial, Ekonomi & Pertanian"},
-		{ID: "2", Title: "2️⃣  Indikator Strategis", Description: "Kemiskinan, Inflasi, IPM, PDRB, dll"},
-		{ID: "3", Title: "3️⃣  Produk Statistik", Description: "BRS, Publikasi, Data Mikro"},
-		{ID: "4", Title: "4️⃣  Video Literasi Statistik", Description: "Video edukasi dan pemahaman statistik"},
-		{ID: "5", Title: "5️⃣  Infografik", Description: "Visualisasi ringkas data BPS"},
-		{ID: "6", Title: "6️⃣  Konsultasi Statistik", Description: "Konsultasi online dengan pakar BPS"},
-		{ID: "7", Title: "7️⃣  Berlangganan Gratis", Description: "Langganan rilis publikasi berkala"},
-		{ID: "8", Title: "8️⃣  Pengaduan & Aspirasi", Description: "Sampaikan kritik dan saran layanan"},
-		{ID: "9", Title: "9️⃣  Hubungi Developer", Description: "Kontak pengembang bot"},
-		{ID: "10", Title: "🔟  FAQs", Description: "Pertanyaan yang sering diajukan"},
-		{ID: "11", Title: "1️⃣1️⃣  Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
+		{ID: "1", Title: "1. Layanan Data", Description: "Statistik Sosial, Ekonomi & Pertanian"},
+		{ID: "2", Title: "2. Indikator Strategis", Description: "Kemiskinan, Inflasi, IPM, PDRB, dll"},
+		{ID: "3", Title: "3. Produk Statistik", Description: "BRS, Publikasi, Data Mikro"},
+		{ID: "4", Title: "4. Video Literasi Statistik", Description: "Video edukasi dan pemahaman statistik"},
+		{ID: "5", Title: "5. Infografik", Description: "Visualisasi ringkas data BPS"},
+		{ID: "6", Title: "6. Konsultasi Statistik", Description: "Konsultasi online dengan pakar BPS"},
+		{ID: "7", Title: "7. Berlangganan Gratis", Description: "Langganan rilis publikasi berkala"},
+		{ID: "8", Title: "8. Pengaduan & Aspirasi", Description: "Sampaikan kritik dan saran layanan"},
+		{ID: "9", Title: "9. Hubungi Developer", Description: "Kontak pengembang bot"},
+		{ID: "10", Title: " FAQs", Description: "Pertanyaan yang sering diajukan"},
+		{ID: "11", Title: "1. 1. Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
 	}
 }
 
@@ -39,18 +39,18 @@ func (r *BotRouter) HandleWelcomeFull(ctx context.Context, s *UserSession, p *wh
 	userName := strings.TrimSpace(p.Name)
 	var greeting string
 	if userName != "" {
-		greeting = fmt.Sprintf("Halo Sahabat Data *%s* 👋", userName)
+		greeting = fmt.Sprintf("Halo Sahabat Data *%s* ", userName)
 	} else {
-		greeting = "Halo Sahabat Data 👋"
+		greeting = "Halo Sahabat Data "
 	}
-	introText := fmt.Sprintf("🌟 *Selamat datang di ISTIMEWA* 🌟\nBPS Kabupaten Bangka Barat\n\n%s\nPerkenalkan saya *Ak Isti* 🙋‍♀️, bot pintar yang siap memandu Sahabat menjelajahi dunia data.\n\n📋 *Pilih nomor layanan* di bawah ini:", greeting)
+	introText := fmt.Sprintf("*Selamat datang di ISTIMEWA* \nBPS Kabupaten Bangka Barat\n\n%s\nPerkenalkan saya *Ak Isti* , bot pintar yang siap memandu Sahabat menjelajahi dunia data.\n\n*Pilih nomor layanan* di bawah ini:", greeting)
 	body := whatsapp.BuildBodyText(introText, items, "\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
 
 	msg := whatsapp.BuildInteractiveList(
-		"🤖 BOT ISTIMEWA — BPS Bangka Barat",
+		"BOT ISTIMEWA — BPS Bangka Barat",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Nomor Layanan 📋",
+		"Pilih Nomor Layanan ",
 		[]whatsapp.ListSection{
 			{Title: "Menu Layanan Utama", Rows: items},
 		},
@@ -70,18 +70,18 @@ func (r *BotRouter) HandleWelcomeShort(ctx context.Context, s *UserSession, p *w
 	userName := strings.TrimSpace(p.Name)
 	var greeting string
 	if userName != "" {
-		greeting = fmt.Sprintf("👋 Hai Sahabat Data *%s*!", userName)
+		greeting = fmt.Sprintf("Hai Sahabat Data *%s*!", userName)
 	} else {
-		greeting = "👋 Hai Sahabat Data!"
+		greeting = "Hai Sahabat Data!"
 	}
-	introText := fmt.Sprintf("%s\nYuk kita lanjut berselancar menjelajahi dunia data 🏄‍♀️\n\n📋 *Pilih nomor layanan* di bawah ini:", greeting)
+	introText := fmt.Sprintf("%s\nYuk kita lanjut berselancar menjelajahi dunia data \n\n*Pilih nomor layanan* di bawah ini:", greeting)
 	body := whatsapp.BuildBodyText(introText, items, "\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
 
 	msg := whatsapp.BuildInteractiveList(
-		"🤖 BOT ISTIMEWA — BPS Bangka Barat",
+		"BOT ISTIMEWA — BPS Bangka Barat",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Nomor Layanan 📋",
+		"Pilih Nomor Layanan ",
 		[]whatsapp.ListSection{
 			{Title: "Menu Layanan Utama", Rows: items},
 		},
@@ -93,7 +93,7 @@ func (r *BotRouter) HandleWelcomeShort(ctx context.Context, s *UserSession, p *w
 // HandleReset clears the user session state
 func (r *BotRouter) HandleReset(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	r.sessions.Delete(p.JID)
-	text := "🔄 Sesi percakapan Anda telah berhasil direset.\nKetik pesan apa saja atau ketik *0* untuk kembali ke menu utama ISTIMEWA."
+	text := "Sesi percakapan Anda telah berhasil direset.\nKetik pesan apa saja atau ketik *0* untuk kembali ke menu utama ISTIMEWA."
 	return r.sender.SendTextMessage(ctx, p.JID, text)
 }
 
@@ -132,7 +132,7 @@ func (r *BotRouter) HandleBack(ctx context.Context, s *UserSession, p *whatsapp.
 
 // HandleAdminPrompt asks admin password
 func (r *BotRouter) HandleAdminPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	return r.sender.SendTextMessage(ctx, p.JID, "🔐 Silakan masukkan *Password Admin* untuk melanjutkan:")
+	return r.sender.SendTextMessage(ctx, p.JID, "Silakan masukkan *Password Admin* untuk melanjutkan:")
 }
 
 // HandleAdminAuth verifies admin password from .env, applies brute-force lockout, and auto-expires admin session
@@ -142,7 +142,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	// Check lockout
 	if locked, until := r.isAdminLockedOut(phone); locked {
 		s.ResetToRoot()
-		msg := fmt.Sprintf("⛔ Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
+		msg := fmt.Sprintf("Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
 		return r.sender.SendTextMessage(ctx, p.JID, msg)
 	}
 
@@ -152,7 +152,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 		r.adminFailedAttempts[phone] = 0
 		r.adminMu.Unlock()
 
-		log.Printf("✅ [ADMIN AUTH] Admin %s berhasil login", phone)
+		log.Printf("[ADMIN AUTH] Admin %s berhasil login", phone)
 		s.CurrentState = StateAdminLoggedIn
 		err := r.SendAdminDashboard(ctx, s, p)
 		// Auto-expire admin session back to normal state
@@ -178,19 +178,19 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 		r.adminFailedAttempts[phone] = 0
 		r.adminMu.Unlock()
 
-		log.Printf("🚨 [ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", phone, lockoutDuration, attempts)
+		log.Printf("[ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", phone, lockoutDuration, attempts)
 		s.ResetToRoot()
-		return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("⛔ Akses ditolak! Anda telah gagal %d kali berturut-turut.\nNomor Anda dikunci selama %d menit dari percobaan login admin.\nKetik *0* untuk kembali ke menu utama.", attempts, r.cfg.AdminLockoutMinutes))
+		return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("Akses ditolak! Anda telah gagal %d kali berturut-turut.\nNomor Anda dikunci selama %d menit dari percobaan login admin.\nKetik *0* untuk kembali ke menu utama.", attempts, r.cfg.AdminLockoutMinutes))
 	}
 	r.adminMu.Unlock()
 
-	log.Printf("⚠️ [ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", phone, attempts, maxRetry)
-	return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("❌ Password admin salah! Percobaan %d/%d.\nKetik *0* untuk membatalkan dan kembali ke menu utama.", attempts, maxRetry))
+	log.Printf("[ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", phone, attempts, maxRetry)
+	return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("Password admin salah! Percobaan %d/%d.\nKetik *0* untuk membatalkan dan kembali ke menu utama.", attempts, maxRetry))
 }
 
 // SendAdminDashboard displays the full 8 database management links for administrators
 func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	adminText := fmt.Sprintf("🛠️ *PANEL ADMIN BOT ISTIMEWA*\n\n" +
+	adminText := fmt.Sprintf("*PANEL ADMIN BOT ISTIMEWA*\n\n" +
 		"Selamat datang di Panel Admin BPS Kabupaten Bangka Barat.\n" +
 		"Berikut tautan pengelolaan database Google Sheets:\n\n" +
 		"*1.* %s\n\n" +
@@ -218,15 +218,15 @@ func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *w
 
 // HandleUnavailable sends fallback text with Quick Reply buttons
 func (r *BotRouter) HandleUnavailable(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	body := "🙆‍♀️ Mohon maaf Sahabat Data, pilihan yang Anda masukkan tidak tersedia atau belum dikenali.\n\nSilakan pilih salah satu tombol navigasi di bawah atau ketik angka menu:\n*0.* 📑 Menu Utama\n*99.* ↩️ Menu Sebelumnya"
+	body := "Mohon maaf Sahabat Data, pilihan yang Anda masukkan tidak tersedia atau belum dikenali.\n\nSilakan pilih salah satu tombol navigasi di bawah atau ketik angka menu:\n*0.* Menu Utama\n*99.* Menu Sebelumnya"
 
 	msg := whatsapp.BuildQuickReplyButtons(
-		"⚠️ Pilihan Tidak Ditemukan",
+		"Pilihan Tidak Ditemukan",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
-			{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
-			{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
+			{ID: "99", DisplayText: "Menu Sebelumnya (99)"},
+			{ID: "0", DisplayText: "Menu Utama (0)"},
 		},
 	)
 

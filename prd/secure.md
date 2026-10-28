@@ -61,7 +61,7 @@ Pesan Keluar
 2. **Pemisahan Jalur Prioritas:**
    Saat admin melakukan *Blast Berlangganan* (FR-07)[cite: 1] ke ratusan nomor, warga yang sedang mengakses menu data harus tetap dilayani dalam waktu < 1.5 detik melalui `InteractiveQueue`.
 3. **Tombol *Opt-Out* / Berhenti Berlangganan:**
-   Setiap pesan *blast* wajib menyertakan tombol `Quick Reply`: **`[ 🔕 Berhenti Berlangganan ]`**. Hal ini mencegah pengguna menekan tombol **"Report Spam / Laporkan"** bawaan WhatsApp yang menjadi pemicu utama pemblokiran nomor oleh Meta.
+   Setiap pesan *blast* wajib menyertakan tombol `Quick Reply`: **`[ Berhenti Berlangganan ]`**. Hal ini mencegah pengguna menekan tombol **"Report Spam / Laporkan"** bawaan WhatsApp yang menjadi pemicu utama pemblokiran nomor oleh Meta.
 
 ### 2.2 Implementasi `internal/whatsapp/queue.go`
 

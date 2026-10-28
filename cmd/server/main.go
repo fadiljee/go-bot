@@ -24,39 +24,39 @@ import (
 
 func main() {
 	log.Println("==================================================")
-	log.Println("🤖 MEMULAI BOT ISTIMEWA v3.0 (Go Native Engine)")
-	log.Println("🏛️  Badan Pusat Statistik Kabupaten Bangka Barat")
+	log.Println("MEMULAI BOT ISTIMEWA v3.0 (Go Native Engine)")
+	log.Println(" Badan Pusat Statistik Kabupaten Bangka Barat")
 	log.Println("==================================================")
 
 	// 1. Load Configurations
 	cfg := config.LoadConfig()
-	log.Printf("⚙️  Konfigurasi aktif | Port: %s | Tahun Indikator: %s",
+	log.Printf(" Konfigurasi aktif | Port: %s | Tahun Indikator: %s",
 		cfg.AppPort, cfg.ActiveIndicatorYear)
 
 	// 2. Load Locales
 	err := locale.Init("locales/id_ID.json")
 	if err != nil {
-		log.Fatalf("❌ Gagal memuat kamus lokalisasi id_ID: %v", err)
+		log.Fatalf("Gagal memuat kamus lokalisasi id_ID: %v", err)
 	}
-	log.Println("📖 Kamus lokalisasi bahasa berhasil dimuat.")
+	log.Println("Kamus lokalisasi bahasa berhasil dimuat.")
 
 	// 3. Initialize Google Sheets Client & Prewarm Cache
 	gsheetClient := gsheet.NewClient(cfg)
-	log.Println("🌐 Menginisialisasi koneksi data Google Sheets (GAS)...")
+	log.Println("Menginisialisasi koneksi data Google Sheets (GAS)...")
 	go func() {
 		gsheetClient.Prewarm()
-		log.Println("✅ Data Google Sheets berhasil di-cache di memori.")
+		log.Println("Data Google Sheets berhasil di-cache di memori.")
 	}()
 
 	// 4. Initialize WhatsApp Client Manager
 	clientMgr, err := whatsapp.NewClientManager(cfg)
 	if err != nil {
-		log.Fatalf("❌ Gagal membuat WhatsApp Client Manager: %v", err)
+		log.Fatalf("Gagal membuat WhatsApp Client Manager: %v", err)
 	}
 
 	// 4b. Initialize BPS Web API Client (Domain: 1903 Bangka Barat)
 	bpsClient := bpsapi.NewClient(cfg)
-	log.Printf("📊 BPS Web API Client aktif | Domain: %s (%s) | Base: %s",
+	log.Printf("BPS Web API Client aktif | Domain: %s (%s) | Base: %s",
 		cfg.BPSDefaultDomain, "BPS Kabupaten Bangka Barat", cfg.BPSAPIBaseURL)
 
 	// 5. Initialize Bot Message Router
@@ -71,7 +71,7 @@ func main() {
 	if cfg.ScraperEnabled {
 		store, err := scraper.NewStore(cfg.ScraperDBPath)
 		if err != nil {
-			log.Printf("⚠️ Gagal menginisialisasi SQLite scraper store: %v", err)
+			log.Printf("Gagal menginisialisasi SQLite scraper store: %v", err)
 		} else {
 			scraperStore = store
 			var enabledKinds []scraper.Kind
@@ -105,11 +105,11 @@ func main() {
 				AppEnv:                cfg.AppEnv,
 			}
 			if valErr := scraperCfg.Validate(); valErr != nil {
-				log.Printf("⚠️ Validasi config scraper gagal: %v", valErr)
+				log.Printf("Validasi config scraper gagal: %v", valErr)
 			} else {
 				selectorsCfg, selErr := scraper.LoadSelectors(cfg.ScraperSelectorsPath, enabledKinds)
 				if selErr != nil {
-					log.Printf("⚠️ Gagal memuat selector scraper YAML: %v", selErr)
+					log.Printf("Gagal memuat selector scraper YAML: %v", selErr)
 				} else {
 					scraperBreaker = scraper.NewCircuitBreaker(scraperStore)
 					robotsMgr := scraper.NewRobotsManager(&http.Client{Timeout: 10 * time.Second}, cfg.ScraperBaseURL, cfg.ScraperUserAgent, cfg.ScraperRespectRobots)
@@ -119,11 +119,11 @@ func main() {
 					scraperRunner.SetProvider(provider)
 					scraperSched = scraper.NewScheduler(scraperCfg, scraperRunner, scraperStore)
 					if err := scraperSched.Start(); err != nil {
-						log.Printf("⚠️ Gagal menjalankan scheduler scraper: %v", err)
+						log.Printf("Gagal menjalankan scheduler scraper: %v", err)
 					}
 					// Connect scraper provider to bot router
 					botRouter.SetScraper(provider)
-					log.Printf("🕸️ [SCRAPER] Scraper otomatis BPS Bangka Barat aktif (Cron: %s | DB: %s)",
+					log.Printf("[SCRAPER] Scraper otomatis BPS Bangka Barat aktif (Cron: %s | DB: %s)",
 						cfg.ScraperCronSpec, cfg.ScraperDBPath)
 				}
 			}
@@ -132,9 +132,9 @@ func main() {
 
 	botStartTime := time.Now()
 	if cfg.InternalPSTGroupJID != "" {
-		log.Printf("📢 [CONFIG] Target Grup PST Internal aktif: %s", cfg.InternalPSTGroupJID)
+		log.Printf("[CONFIG] Target Grup PST Internal aktif: %s", cfg.InternalPSTGroupJID)
 	} else {
-		log.Printf("ℹ️ [CONFIG] INTERNAL_PST_GROUP_JID kosong di .env")
+		log.Printf("ℹ[CONFIG] INTERNAL_PST_GROUP_JID kosong di .env")
 	}
 
 	// 6. Register Event Listener
@@ -143,7 +143,7 @@ func main() {
 		case *events.Message:
 			// Log Group JID to console so developers can easily copy-paste it to .env
 			if evt.Info.IsGroup {
-				log.Printf("👥 [INFO GRUP WA] Pesan masuk di Grup JID: %s (Pengirim: %s)", evt.Info.Chat.String(), evt.Info.Sender.User)
+				log.Printf("[INFO GRUP WA] Pesan masuk di Grup JID: %s (Pengirim: %s)", evt.Info.Chat.String(), evt.Info.Sender.User)
 				return
 			}
 
@@ -170,27 +170,27 @@ func main() {
 
 		case *events.Connected:
 			clientMgr.IsLoggedIn = true
-			log.Println("📶 [WHATSAPP] Terhubung ke server WhatsApp.")
+			log.Println("[WHATSAPP] Terhubung ke server WhatsApp.")
 
 			// Auto-discover joined groups on connect (helpful for developer to find INTERNAL_PST_GROUP_JID)
 			go func() {
 				time.Sleep(3 * time.Second)
 				groups, err := clientMgr.Client.GetJoinedGroups(context.Background())
 				if err == nil && len(groups) > 0 {
-					log.Printf("📋 [DAFTAR GRUP WA BOT (%d grup)]:", len(groups))
+					log.Printf("[DAFTAR GRUP WA BOT (%d grup)]:", len(groups))
 					for i, g := range groups {
-						log.Printf("   %d. 🏷️ Nama: '%s' ➡️ JID: %s", i+1, g.GroupName.Name, g.JID.String())
+						log.Printf("   %d. Nama: '%s' -> JID: %s", i+1, g.GroupName.Name, g.JID.String())
 					}
-					log.Println("💡 [TIPS] Copy salah satu JID di atas dan masukkan ke .env (INTERNAL_PST_GROUP_JID=...)")
+					log.Println("[TIPS] Copy salah satu JID di atas dan masukkan ke .env (INTERNAL_PST_GROUP_JID=...)")
 				}
 			}()
 
 		case *events.LoggedOut:
 			clientMgr.IsLoggedIn = false
-			log.Println("⚠️ [WHATSAPP] Sesi telah keluar (Logged Out). Harap pindai ulang QR Code.")
+			log.Println("[WHATSAPP] Sesi telah keluar (Logged Out). Harap pindai ulang QR Code.")
 
 		case *events.StreamReplaced:
-			log.Println("⚠️ [WHATSAPP] Sesi ditimpa oleh koneksi lain.")
+			log.Println("[WHATSAPP] Sesi ditimpa oleh koneksi lain.")
 		}
 	})
 
@@ -199,7 +199,7 @@ func main() {
 	defer cancel()
 
 	if err := clientMgr.Start(ctx); err != nil {
-		log.Printf("⚠️ Gagal memulai koneksi awal WhatsApp: %v", err)
+		log.Printf("Gagal memulai koneksi awal WhatsApp: %v", err)
 	}
 
 	// 8. Start Fiber REST API Server
@@ -209,10 +209,10 @@ func main() {
 	}
 	go func() {
 		addr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)
-		log.Printf("🚀 Server Web Dashboard aktif di http://%s", addr)
-		log.Printf("📲 Akses http://%s/qr untuk memindai QR code via browser.", addr)
+		log.Printf("Server Web Dashboard aktif di http://%s", addr)
+		log.Printf("Akses http://%s/qr untuk memindai QR code via browser.", addr)
 		if err := apiServer.Listen(addr); err != nil {
-			log.Printf("ℹ️ Web server berhenti: %v", err)
+			log.Printf("ℹWeb server berhenti: %v", err)
 		}
 	}()
 
@@ -221,7 +221,7 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan
 
-	log.Println("\n🛑 Menerima sinyal terminasi, mematikan sistem secara aman...")
+	log.Println("\nMenerima sinyal terminasi, mematikan sistem secara aman...")
 
 	// Graceful shutdown with 5s timeout
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -235,16 +235,16 @@ func main() {
 	}
 
 	if err := apiServer.Shutdown(); err != nil {
-		log.Printf("⚠️ Gagal mematikan API server: %v", err)
+		log.Printf("Gagal mematikan API server: %v", err)
 	}
 
 	clientMgr.Client.Disconnect()
-	log.Println("🔌 WhatsApp client terputus.")
+	log.Println("WhatsApp client terputus.")
 
 	select {
 	case <-shutdownCtx.Done():
-		log.Println("⏱️ Graceful shutdown timeout.")
+		log.Println("Graceful shutdown timeout.")
 	default:
-		log.Println("👋 BOT ISTIMEWA v3.1 berhasil dimatikan dengan bersih.")
+		log.Println("BOT ISTIMEWA v3.1 berhasil dimatikan dengan bersih.")
 	}
 }

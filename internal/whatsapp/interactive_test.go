@@ -15,7 +15,7 @@ func TestBuildInteractiveList(t *testing.T) {
 		{Title: "Kategori A", Rows: rows},
 	}
 
-	msg := BuildInteractiveList("Pilih Salah Satu", "Halo User", "Footer Info", "📋 Buka Pilihan ▾", sections)
+	msg := BuildInteractiveList("Pilih Salah Satu", "Halo User", "Footer Info", "Buka Pilihan", sections)
 	if msg == nil {
 		t.Fatal("expected non-nil message")
 	}
@@ -57,8 +57,8 @@ func TestBuildInteractiveList(t *testing.T) {
 		t.Fatalf("failed to unmarshal single_select params: %v", err)
 	}
 
-	if params.Title != "📋 Buka Pilihan ▾" {
-		t.Errorf("expected dropdown button title '📋 Buka Pilihan ▾', got '%s'", params.Title)
+	if params.Title != "Buka Pilihan" {
+		t.Errorf("expected dropdown button title 'Buka Pilihan', got '%s'", params.Title)
 	}
 
 	if len(params.Sections) != 1 || len(params.Sections[0].Rows) != 2 {
@@ -120,7 +120,7 @@ func TestBuildBodyText(t *testing.T) {
 		{ID: "2", Title: "Indikator"},
 	}
 
-	footer := "*99. ↩️ Menu sebelumnya*\n*0. 📑 Menu Awal*"
+	footer := "*99. Menu sebelumnya*\n*0. Menu Awal*"
 	body := BuildBodyText("Pilih menu:", rows, footer)
 
 	if !strings.Contains(body, "*1.* Layanan Data") {
@@ -131,7 +131,7 @@ func TestBuildBodyText(t *testing.T) {
 		t.Errorf("expected option 2, got:\n%s", body)
 	}
 
-	if !strings.Contains(body, "*0. 📑 Menu Awal*") {
+	if !strings.Contains(body, "*0. Menu Awal*") {
 		t.Errorf("expected navigation 0 in footer, got:\n%s", body)
 	}
 }

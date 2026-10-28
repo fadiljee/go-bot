@@ -65,18 +65,18 @@ func main() {
 	runner := scraper.NewRunner(scraperCfg, store, fetcher, breaker, selectorsCfg, nil)
 
 	ctx := context.Background()
-	log.Printf("🚀 [SCRAPER-CLI] Memulai live scraping (kind=%s, BaseURL=%s)...", *kindFlag, cfg.ScraperBaseURL)
+	log.Printf("[SCRAPER-CLI] Memulai live scraping (kind=%s, BaseURL=%s)...", *kindFlag, cfg.ScraperBaseURL)
 
 	res, err := runner.RunAll(ctx, scraper.TriggerManual)
 	if err != nil {
-		log.Printf("❌ Scraping RunAll selesai dengan error: %v", err)
+		log.Printf("Scraping RunAll selesai dengan error: %v", err)
 	} else {
-		log.Printf("✅ Scraping RunAll selesai: status=%s, reqs=%d, found=%d, new=%d, updated=%d, skipped=%d",
+		log.Printf("Scraping RunAll selesai: status=%s, reqs=%d, found=%d, new=%d, updated=%d, skipped=%d",
 			res.Status, res.Requests, res.ItemsFound, res.ItemsNew, res.ItemsUpdated, res.ItemsSkipped)
 	}
 
 	counts, _ := store.GetCountsByKind(ctx)
-	fmt.Printf("\n📊 [DATABASE HASIL SCRAPING]:\n")
+	fmt.Printf("\n[DATABASE HASIL SCRAPING]:\n")
 	if len(counts) == 0 {
 		fmt.Println(" (Database masih kosong / 0 items aktif)")
 	}
@@ -85,7 +85,7 @@ func main() {
 	}
 
 	runs, _ := store.GetRuns(ctx, 5)
-	fmt.Printf("\n📜 [RIWAYAT SCRAPE RUNS TERBARU]:\n")
+	fmt.Printf("\n[RIWAYAT SCRAPE RUNS TERBARU]:\n")
 	for _, r := range runs {
 		var dur string
 		if r.FinishedAt != nil {

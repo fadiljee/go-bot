@@ -85,7 +85,7 @@ func (m *ClientManager) Start(ctx context.Context) error {
 					if evt.Event == "success" {
 						m.clearQR()
 						m.IsLoggedIn = true
-						log.Println("[STATUS] ✅ Bot WhatsApp BERHASIL TERHUBUNG!")
+						log.Println("[STATUS] Bot WhatsApp BERHASIL TERHUBUNG!")
 					}
 				}
 			}
@@ -97,7 +97,7 @@ func (m *ClientManager) Start(ctx context.Context) error {
 			return fmt.Errorf("failed to reconnect: %w", err)
 		}
 		m.IsLoggedIn = true
-		log.Println("[STATUS] ✅ Bot WhatsApp BERHASIL TERHUBUNG menggunakan sesi tersimpan!")
+		log.Println("[STATUS] Bot WhatsApp BERHASIL TERHUBUNG menggunakan sesi tersimpan!")
 	}
 
 	return nil

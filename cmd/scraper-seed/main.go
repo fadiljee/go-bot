@@ -62,7 +62,7 @@ func main() {
 
 	ctx := context.Background()
 
-	fmt.Println("🚀 [SEED SCRAPER] Mengambil data langsung dari Next.js Server Action BPS Bangka Barat...")
+	fmt.Println("[SEED SCRAPER] Mengambil data langsung dari Next.js Server Action BPS Bangka Barat...")
 
 	// 1. Scrape Press Releases
 	scrapeBRS(ctx, client, store)
@@ -75,13 +75,13 @@ func main() {
 
 	// Print summary
 	counts, _ := store.GetCountsByKind(ctx)
-	fmt.Println("\n🎉 [DATABASE HASIL SCRAPING LIVE BPS]:")
+	fmt.Println("\n[DATABASE HASIL SCRAPING LIVE BPS]:")
 	for k, count := range counts {
 		fmt.Printf(" - %-15s: %d items aktif\n", k, count)
 	}
 
 	// Print some sample items from DB
-	fmt.Println("\n📋 [CONTOH DATA TERSIMPAN DI STORAGE/SCRAPER.DB]:")
+	fmt.Println("\n[CONTOH DATA TERSIMPAN DI STORAGE/SCRAPER.DB]:")
 	for _, kind := range []scraper.Kind{scraper.KindPressRelease, scraper.KindPublication, scraper.KindNews} {
 		items, _ := store.GetLatestItems(ctx, kind, "id", 2)
 		for _, it := range items {
@@ -167,7 +167,7 @@ func scrapeBRS(ctx context.Context, client *http.Client, store *scraper.Store) {
 	}
 
 	n, u, err := store.ApplyItems(ctx, scraper.KindPressRelease, "id", scrapedItems, true)
-	fmt.Printf("   ✅ Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
+	fmt.Printf("   Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
 }
 
 func scrapePubs(ctx context.Context, client *http.Client, store *scraper.Store) {
@@ -229,7 +229,7 @@ func scrapePubs(ctx context.Context, client *http.Client, store *scraper.Store) 
 	}
 
 	n, u, err := store.ApplyItems(ctx, scraper.KindPublication, "id", scrapedItems, true)
-	fmt.Printf("   ✅ Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
+	fmt.Printf("   Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
 }
 
 func scrapeNews(ctx context.Context, client *http.Client, store *scraper.Store) {
@@ -289,7 +289,7 @@ func scrapeNews(ctx context.Context, client *http.Client, store *scraper.Store) 
 	}
 
 	n, u, err := store.ApplyItems(ctx, scraper.KindNews, "id", scrapedItems, true)
-	fmt.Printf("   ✅ Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
+	fmt.Printf("   Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
 }
 
 func cleanHTML(s string) string {

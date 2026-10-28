@@ -165,7 +165,7 @@ func (c *Client) GetLayananData(no string) (string, error) {
 	var sb strings.Builder
 	for _, item := range items {
 		if item.No.String() == no {
-			sb.WriteString(fmt.Sprintf("📊 *Data* : \n%s\n\n🌐 *Link* : \n%s\n◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n\n", item.Judul, item.Link))
+			sb.WriteString(fmt.Sprintf("*Data* : \n%s\n\n*Link* : \n%s\n◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n\n", item.Judul, item.Link))
 		}
 	}
 	return sb.String(), nil
@@ -208,7 +208,7 @@ func (c *Client) GetIndikator(no, preferredYear string) (string, string, error) 
 		if item.No.String() == no {
 			nilai := item.GetNilai(preferredYear)
 			penjelasan := item.GetPenjelasan(preferredYear)
-			sb.WriteString(fmt.Sprintf("📝 *%s*\n\n_*%s*_\n\n%s\n◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉\n\n", item.Indikator, nilai, penjelasan))
+			sb.WriteString(fmt.Sprintf("*%s*\n\n_*%s*_\n\n%s\n◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉\n\n", item.Indikator, nilai, penjelasan))
 			if imgUrl == "" && item.Infografis != "" {
 				imgUrl = item.Infografis
 			}
@@ -251,7 +251,7 @@ func (c *Client) GetVideoStat(no string) (string, error) {
 	var sb strings.Builder
 	for _, item := range items {
 		if item.No.String() == no {
-			sb.WriteString(fmt.Sprintf("🎥 *%s*\n\n🌐 *Link* : \n%s\n\n%s\n\n🔘🔘🔘🔘🔘⚪🔘🔘🔘🔘🔘\n\n", item.Judul, item.Link, item.Penjelasan))
+			sb.WriteString(fmt.Sprintf("*%s*\n\n*Link* : \n%s\n\n%s\n\n-----------\n\n", item.Judul, item.Link, item.Penjelasan))
 		}
 	}
 	return sb.String(), nil
@@ -332,10 +332,10 @@ func (c *Client) GetPakar(no string) (pakarText, pakarImg, piketText, piketImg s
 
 	for _, element := range items {
 		if element.No.String() == no {
-			pakarText = fmt.Sprintf("🤝 Perkenalkan Sahabat Data, ini adalah %s\n\n%s\n\nBeliau akan membantu menjawab pertanyaan Sahabat Data.\n\nMohon diingat untuk menghubungi beliau hanya pada waktu kerja dan hari kerja yah sobat data 🙆‍♀️\n\n Silakan klik link berikut.\n\n📞 %s", element.Nama, element.Penjelasan, element.Link)
+			pakarText = fmt.Sprintf("Perkenalkan Sahabat Data, ini adalah %s\n\n%s\n\nBeliau akan membantu menjawab pertanyaan Sahabat Data.\n\nMohon diingat untuk menghubungi beliau hanya pada waktu kerja dan hari kerja yah sobat data \n\n Silakan klik link berikut.\n\n%s", element.Nama, element.Penjelasan, element.Link)
 			pakarImg = element.Foto
 
-			piketText = fmt.Sprintf("🤝 Perkenalkan Sahabat Data, ini adalah %s\n\nDia yang akan membantu menjawab pertanyaan Sahabat terkait Data dan Statistik.\n\nDimohon untuk menghubungi petugas hanya pada waktu kerja dan hari kerja yah sobat data 🙆‍♀️\n\n Silakan klik link berikut.\n\n📞 %s", element.PetugasPiket, element.LinkPetugas)
+			piketText = fmt.Sprintf("Perkenalkan Sahabat Data, ini adalah %s\n\nDia yang akan membantu menjawab pertanyaan Sahabat terkait Data dan Statistik.\n\nDimohon untuk menghubungi petugas hanya pada waktu kerja dan hari kerja yah sobat data \n\n Silakan klik link berikut.\n\n%s", element.PetugasPiket, element.LinkPetugas)
 			piketImg = element.FotoPetugas
 			break
 		}
@@ -381,7 +381,7 @@ func (c *Client) GetFAQs(no string) (string, error) {
 			if disp == "" {
 				disp = element.No.String()
 			}
-			sb.WriteString(fmt.Sprintf("*%s* 🤔 *: %s*\n\n 👩‍🏫 : %s\n◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n\n", disp, element.Pertanyaan, element.Jawaban))
+			sb.WriteString(fmt.Sprintf("*%s* *: %s*\n\n : %s\n◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n\n", disp, element.Pertanyaan, element.Jawaban))
 		}
 	}
 	return sb.String(), nil

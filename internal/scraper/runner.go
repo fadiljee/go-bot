@@ -155,13 +155,13 @@ func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error)
 					run.Status = "rate_limited"
 				}
 				run.ErrorMessage = err.Error()
-				r.sendAdminNotification(ctx, fmt.Sprintf("⚠️ Scraper BPS Bangka Barat: %v. Cooldown %v. Bot beralih ke data cadangan.", err, cooldown))
+				r.sendAdminNotification(ctx, fmt.Sprintf("Scraper BPS Bangka Barat: %v. Cooldown %v. Bot beralih ke data cadangan.", err, cooldown))
 				allKindsSuccess = false
 				break // Halt cycle immediately (§10.4)
 			} else if errors.Is(err, ErrAnomalyLayoutChanged) || errors.Is(err, ErrAnomalyCountDrop) || errors.Is(err, ErrAnomalyMarkerMissing) {
 				hasPartial = true
 				allKindsSuccess = false
-				r.sendAdminNotification(ctx, fmt.Sprintf("⚠️ Scraper BPS Bangka Barat anomali: %v. Data lama tetap dipertahankan.", err))
+				r.sendAdminNotification(ctx, fmt.Sprintf("Scraper BPS Bangka Barat anomali: %v. Data lama tetap dipertahankan.", err))
 				continue
 			} else {
 				hasPartial = true
