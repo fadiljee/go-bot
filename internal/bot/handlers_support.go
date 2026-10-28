@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -34,14 +35,7 @@ func (r *BotRouter) HandleMenu6_Konsultasi(ctx context.Context, s *UserSession, 
 }
 
 func (r *BotRouter) HandleKonsultasiUmum(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	_, _, piketText, piketImg, err := r.gsheet.GetPakar("1")
-	if err != nil || piketText == "" {
-		piketText = "🤝 Silakan hubungi Petugas Pelayanan Statistik Terpadu (PST) BPS Bangka Barat pada jam kerja (08.00 - 15.30 WIB)."
-	}
-
-	if piketImg != "" {
-		_ = r.sender.SendImageFromURL(ctx, p.JID, piketImg, "Foto Petugas PST")
-	}
+	piketText := "🤝 *Petugas Pelayanan Statistik Terpadu (PST) BPS Bangka Barat*\n\nPetugas PST siap membantu menjawab pertanyaan Sahabat seputar data, publikasi, dan rujukan statistik.\n\n⏰ *Jam Pelayanan*:\nSenin - Kamis: 08.00 - 15.30 WIB\nJumat: 08.00 - 15.00 WIB\n\nSilakan klik link berikut untuk terhubung langsung via WhatsApp:\n📞 https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat"
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"👩‍💼 Petugas Konsultasi Umum",
@@ -87,9 +81,22 @@ func (r *BotRouter) HandleKonsultasiPakarList(ctx context.Context, s *UserSessio
 }
 
 func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
+	pakars := gsheet.DefaultPakar()
+	var pakar *gsheet.PakarItem
 	noStr := strconv.Itoa(idx)
-	pakarText, pakarImg, _, _, err := r.gsheet.GetPakar(noStr)
-	if err != nil || pakarText == "" {
+	for i := range pakars {
+		if pakars[i].No.String() == noStr {
+			pakar = &pakars[i]
+			break
+		}
+	}
+
+	var pakarText string
+	var pakarImg string
+	if pakar != nil {
+		pakarText = fmt.Sprintf("🤝 Perkenalkan Sahabat Data, ini adalah *%s*\n\n%s\n\nBeliau akan membantu menjawab pertanyaan Sahabat Data.\n\nMohon diingat untuk menghubungi beliau hanya pada waktu kerja dan hari kerja yah sobat data 🙆‍♀️\n\nSilakan hubungi melalui link WhatsApp berikut:\n📞 %s", pakar.Nama, pakar.Penjelasan, pakar.Link)
+		pakarImg = pakar.Foto
+	} else {
 		pakarText = fmt.Sprintf("🤝 Pakar bidang %d sedang tidak bertugas. Silakan hubungi admin di menu 9.", idx)
 	}
 
@@ -187,15 +194,43 @@ func (r *BotRouter) HandleMenu10_FAQ(ctx context.Context, s *UserSession, p *wha
 }
 
 func (r *BotRouter) HandleFAQDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
-	noStr := strconv.Itoa(idx)
-	faqData, err := r.gsheet.GetFAQs(noStr)
-	if err != nil || faqData == "" {
-		faqData = "❓ Informasi untuk pertanyaan ini sedang diperbarui."
+	faqs := []struct {
+		Q string
+		A string
+	}{
+		{
+			Q: "Bagaimana cara memperoleh data statistik BPS Kabupaten Bangka Barat?",
+			A: "Sahabat Data dapat mengunduh publikasi dan tabel data secara gratis melalui website https://bangkabaratkab.bps.go.id, melalui Bot WhatsApp ini pada Menu 1, atau datang langsung ke Pelayanan Statistik Terpadu (PST) BPS Kabupaten Bangka Barat.",
+		},
+		{
+			Q: "Apakah layanan data di BPS Bangka Barat berbayar?",
+			A: "Seluruh publikasi, tabel statistik, berita resmi statistik (BRS), dan konsultasi di PST BPS Bangka Barat adalah GRATIS (Rp 0). Hanya data mikro khusus atau peta digital beresolusi tinggi tertentu yang dikenakan tarif PNBP resmi sesuai PP No. 7 Tahun 2015.",
+		},
+		{
+			Q: "Apakah BPS menyediakan data tingkat Desa atau Kelurahan?",
+			A: "Ya! BPS menerbitkan publikasi 'Kecamatan Dalam Angka' setiap tahun yang memuat data rinci hingga tingkat desa/kelurahan untuk seluruh 6 kecamatan di Bangka Barat (Muntok, Simpang Teritip, Jebus, Kelapa, Tempilang, Parittiga).",
+		},
+		{
+			Q: "Bagaimana cara mengajukan Rekomendasi Kegiatan Statistik (ROMANTIK)?",
+			A: "Bagi instansi pemerintah/OPD yang akan menyelenggarakan survei/kompilasi data statistik sektoral, silakan mengajukan permohonan rekomendasi melalui portal https://romantik.bps.go.id atau konsultasi melalui PST BPS Bangka Barat.",
+		},
+		{
+			Q: "Kapan jadwal rilis data terbaru BPS Bangka Barat?",
+			A: "Jadwal rilis publikasi dan Berita Resmi Statistik (BRS) dirilis berkala sesuai ARC (Advance Release Calendar). BRS inflasi/ekonomi umumnya dirilis setiap awal bulan, dan publikasi 'Bangka Barat Dalam Angka' dirilis setiap akhir Februari.",
+		},
+	}
+
+	var faqText string
+	if idx >= 1 && idx <= len(faqs) {
+		item := faqs[idx-1]
+		faqText = fmt.Sprintf("*Pertanyaan %d* 🤔 :\n*%s*\n\n👩‍🏫 *Jawaban*:\n%s\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```", idx, item.Q, item.A)
+	} else {
+		faqText = "❓ Informasi untuk pertanyaan ini sedang diperbarui."
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"💡 Jawaban FAQ",
-		faqData,
+		faqText,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
 			{ID: "99", DisplayText: "↩️ Pertanyaan Lain (99)"},

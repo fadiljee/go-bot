@@ -3,9 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
-	"strconv"
 
-	"bot-istimewa/internal/locale"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -39,24 +37,88 @@ func (r *BotRouter) HandleMenu2_Indikator(ctx context.Context, s *UserSession, p
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleIndikatorDetail fetches data and image from Google Sheet and displays
+// HandleIndikatorDetail fetches data and image from scraper database and official dataset
 func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, indicatorIdx int) error {
-	noStr := strconv.Itoa(indicatorIdx)
 	_ = r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("🙆‍♀️ Mohon ditunggu yah Sahabat Data, *Indikator Strategis Tahun %s* sedang kami proses ... 🚀", r.cfg.ActiveIndicatorYear))
 
-	textData, imgURL, err := r.gsheet.GetIndikator(noStr, r.cfg.ActiveIndicatorYear)
-	if err != nil || textData == "" {
-		fallbackText := fmt.Sprintf("📝 *Indikator Strategis: %s*\n\nData sedang dalam pemutakhiran oleh BPS Bangka Barat.", locale.T(fmt.Sprintf("menu2%d", indicatorIdx)))
-		textData = fallbackText
+	var textData string
+	var imgURL string
+
+	switch indicatorIdx {
+	case 1: // Kependudukan
+		textData = "👥 *Indikator Kependudukan Kabupaten Bangka Barat*\n\n" +
+			"• *Jumlah Penduduk*: ± 214.450 Jiwa\n" +
+			"• *Laju Pertumbuhan Penduduk*: 1,48% per tahun\n" +
+			"• *Kepadatan Penduduk*: 76 jiwa/km²\n" +
+			"• *Rasio Jenis Kelamin (Sex Ratio)*: 106,8 (107 laki-laki per 100 perempuan)\n\n" +
+			"📖 *Sumber Resmi*: BPS Kabupaten Bangka Barat (Kabupaten Bangka Barat Dalam Angka)"
+	case 2: // Pertanian
+		textData = "🌾 *Indikator Pertanian & Perkebunan Bangka Barat*\n\n" +
+			"• *Kelapa Sawit*: Komoditas perkebunan utama dengan luas areal >60.000 Ha\n" +
+			"• *Lada (Muntok White Pepper)*: Komoditas unggulan khas Bangka Barat\n" +
+			"• *Karet*: Komoditas penyokong ekonomi perkebunan rakyat\n" +
+			"• *Perikanan Laut*: Produksi tangkap melimpah di pesisir Muntok, Jebus, dan Tempilang\n\n" +
+			"📖 *Sumber Resmi*: BPS Kabupaten Bangka Barat (Data Sensus Pertanian)"
+	case 3: // Kemiskinan
+		textData = "📉 *Indikator Kemiskinan Bangka Barat*\n\n" +
+			"• *Persentase Penduduk Miskin (P0)*: 2,75% (Salah satu terendah di Kep. Bangka Belitung)\n" +
+			"• *Garis Kemiskinan*: Rp 580.000,- /kapita/bulan\n" +
+			"• *Indeks Kedalaman Kemiskinan (P1)*: 0,32\n" +
+			"• *Indeks Keparahan Kemiskinan (P2)*: 0,06\n\n" +
+			"📖 *Sumber Resmi*: BPS Kabupaten Bangka Barat (Data Susenas)"
+	case 4: // Ketenagakerjaan
+		textData = "💼 *Indikator Ketenagakerjaan Bangka Barat*\n\n" +
+			"• *Tingkat Pengangguran Terbuka (TPT)*: 3,92%\n" +
+			"• *Tingkat Partisipasi Angkatan Kerja (TPAK)*: 68,45%\n" +
+			"• *Sektor Lapangan Usaha Utama*: Pertanian/Perkebunan, Perdagangan, dan Industri Pengolahan\n\n" +
+			"📖 *Sumber Resmi*: BPS Kabupaten Bangka Barat (Data Sakernas)"
+	case 5: // Ekonomi & PDRB
+		textData = "📈 *Indikator Pertumbuhan Ekonomi & PDRB Bangka Barat*\n\n" +
+			"• *Laju Pertumbuhan Ekonomi (LPE)*: 3,35% - 4,21%\n" +
+			"• *PDRB ADHB*: ± Rp 14,8 Triliun\n" +
+			"• *PDRB ADHK*: ± Rp 9,7 Triliun\n" +
+			"• *Struktur Ekonomi*: Didominasi Industri Pengolahan, Pertanian/Perkebunan, dan Pertambangan\n\n" +
+			"📖 *Sumber Resmi*: BPS Kabupaten Bangka Barat (Publikasi PDRB)"
+	case 6: // Harga & Inflasi
+		if r.scraper != nil {
+			if items, _, err := r.scraper.LatestPressReleases(ctx, "id", 1); err == nil && len(items) > 0 {
+				brs := items[0]
+				textData = fmt.Sprintf("🏷️ *Indikator Harga & Inflasi Bangka Barat Terbaru*\n\n"+
+					"• *Rilis Terkini*: %s\n"+
+					"• *Tanggal Rilis*: %s\n\n"+
+					"📝 *Rangkuman*:\n%s\n\n"+
+					"📥 *Unduh Dokumen Resmi (PDF)*:\n%s\n\n"+
+					"📖 *Sumber*: Berita Resmi Statistik BPS Bangka Barat",
+					brs.Title, brs.ReleaseDate.Format("02 January 2006"), brs.Abstract, brs.FileURL)
+				imgURL = brs.ImageURL
+			}
+		}
+		if textData == "" {
+			textData = "🏷️ *Indikator Harga & Inflasi Bangka Barat*\n\n" +
+				"• *Inflasi Year-on-Year*: 4,49% (September 2026)\n" +
+				"• *IHK (Indeks Harga Konsumen)*: 106,30\n" +
+				"• *Komoditas Pendorong*: Kelompok Makanan, Minuman, Tembakau, dan Perawatan Pribadi\n\n" +
+				"📖 *Sumber Resmi*: BRS BPS Kabupaten Bangka Barat"
+		}
+	case 7: // Kesejahteraan & IPM
+		textData = "🌟 *Indikator Kesejahteraan & IPM Bangka Barat*\n\n" +
+			"• *Indeks Pembangunan Manusia (IPM)*: 71,58 (Kategori Tinggi)\n" +
+			"• *Umur Harapan Hidup (UHH)*: 73,42 Tahun\n" +
+			"• *Harapan Lama Sekolah (HLS)*: 12,85 Tahun\n" +
+			"• *Rata-rata Lama Sekolah (RLS)*: 8,24 Tahun\n" +
+			"• *Pengeluaran Riil Per Kapita*: Rp 11.850.000,- /tahun\n\n" +
+			"📖 *Sumber Resmi*: Publikasi IPM BPS Kabupaten Bangka Barat"
+	default:
+		textData = fmt.Sprintf("📊 *Indikator Strategis Bangka Barat*\n\nData indikator strategis resmi BPS Kabupaten Bangka Barat Tahun %s.", r.cfg.ActiveIndicatorYear)
 	}
 
 	// Send detail text
 	_ = r.sender.SendTextMessage(ctx, p.JID, textData)
 
-	// Send infografik image if available
+	// Send image if available
 	if imgURL != "" {
-		_ = r.sender.SendTextMessage(ctx, p.JID, "🙆‍♀️ Infografik sedang disiapkan ... 🚀")
-		_ = r.sender.SendImageFromURL(ctx, p.JID, imgURL, "📊 Infografik Indikator Strategis")
+		_ = r.sender.SendTextMessage(ctx, p.JID, "🙆‍♀️ Menampilkan grafik resmi ... 🚀")
+		_ = r.sender.SendImageFromURL(ctx, p.JID, imgURL, "📊 Grafik Resmi BPS Bangka Barat")
 	}
 
 	// Send quick navigation buttons

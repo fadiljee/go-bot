@@ -146,3 +146,12 @@ func (p *Provider) SearchStaticTables(ctx context.Context, keyword string, limit
 	f := p.calculateFreshness(ctx, items)
 	return items, f, nil
 }
+
+func (p *Provider) SearchItems(ctx context.Context, keyword string, lang string, limit int) ([]Item, Freshness, error) {
+	items, err := p.store.SearchAllItems(ctx, keyword, limit)
+	if err != nil {
+		return nil, Freshness{}, err
+	}
+	f := p.calculateFreshness(ctx, items)
+	return items, f, nil
+}

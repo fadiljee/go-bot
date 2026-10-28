@@ -59,6 +59,7 @@ type DataProvider interface {
 	LatestPublications(ctx context.Context, lang string, limit int) ([]Item, Freshness, error)
 	LatestInfographics(ctx context.Context, limit int) ([]Item, Freshness, error)
 	SearchStaticTables(ctx context.Context, keyword string, limit int) ([]Item, Freshness, error)
+	SearchItems(ctx context.Context, keyword string, lang string, limit int) ([]Item, Freshness, error)
 }
 
 // RunResult tracks the result of a scrape run in SQLite (§9.2).

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"bot-istimewa/internal/bpsapi"
-	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/locale"
 	"bot-istimewa/internal/whatsapp"
 )
@@ -215,6 +214,29 @@ func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) 
 	return ""
 }
 
+// fetchScraperItemsForTopic queries internal scraper SQLite database for relevant publications/releases
+func (r *BotRouter) fetchScraperItemsForTopic(ctx context.Context, keyword string) string {
+	if r.scraper == nil || keyword == "" {
+		return ""
+	}
+	items, _, err := r.scraper.SearchItems(ctx, keyword, "id", 3)
+	if err != nil || len(items) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("📚 *Publikasi & Rilis Terkait (Database Scraper BPS)*:\n")
+	for i, it := range items {
+		sb.WriteString(fmt.Sprintf("%d. 📄 %s\n", i+1, it.Title))
+		if it.FileURL != "" {
+			sb.WriteString(fmt.Sprintf("   📥 Unduh: %s\n", it.FileURL))
+		} else if it.URL != "" {
+			sb.WriteString(fmt.Sprintf("   🔗 Link: %s\n", it.URL))
+		}
+	}
+	sb.WriteString("\n")
+	return sb.String()
+}
+
 // HandleSearchKeyword executes search across BPS Bangka Barat portal, scraper dataset, and local catalog
 func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	query := strings.TrimSpace(p.Text)
@@ -247,28 +269,31 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 		}
 	}
 
-	// 2. Fallback to Scraper DataProvider (Priority 2) (§4.2)
-	if !liveFound && r.scraper != nil {
-		tables, fresh, err := r.scraper.SearchStaticTables(ctx, query, 3)
-		if err == nil && len(tables) > 0 {
+	// 2. Search Scraper DataProvider (SQLite storage/scraper.db)
+	if r.scraper != nil {
+		items, fresh, err := r.scraper.SearchItems(ctx, query, "id", 5)
+		if err == nil && len(items) > 0 {
 			liveFound = true
-			sb.WriteString("🌐 *Tabel BPS Bangka Barat (Portal BPS)*:\n")
-			for _, t := range tables {
-				sb.WriteString(fmt.Sprintf("• 📊 *%s*\n", t.Title))
-				if t.FileURL != "" {
-					sb.WriteString(fmt.Sprintf("  📥 Unduh Excel: %s\n", t.FileURL))
-				} else if t.URL != "" {
-					sb.WriteString(fmt.Sprintf("  🔗 Lihat: %s\n", t.URL))
+			sb.WriteString("📚 *Dokumen & Rilis BPS Bangka Barat*:\n\n")
+			for i, it := range items {
+				sb.WriteString(fmt.Sprintf("%d. 📄 *%s*\n", i+1, it.Title))
+				if it.ReleaseDate != nil {
+					sb.WriteString(fmt.Sprintf("   🗓️ Rilis: %s\n", it.ReleaseDate.Format("02 Jan 2006")))
 				}
+				if it.FileURL != "" {
+					sb.WriteString(fmt.Sprintf("   📥 Unduh: %s\n", it.FileURL))
+				} else if it.URL != "" {
+					sb.WriteString(fmt.Sprintf("   🔗 Link: %s\n", it.URL))
+				}
+				sb.WriteString("\n")
 			}
-			sb.WriteString(fmt.Sprintf("ℹ️ Sumber: bangkabaratkab.bps.go.id · diperbarui %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			sb.WriteString(fmt.Sprintf("ℹ️ Sumber: Database Scraper BPS · diperbarui %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 		}
 	}
 
-	// 3. Search local dataset / Google Sheet fallback (Priority 3)
-	results, _ := r.gsheet.SearchAll(query)
-	formatted := gsheet.FormatSearchResults(query, results)
-	sb.WriteString(formatted)
+	if !liveFound {
+		sb.WriteString(fmt.Sprintf("🔍 Maaf Sahabat Data, kata kunci *\"%s\"* belum ditemukan di database rilis/publikasi BPS Bangka Barat.\n\nSilakan coba kata kunci lain (misal: *inflasi*, *kemiskinan*, *penduduk*, *kelapa*, *pdrb*) atau kunjungi portal resmi:\n🌐 https://bangkabaratkab.bps.go.id\n", query))
+	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"🔍 Hasil Pencarian Data",
@@ -333,11 +358,10 @@ func (r *BotRouter) HandleSosdukTopic(ctx context.Context, s *UserSession, p *wh
 	if liveTables != "" {
 		sb.WriteString(liveTables)
 	} else {
-		// 2. Fallback to Google Sheets
-		sheetCode := fmt.Sprintf("11%d", topicIdx)
-		tableData, _ := r.gsheet.GetLayananData(sheetCode)
-		if tableData != "" {
-			sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+		// 2. Scraped publications & releases from local SQLite scraper
+		relatedItems := r.fetchScraperItemsForTopic(ctx, topicKeyword)
+		if relatedItems != "" {
+			sb.WriteString(relatedItems)
 		}
 	}
 
@@ -399,11 +423,10 @@ func (r *BotRouter) HandleEkonomiTopic(ctx context.Context, s *UserSession, p *w
 	if liveTables != "" {
 		sb.WriteString(liveTables)
 	} else {
-		// 2. Fallback to Google Sheets
-		sheetCode := fmt.Sprintf("12%d", topicIdx)
-		tableData, _ := r.gsheet.GetLayananData(sheetCode)
-		if tableData != "" {
-			sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+		// 2. Scraped publications & releases from local SQLite scraper
+		relatedItems := r.fetchScraperItemsForTopic(ctx, topicKeyword)
+		if relatedItems != "" {
+			sb.WriteString(relatedItems)
 		}
 	}
 
@@ -453,11 +476,10 @@ func (r *BotRouter) HandlePertanianTopic(ctx context.Context, s *UserSession, p 
 	if liveTables != "" {
 		sb.WriteString(liveTables)
 	} else {
-		// 2. Fallback to Google Sheets
-		sheetCode := fmt.Sprintf("13%d", topicIdx)
-		tableData, _ := r.gsheet.GetLayananData(sheetCode)
-		if tableData != "" {
-			sb.WriteString("📑 *Tabel Data Tersedia*:\n" + tableData + "\n")
+		// 2. Scraped publications & releases from local SQLite scraper
+		relatedItems := r.fetchScraperItemsForTopic(ctx, topicKeyword)
+		if relatedItems != "" {
+			sb.WriteString(relatedItems)
 		}
 	}
 

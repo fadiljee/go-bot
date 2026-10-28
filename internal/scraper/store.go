@@ -350,6 +350,36 @@ func (s *Store) SearchItems(ctx context.Context, kind Kind, keyword string, limi
 	return scanItems(rows)
 }
 
+// SearchAllItems searches active items across all kinds using parameterized LIKE query.
+func (s *Store) SearchAllItems(ctx context.Context, keyword string, limit int) ([]Item, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	cleaned := CleanText(keyword)
+	if len([]rune(cleaned)) > 100 {
+		cleaned = string([]rune(cleaned)[:100])
+	}
+	param := "%" + cleaned + "%"
+
+	query := `
+		SELECT id, kind, lang, source_key, title, url, release_date, abstract,
+		       file_url, file_type, file_size_text, thumbnail_url, image_url,
+		       subject, content_hash, is_active, missed_runs,
+		       first_seen_at, last_seen_at, last_changed_at
+		FROM scraped_items
+		WHERE is_active = 1 AND (title LIKE ? OR subject LIKE ? OR abstract LIKE ?)
+		ORDER BY release_date DESC, id DESC
+		LIMIT ?
+	`
+	rows, err := s.db.QueryContext(ctx, query, param, param, param, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanItems(rows)
+}
+
 func scanItems(rows *sql.Rows) ([]Item, error) {
 	var items []Item
 	for rows.Next() {

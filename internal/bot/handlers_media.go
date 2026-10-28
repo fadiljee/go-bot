@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"bot-istimewa/internal/bpsapi"
@@ -92,6 +91,12 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					sb.WriteString("\n")
 				}
 				sb.WriteString(formatFreshnessFooter(fresh) + "\n\n")
+
+				// Kirim gambar rilis teratas jika tersedia
+				if len(scrapedItems) > 0 && scrapedItems[0].ImageURL != "" {
+					_ = r.sender.SendTextMessage(ctx, p.JID, "🖼️ Menyiapkan infografik rilis terbaru ... 🚀")
+					_ = r.sender.SendImageFromURL(ctx, p.JID, scrapedItems[0].ImageURL, fmt.Sprintf("📰 *%s*", scrapedItems[0].Title))
+				}
 			}
 		}
 
@@ -150,6 +155,12 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					sb.WriteString("\n")
 				}
 				sb.WriteString(formatFreshnessFooter(fresh) + "\n\n")
+
+				// Kirim gambar cover publikasi teratas jika tersedia
+				if len(scrapedPubs) > 0 && scrapedPubs[0].ImageURL != "" {
+					_ = r.sender.SendTextMessage(ctx, p.JID, "🖼️ Menyiapkan sampul buku publikasi terbaru ... 🚀")
+					_ = r.sender.SendImageFromURL(ctx, p.JID, scrapedPubs[0].ImageURL, fmt.Sprintf("📕 *%s*", scrapedPubs[0].Title))
+				}
 			}
 		}
 
@@ -206,11 +217,33 @@ func (r *BotRouter) HandleMenu4_Video(ctx context.Context, s *UserSession, p *wh
 }
 
 func (r *BotRouter) HandleVideoDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
-	noStr := strconv.Itoa(idx)
-	videoData, err := r.gsheet.GetVideoStat(noStr)
-	if err != nil || videoData == "" {
-		videoData = "🎥 Video literasi untuk topik ini sedang disiapkan. Silakan kunjungi kanal YouTube resmi BPS Bangka Barat."
+	var topicTitle, videoURL string
+	switch idx {
+	case 1:
+		topicTitle = "Sensus & Survei BPS"
+		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+	case 2:
+		topicTitle = "Memahami Inflasi & IHK Daerah"
+		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+	case 3:
+		topicTitle = "Menghitung Pertumbuhan Ekonomi & PDRB"
+		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+	case 4:
+		topicTitle = "Indeks Pembangunan Manusia (IPM)"
+		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+	case 5:
+		topicTitle = "Kemiskinan & Garis Kemiskinan"
+		videoURL = "https://www.youtube.com/watch?v=BFj6yi8HLAg"
+	default:
+		topicTitle = "Literasi Statistik BPS"
+		videoURL = r.cfg.TentangBPSVideoURL
 	}
+
+	videoData := fmt.Sprintf("🎬 *Video Literasi Statistik: %s*\n\n"+
+		"Yuk tonton video edukasi resmi dari BPS untuk memahami konsep statistik dengan cara menyenangkan! 😊\n\n"+
+		"▶️ *Tonton Video di YouTube*:\n%s\n\n"+
+		"📺 *Kanal Resmi BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n\n"+
+		"💡 _Tips: Tautan di atas dapat langsung diputar di WhatsApp._", topicTitle, videoURL)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"🎬 Video Literasi",
@@ -311,34 +344,32 @@ func (r *BotRouter) HandleInfografikDetail(ctx context.Context, s *UserSession, 
 		}
 	}
 
-	// 3. Fallback ke Google Sheets jika API BPS dan Scraper belum tersedia
-	noStr := strconv.Itoa(idx)
-	titles, urls, err := r.gsheet.GetInfografik(noStr)
-	if err != nil || len(urls) == 0 {
-		return r.sender.SendTextMessage(ctx, p.JID, "🖼️ Belum ada infografik terbaru untuk kategori ini.\n🌐 Cek infografik lengkap di: https://bangkabaratkab.bps.go.id/id/infographic\n\nKetik *99* untuk kembali atau *0* ke menu utama.")
-	}
+	// 3. Fallback ke rilis grafis visual dari database scraper
+	if r.scraper != nil {
+		items, fresh, err := r.scraper.LatestPressReleases(ctx, "id", 2)
+		if err == nil && len(items) > 0 {
+			_ = r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("🖼️ Menampilkan %d infografik rilis data terbaru BPS Bangka Barat ... 🚀", len(items)))
+			for _, item := range items {
+				if item.ImageURL != "" {
+					caption := fmt.Sprintf("📊 *%s*\n%s\n🌐 https://bangkabaratkab.bps.go.id/id/infographic", item.Title, formatFreshnessFooter(fresh))
+					_ = r.sender.SendImageFromURL(ctx, p.JID, item.ImageURL, caption)
+				}
+			}
 
-	_ = r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("🖼️ Menampilkan %d infografik...", len(urls)))
-
-	for i, u := range urls {
-		caption := "📊 Infografik BPS Bangka Barat"
-		if i < len(titles) && titles[i] != "" {
-			caption = "📊 " + titles[i]
+			navMsg := whatsapp.BuildQuickReplyButtons(
+				"Navigasi Infografik",
+				"Selesai menampilkan infografik visual dari portal BPS Bangka Barat. Silakan pilih menu berikutnya:",
+				"PST BPS Kabupaten Bangka Barat",
+				[]whatsapp.QuickReplyButton{
+					{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
+					{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
+				},
+			)
+			return r.sender.SendInteractiveMessage(ctx, p.JID, navMsg)
 		}
-		_ = r.sender.SendImageFromURL(ctx, p.JID, u, caption)
 	}
 
-	navMsg := whatsapp.BuildQuickReplyButtons(
-		"Navigasi Infografik",
-		"Selesai menampilkan infografik. Silakan pilih menu berikutnya:",
-		"PST BPS Kabupaten Bangka Barat",
-		[]whatsapp.QuickReplyButton{
-			{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
-			{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
-		},
-	)
-
-	return r.sender.SendInteractiveMessage(ctx, p.JID, navMsg)
+	return r.sender.SendTextMessage(ctx, p.JID, "🖼️ Belum ada infografik terbaru untuk kategori ini.\n🌐 Cek infografik lengkap di: https://bangkabaratkab.bps.go.id/id/infographic\n\nKetik *99* untuk kembali atau *0* ke menu utama.")
 }
 
 // HandleMenu11_TentangBPS handles Tentang BPS (Resolves TD-01 & TD-06)
