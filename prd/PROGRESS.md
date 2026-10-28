@@ -1,4 +1,4 @@
-# Laporan Progres Pengembangan — BOT ISTIMEWA v3.0
+# Laporan Progres Pengembangan — BOT ISTIMEWA v3.1
 ## Transformasi & Modernisasi Chatbot Layanan Statistik BPS Kabupaten Bangka Barat
 
 | Field | Detail |
@@ -6,19 +6,17 @@
 | **Nama Produk** | ISTIMEWA (Informasi Statistik Terpadu melalui WhatsApp) |
 | **Instansi** | Badan Pusat Statistik (BPS) Kabupaten Bangka Barat |
 | **Persona Bot** | Ak Isti (Sahabat Data) |
-| **Arsitektur Binary** | Go 1.22+ (`whatsmeow` + Go Fiber v2 + SQLite Pure Go) |
+| **Arsitektur Binary** | Go 1.22+ (`whatsmeow` + Go Fiber v2 + SQLite Pure Go + Scraper & Scheduler) |
 | **Portal Resmi Daerah** | [bangkabaratkab.bps.go.id](https://bangkabaratkab.bps.go.id/) |
-| **Versi Aplikasi** | 3.0.0 (Go Native Hardened Edition) |
-| **Tanggal Pembaruan** | 20 Oktober 2026 |
+| **Versi Aplikasi** | 3.1.0 (Go Native Hardened Edition) |
+| **Tanggal Pembaruan** | 28 Oktober 2026 |
 | **Status Keseluruhan** | 🟢 **Siap Produksi & Teruji (All Tests Passed 100%)** |
 
 ---
 
 ## 1. Ringkasan Eksekutif & Milestone Utama
 
-Proyek **BOT ISTIMEWA v3.0** telah berhasil menyelesaikan seluruh fase migrasi arsitektur dari platform warisan Node.js (Pepesan/Baileys) ke **Go Native Binary**. 
-
-Selain peningkatan performa dan efisiensi memori yang drastis (penurunan konsumsi RAM dari ~150 MB menjadi < 25 MB), bot kini telah dilengkapi dengan **pengamanan operasional anti-banned WhatsApp**, **sistem navigasi interaktif tanpa ketik (*Zero-Typing*)**, serta **integrasi langsung ke BPS Web API v1** untuk menarik data statistik, publikasi, BRS, dan tabel statis resmi dari portal **BPS Kabupaten Bangka Barat**.
+Proyek **BOT ISTIMEWA v3.1** telah berhasil menyelesaikan seluruh fase integrasi **Web Scraping & Scheduler Otomatis** dari portal resmi `https://bangkabaratkab.bps.go.id/` sesuai spesifikasi dokumen [scraping.md](file:///home/fadil/fadil/go-bot/prd/scraping.md).
 
 ```
 Status Komponen Utama:
@@ -28,8 +26,9 @@ Status Komponen Utama:
 [████████████████████] 100% Server REST API & Web Dashboard QR Scanner (Go Fiber)
 [████████████████████] 100% Integrasi & Caching Google Sheets (GAS Client)
 [████████████████████] 100% Integrasi BPS Web API v1 (Domain 1903 - Bangka Barat)
-[████████████████████] 100% Route Group Go Fiber (/api/v1/bps/*)
-[████████████████████] 100% Otomasi Tarik Data Bot (Menu 1, Menu 3, Menu 5)
+[████████████████████] 100% Web Scraper & Background Scheduler Tiap 6 Jam (internal/scraper)
+[████████████████████] 100% Route Group Go Fiber (/api/v1/scraper/*) & Diagnostics
+[████████████████████] 100% Rantai Fallback 4-Lapis (API -> Scraper -> GSheet -> Portal)
 ```
 
 ---

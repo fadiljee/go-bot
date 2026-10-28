@@ -149,3 +149,32 @@ func TestBPSRouteGroup(t *testing.T) {
 	}
 }
 
+func TestAPIServerScraperRoutes(t *testing.T) {
+	cfg := &config.Config{
+		AppPort:        "3000",
+		APISecretKey:   "secret_scraper_key",
+		ScraperEnabled: true,
+	}
+
+	clientMgr := &whatsapp.ClientManager{IsLoggedIn: true}
+	server := NewAPIServer(cfg, clientMgr, nil)
+
+	// 1. Unauthenticated request to /api/v1/scraper/status -> 401
+	reqUnauth := httptest.NewRequest("GET", "/api/v1/scraper/status", nil)
+	respUnauth, err := server.app.Test(reqUnauth)
+	if err != nil {
+		t.Fatalf("unauth error: %v", err)
+	}
+	if respUnauth.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401 Unauthorized for /api/v1/scraper/status, got %d", respUnauth.StatusCode)
+	}
+
+	// 2. Health check includes scraper fields
+	reqHealth := httptest.NewRequest("GET", "/health", nil)
+	respHealth, err := server.app.Test(reqHealth)
+	if err != nil || respHealth.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 OK for /health, got %d", respHealth.StatusCode)
+	}
+}
+
+

@@ -1,7 +1,7 @@
 version: 1
 
 pressrelease:
-  list_url: "/{lang}/pressrelease.html?page={page}"
+  list_url: "/{lang}/pressrelease?page={page}"
   list:
     item: ".brs-item, .card-brs, .list-group-item"
     title: ".title, h4 a, .card-title a, a.brs-title"
@@ -18,7 +18,7 @@ pressrelease:
     - "Badan Pusat Statistik"
 
 publication:
-  list_url: "/publication.html?page={page}"
+  list_url: "/{lang}/publication?page={page}"
   list:
     item: ".pub-item, .card-publication, .list-group-item"
     title: ".title, h4 a, .card-title a, a.pub-title"
@@ -35,7 +35,7 @@ publication:
     - "Badan Pusat Statistik"
 
 infographic:
-  list_url: "/infographic.html?page={page}"
+  list_url: "/{lang}/infographic?page={page}"
   list:
     item: ".infographic-item, .card-infographic, .grid-item"
     title: ".title, .card-title, h4"
@@ -52,7 +52,7 @@ infographic:
     - "Badan Pusat Statistik"
 
 statictable:
-  list_url: "/statictable.html?page={page}"
+  list_url: "/{lang}/statistics-table?page={page}"
   list:
     item: ".table-item, tr.table-row, .card-statictable, .list-group-item"
     title: "a.table-title, .title, td.title a, .card-title a"
@@ -69,7 +69,7 @@ statictable:
     - "Badan Pusat Statistik"
 
 news:
-  list_url: "/news.html?page={page}"
+  list_url: "/{lang}/news?page={page}"
   list:
     item: ".news-item, .card-news, .list-group-item"
     title: ".title, h4 a, .card-title a"

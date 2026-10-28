@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"bot-istimewa/internal/bpsapi"
+	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -45,12 +46,14 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 		sb.WriteString("📢 *Berita Resmi Statistik (BRS) — BPS Bangka Barat*\n\n")
 
 		// Tarik data rilis BRS live dari Web API BPS Bangka Barat (domain: 1903)
+		itemsFound := false
 		if r.bps != nil {
 			brsRes, err := r.bps.GetPressReleases(ctx, bpsapi.ListParams{
 				Domain: "1903",
 				Page:   1,
 			})
 			if err == nil && len(brsRes.Items) > 0 {
+				itemsFound = true
 				sb.WriteString("✨ *Daftar Rilis BRS Terbaru (Live Portal)*:\n\n")
 				limit := 4
 				if len(brsRes.Items) < limit {
@@ -70,6 +73,28 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 			}
 		}
 
+		// Fallback ke Scraper DataProvider (Priority 2) (§4.2)
+		if !itemsFound && r.scraper != nil {
+			scrapedItems, fresh, err := r.scraper.LatestPressReleases(ctx, "id", 4)
+			if err == nil && len(scrapedItems) > 0 {
+				itemsFound = true
+				sb.WriteString("✨ *Daftar Rilis BRS Terbaru (Portal BPS)*:\n\n")
+				for i, item := range scrapedItems {
+					sb.WriteString(fmt.Sprintf("%d. 📄 *%s*\n", i+1, item.Title))
+					if item.ReleaseDate != nil {
+						sb.WriteString(fmt.Sprintf("   🗓️ Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
+					}
+					if item.FileURL != "" {
+						sb.WriteString(fmt.Sprintf("   📥 Unduh PDF: %s\n", item.FileURL))
+					} else if item.URL != "" {
+						sb.WriteString(fmt.Sprintf("   🔗 Baca: %s\n", item.URL))
+					}
+					sb.WriteString("\n")
+				}
+				sb.WriteString(formatFreshnessFooter(fresh) + "\n\n")
+			}
+		}
+
 		sb.WriteString("🌐 *Portal BRS Bangka Barat*:\nhttps://bangkabaratkab.bps.go.id/id/pressrelease")
 		content = sb.String()
 
@@ -79,12 +104,14 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 		sb.WriteString("📖 *Publikasi Resmi BPS Kabupaten Bangka Barat*\n\n")
 
 		// Tarik katalog buku publikasi live dari Web API BPS Bangka Barat (domain: 1903)
+		pubFound := false
 		if r.bps != nil {
 			pubRes, err := r.bps.GetPublications(ctx, bpsapi.ListParams{
 				Domain: "1903",
 				Page:   1,
 			})
 			if err == nil && len(pubRes.Items) > 0 {
+				pubFound = true
 				sb.WriteString("✨ *Publikasi Terbaru (Live Portal)*:\n\n")
 				limit := 4
 				if len(pubRes.Items) < limit {
@@ -101,6 +128,28 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					}
 					sb.WriteString("\n")
 				}
+			}
+		}
+
+		// Fallback ke Scraper DataProvider (Priority 2) (§4.2)
+		if !pubFound && r.scraper != nil {
+			scrapedPubs, fresh, err := r.scraper.LatestPublications(ctx, "id", 4)
+			if err == nil && len(scrapedPubs) > 0 {
+				pubFound = true
+				sb.WriteString("✨ *Publikasi Terbaru (Portal BPS)*:\n\n")
+				for i, item := range scrapedPubs {
+					sb.WriteString(fmt.Sprintf("%d. 📕 *%s*\n", i+1, item.Title))
+					if item.ReleaseDate != nil {
+						sb.WriteString(fmt.Sprintf("   🗓️ Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
+					}
+					if item.FileURL != "" {
+						sb.WriteString(fmt.Sprintf("   📥 Unduh: %s\n", item.FileURL))
+					} else if item.URL != "" {
+						sb.WriteString(fmt.Sprintf("   🔗 Lihat: %s\n", item.URL))
+					}
+					sb.WriteString("\n")
+				}
+				sb.WriteString(formatFreshnessFooter(fresh) + "\n\n")
 			}
 		}
 
@@ -237,7 +286,32 @@ func (r *BotRouter) HandleInfografikDetail(ctx context.Context, s *UserSession, 
 		}
 	}
 
-	// 2. Fallback ke Google Sheets jika API BPS belum tersedia/kembalikan kosong
+	// 2. Fallback ke Scraper DataProvider (Priority 2) (§4.2)
+	if r.scraper != nil {
+		infoItems, fresh, err := r.scraper.LatestInfographics(ctx, 2)
+		if err == nil && len(infoItems) > 0 {
+			_ = r.sender.SendTextMessage(ctx, p.JID, "🖼️ Menyiapkan infografik terbaru dari portal BPS Bangka Barat... 🚀")
+			for _, item := range infoItems {
+				caption := fmt.Sprintf("📊 *%s*\n%s\n🌐 https://bangkabaratkab.bps.go.id/id/infographic", item.Title, formatFreshnessFooter(fresh))
+				if item.ImageURL != "" {
+					_ = r.sender.SendImageFromURL(ctx, p.JID, item.ImageURL, caption)
+				}
+			}
+
+			navMsg := whatsapp.BuildQuickReplyButtons(
+				"Navigasi Infografik",
+				"Selesai menampilkan infografik dari portal BPS Bangka Barat. Silakan pilih menu berikutnya:",
+				"PST BPS Kabupaten Bangka Barat",
+				[]whatsapp.QuickReplyButton{
+					{ID: "99", DisplayText: "↩️ Menu Sebelumnya (99)"},
+					{ID: "0", DisplayText: "🏠 Menu Utama (0)"},
+				},
+			)
+			return r.sender.SendInteractiveMessage(ctx, p.JID, navMsg)
+		}
+	}
+
+	// 3. Fallback ke Google Sheets jika API BPS dan Scraper belum tersedia
 	noStr := strconv.Itoa(idx)
 	titles, urls, err := r.gsheet.GetInfografik(noStr)
 	if err != nil || len(urls) == 0 {
@@ -284,3 +358,12 @@ func (r *BotRouter) HandleMenu11_TentangBPS(ctx context.Context, s *UserSession,
 
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
+
+func formatFreshnessFooter(f scraper.Freshness) string {
+	msg := fmt.Sprintf("ℹ️ Sumber: bangkabaratkab.bps.go.id · diperbarui %s WIB", f.UpdatedAt.Format("02 Jan 2006 15:04"))
+	if f.Stale {
+		msg += " *(data mungkin belum terbaru, cek langsung di portal)*"
+	}
+	return msg
+}
+

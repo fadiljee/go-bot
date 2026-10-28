@@ -13,6 +13,7 @@ import (
 	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
+	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 
 	"github.com/gofiber/fiber/v2"
@@ -25,12 +26,16 @@ import (
 )
 
 type APIServer struct {
-	app       *fiber.App
-	cfg       *config.Config
-	clientMgr *whatsapp.ClientManager
-	gsheet    *gsheet.Client
-	bps       *bpsapi.Client
-	startTime time.Time
+	app              *fiber.App
+	cfg              *config.Config
+	clientMgr        *whatsapp.ClientManager
+	gsheet           *gsheet.Client
+	bps              *bpsapi.Client
+	scraperRunner    *scraper.Runner
+	scraperStore     *scraper.Store
+	scraperScheduler *scraper.Scheduler
+	scraperBreaker   *scraper.CircuitBreaker
+	startTime        time.Time
 }
 
 func NewAPIServer(cfg *config.Config, clientMgr *whatsapp.ClientManager, gsheetClient *gsheet.Client, bpsClient ...*bpsapi.Client) *APIServer {
@@ -96,6 +101,21 @@ func (s *APIServer) setupRoutes() {
 	bpsGroup.Get("/infographics", s.handleBPSInfographics)
 	bpsGroup.Get("/data", s.handleBPSData)
 	bpsGroup.Post("/cache/clear", s.handleBPSCacheClear)
+
+	// Scraper Route Group (§12)
+	scraperGroup := api.Group("/v1/scraper")
+	scraperGroup.Get("/status", s.handleScraperStatus)
+	scraperGroup.Post("/run", s.handleScraperRun)
+	scraperGroup.Get("/runs", s.handleScraperRuns)
+	scraperGroup.Get("/items", s.handleScraperItems)
+	scraperGroup.Post("/breaker/reset", s.handleScraperBreakerReset)
+}
+
+func (s *APIServer) SetScraper(runner *scraper.Runner, store *scraper.Store, scheduler *scraper.Scheduler, breaker *scraper.CircuitBreaker) {
+	s.scraperRunner = runner
+	s.scraperStore = store
+	s.scraperScheduler = scheduler
+	s.scraperBreaker = breaker
 }
 
 func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
@@ -124,9 +144,18 @@ func (s *APIServer) handleHealth(c *fiber.Ctx) error {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
+	var lastAgeHours float64
+	var breakerOpen bool
+	if s.scraperStore != nil {
+		lastAgeHours, _ = s.scraperStore.GetDataAgeHours(context.Background())
+	}
+	if s.scraperBreaker != nil {
+		breakerOpen, _ = s.scraperBreaker.IsOpen()
+	}
+
 	return c.JSON(fiber.Map{
 		"app":       "BOT ISTIMEWA",
-		"version":   "3.0.0 (Go Native Hardened)",
+		"version":   "3.1.0 (Go Native Hardened)",
 		"agency":    "BPS Kabupaten Bangka Barat",
 		"connected": s.clientMgr.IsLoggedIn,
 		"uptime":    time.Since(s.startTime).String(),
@@ -135,6 +164,8 @@ func (s *APIServer) handleHealth(c *fiber.Ctx) error {
 			"sys_mb":         fmt.Sprintf("%.2f MB", float64(m.Sys)/(1024*1024)),
 			"num_goroutines": runtime.NumGoroutine(),
 		},
+		"scraper_last_success_age_hours": lastAgeHours,
+		"scraper_breaker_open":           breakerOpen,
 	})
 }
 
@@ -517,6 +548,173 @@ func (s *APIServer) handleBPSCacheClear(c *fiber.Ctx) error {
 	})
 }
 
+// Scraper Endpoints (§12)
+
+func (s *APIServer) handleScraperStatus(c *fiber.Ctx) error {
+	if s.scraperStore == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper not initialized",
+		})
+	}
+
+	ctx := c.Context()
+	var lastRunData interface{}
+	if lr, err := s.scraperStore.GetLastRun(ctx); err == nil && lr != nil {
+		lastRunData = lr
+	}
+
+	isOpen := false
+	fails := 0
+	var until *time.Time
+	if s.scraperBreaker != nil {
+		isOpen, fails, until, _ = s.scraperBreaker.Status()
+	}
+
+	counts, _ := s.scraperStore.GetCountsByKind(ctx)
+	ageHours, _ := s.scraperStore.GetDataAgeHours(ctx)
+
+	var nextRun interface{}
+	if s.scraperScheduler != nil {
+		nr := s.scraperScheduler.NextRun()
+		if !nr.IsZero() {
+			nextRun = nr.Format(time.RFC3339)
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"scheduler": fiber.Map{
+			"enabled":  s.cfg.ScraperEnabled,
+			"cron":     s.cfg.ScraperCronSpec,
+			"timezone": s.cfg.ScraperTimezone,
+			"next_run": nextRun,
+		},
+		"last_run": lastRunData,
+		"breaker": fiber.Map{
+			"open":             isOpen,
+			"consecutive_fail": fails,
+			"open_until":       until,
+		},
+		"counts":         counts,
+		"data_age_hours": ageHours,
+	})
+}
+
+func (s *APIServer) handleScraperRun(c *fiber.Ctx) error {
+	if s.scraperRunner == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper runner not initialized",
+		})
+	}
+
+	if s.scraperBreaker != nil {
+		if open, until := s.scraperBreaker.IsOpen(); open {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"success":    false,
+				"error":      "Circuit breaker is open",
+				"open_until": until,
+			})
+		}
+	}
+
+	// Trigger runner asynchronously (§12)
+	go func() {
+		_, _ = s.scraperRunner.RunAll(context.Background(), scraper.TriggerManual)
+	}()
+
+	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
+		"success": true,
+		"message": "Scraper run triggered successfully",
+		"trigger": "manual",
+	})
+}
+
+func (s *APIServer) handleScraperRuns(c *fiber.Ctx) error {
+	if s.scraperStore == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper store not initialized",
+		})
+	}
+
+	limit := c.QueryInt("limit", 20)
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	runs, err := s.scraperStore.GetRuns(c.Context(), limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    runs,
+	})
+}
+
+func (s *APIServer) handleScraperItems(c *fiber.Ctx) error {
+	if s.scraperStore == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper store not initialized",
+		})
+	}
+
+	kindStr := c.Query("kind", string(scraper.KindPressRelease))
+	lang := c.Query("lang", "id")
+	q := c.Query("q")
+	limit := c.QueryInt("limit", 20)
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	var items []scraper.Item
+	var err error
+
+	if q != "" {
+		items, err = s.scraperStore.SearchItems(c.Context(), scraper.Kind(kindStr), q, limit)
+	} else {
+		items, err = s.scraperStore.GetLatestItems(c.Context(), scraper.Kind(kindStr), lang, limit)
+	}
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"kind":    kindStr,
+		"lang":    lang,
+		"data":    items,
+	})
+}
+
+func (s *APIServer) handleScraperBreakerReset(c *fiber.Ctx) error {
+	if s.scraperBreaker == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Circuit breaker not initialized",
+		})
+	}
+
+	s.scraperBreaker.Reset()
+	log.Println("⚡ [SCRAPER] Circuit breaker manually reset by admin via REST API")
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Circuit breaker reset successfully",
+	})
+}
+
 func (s *APIServer) Listen(addr string) error {
 	return s.app.Listen(addr)
 }
@@ -524,3 +722,4 @@ func (s *APIServer) Listen(addr string) error {
 func (s *APIServer) Shutdown() error {
 	return s.app.Shutdown()
 }
+

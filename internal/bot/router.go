@@ -12,6 +12,7 @@ import (
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/locale"
+	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -43,12 +44,17 @@ type BotRouter struct {
 	sender              *whatsapp.Sender
 	gsheet              *gsheet.Client
 	bps                 *bpsapi.Client
+	scraper             scraper.DataProvider
 	sessions            *SessionManager
 	handlerMap          map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error
 	rateLimiter         *RateLimiter
 	adminFailedAttempts map[string]int
 	adminLockedUntil    map[string]time.Time
 	adminMu             sync.Mutex
+}
+
+func (r *BotRouter) SetScraper(p scraper.DataProvider) {
+	r.scraper = p
 }
 
 func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client, bpsClient ...*bpsapi.Client) *BotRouter {

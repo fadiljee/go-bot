@@ -161,42 +161,66 @@ func (r *BotRouter) HandleLayananSub_SearchPrompt(ctx context.Context, s *UserSe
 	return r.sender.SendTextMessage(ctx, p.JID, text)
 }
 
-// fetchBPSTablesForTopic queries BPS Web API for Bangka Barat (domain: 1903) static tables
+// fetchBPSTablesForTopic queries BPS Web API for Bangka Barat (domain: 1903) static tables, falling back to scraper
 func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) string {
-	if r.bps == nil || keyword == "" {
-		return ""
-	}
-	res, err := r.bps.GetStaticTables(ctx, bpsapi.ListParams{
-		Domain:  "1903",
-		Keyword: keyword,
-		Page:    1,
-	})
-	if err != nil || len(res.Items) == 0 {
+	if keyword == "" {
 		return ""
 	}
 
-	var sb strings.Builder
-	sb.WriteString("📑 *Tabel Statistik BPS Bangka Barat (Live Portal)*:\n")
-	limit := 3
-	if len(res.Items) < limit {
-		limit = len(res.Items)
-	}
-	for i := 0; i < limit; i++ {
-		table := res.Items[i]
-		sb.WriteString(fmt.Sprintf("%d. 📊 %s\n", i+1, table.Title))
-		if table.Excel != "" {
-			sb.WriteString(fmt.Sprintf("   📥 Unduh Excel: %s\n", table.Excel))
+	// 1. Try BPS Web API
+	if r.bps != nil {
+		res, err := r.bps.GetStaticTables(ctx, bpsapi.ListParams{
+			Domain:  "1903",
+			Keyword: keyword,
+			Page:    1,
+		})
+		if err == nil && len(res.Items) > 0 {
+			var sb strings.Builder
+			sb.WriteString("📑 *Tabel Statistik BPS Bangka Barat (Live Portal)*:\n")
+			limit := 3
+			if len(res.Items) < limit {
+				limit = len(res.Items)
+			}
+			for i := 0; i < limit; i++ {
+				table := res.Items[i]
+				sb.WriteString(fmt.Sprintf("%d. 📊 %s\n", i+1, table.Title))
+				if table.Excel != "" {
+					sb.WriteString(fmt.Sprintf("   📥 Unduh Excel: %s\n", table.Excel))
+				}
+			}
+			sb.WriteString("🌐 *Katalog Tabel*: https://bangkabaratkab.bps.go.id/id/statistics-table\n\n")
+			return sb.String()
 		}
 	}
-	sb.WriteString("🌐 *Katalog Tabel*: https://bangkabaratkab.bps.go.id/id/statistics-table\n\n")
-	return sb.String()
+
+	// 2. Fallback to Scraper DataProvider (Priority 2) (§4.2)
+	if r.scraper != nil {
+		tables, fresh, err := r.scraper.SearchStaticTables(ctx, keyword, 3)
+		if err == nil && len(tables) > 0 {
+			var sb strings.Builder
+			sb.WriteString("📑 *Tabel Statistik BPS Bangka Barat (Portal BPS)*:\n")
+			for i, table := range tables {
+				sb.WriteString(fmt.Sprintf("%d. 📊 %s\n", i+1, table.Title))
+				if table.FileURL != "" {
+					sb.WriteString(fmt.Sprintf("   📥 Unduh Excel: %s\n", table.FileURL))
+				} else if table.URL != "" {
+					sb.WriteString(fmt.Sprintf("   🔗 Lihat: %s\n", table.URL))
+				}
+			}
+			sb.WriteString(fmt.Sprintf("ℹ️ Sumber: bangkabaratkab.bps.go.id · diperbarui %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			return sb.String()
+		}
+	}
+
+	return ""
 }
 
-// HandleSearchKeyword executes search across BPS Bangka Barat portal and local catalog
+// HandleSearchKeyword executes search across BPS Bangka Barat portal, scraper dataset, and local catalog
 func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	query := strings.TrimSpace(p.Text)
 
 	var sb strings.Builder
+	liveFound := false
 
 	// 1. Live search from BPS Bangka Barat Web API (domain: 1903)
 	if r.bps != nil {
@@ -206,6 +230,7 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 			Page:    1,
 		})
 		if err == nil && len(liveTables.Items) > 0 {
+			liveFound = true
 			sb.WriteString("🌐 *Tabel BPS Bangka Barat (Live Portal)*:\n")
 			limit := 3
 			if len(liveTables.Items) < limit {
@@ -222,7 +247,25 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 		}
 	}
 
-	// 2. Search local dataset / Google Sheet fallback
+	// 2. Fallback to Scraper DataProvider (Priority 2) (§4.2)
+	if !liveFound && r.scraper != nil {
+		tables, fresh, err := r.scraper.SearchStaticTables(ctx, query, 3)
+		if err == nil && len(tables) > 0 {
+			liveFound = true
+			sb.WriteString("🌐 *Tabel BPS Bangka Barat (Portal BPS)*:\n")
+			for _, t := range tables {
+				sb.WriteString(fmt.Sprintf("• 📊 *%s*\n", t.Title))
+				if t.FileURL != "" {
+					sb.WriteString(fmt.Sprintf("  📥 Unduh Excel: %s\n", t.FileURL))
+				} else if t.URL != "" {
+					sb.WriteString(fmt.Sprintf("  🔗 Lihat: %s\n", t.URL))
+				}
+			}
+			sb.WriteString(fmt.Sprintf("ℹ️ Sumber: bangkabaratkab.bps.go.id · diperbarui %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+		}
+	}
+
+	// 3. Search local dataset / Google Sheet fallback (Priority 3)
 	results, _ := r.gsheet.SearchAll(query)
 	formatted := gsheet.FormatSearchResults(query, results)
 	sb.WriteString(formatted)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,6 +16,7 @@ import (
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/locale"
+	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 
 	"go.mau.fi/whatsmeow/types/events"
@@ -60,6 +62,74 @@ func main() {
 	// 5. Initialize Bot Message Router
 	botRouter := bot.NewBotRouter(cfg, clientMgr.Sender, gsheetClient, bpsClient)
 
+	// 5b. Initialize Scraper Components (§6, §10)
+	var scraperStore *scraper.Store
+	var scraperSched *scraper.Scheduler
+	var scraperRunner *scraper.Runner
+	var scraperBreaker *scraper.CircuitBreaker
+
+	if cfg.ScraperEnabled {
+		store, err := scraper.NewStore(cfg.ScraperDBPath)
+		if err != nil {
+			log.Printf("⚠️ Gagal menginisialisasi SQLite scraper store: %v", err)
+		} else {
+			scraperStore = store
+			var enabledKinds []scraper.Kind
+			for _, k := range cfg.ScraperEnabledKinds {
+				enabledKinds = append(enabledKinds, scraper.Kind(k))
+			}
+			scraperCfg := &scraper.Config{
+				Enabled:               cfg.ScraperEnabled,
+				BaseURL:               cfg.ScraperBaseURL,
+				AllowedHosts:          cfg.ScraperAllowedHosts,
+				UserAgent:             cfg.ScraperUserAgent,
+				DBPath:                cfg.ScraperDBPath,
+				SelectorsPath:         cfg.ScraperSelectorsPath,
+				CronSpec:              cfg.ScraperCronSpec,
+				Timezone:              cfg.ScraperTimezone,
+				RunTimeout:            time.Duration(cfg.ScraperRunTimeoutMinutes) * time.Minute,
+				StartupCatchupHours:   cfg.ScraperStartupCatchupHours,
+				ManualCooldownMinutes: cfg.ScraperManualCooldownMinutes,
+				EnabledKinds:          enabledKinds,
+				MinDelayMs:            cfg.ScraperMinDelayMs,
+				JitterMs:              cfg.ScraperJitterMs,
+				HTTPTimeoutSeconds:    cfg.ScraperHTTPTimeoutSeconds,
+				MaxPageBytes:          cfg.ScraperMaxPageBytes,
+				MaxListPages:          cfg.ScraperMaxListPages,
+				MaxRequestsPerRun:     cfg.ScraperMaxRequestsPerRun,
+				RespectRobots:         cfg.ScraperRespectRobots,
+				MaxStaleHours:         cfg.ScraperMaxStaleHours,
+				DataSourceOrder:       cfg.DataSourceOrder,
+				NotifyAdmin:           cfg.ScraperNotifyAdmin,
+				NotifyAfterFailures:   cfg.ScraperNotifyAfterFailures,
+				AppEnv:                cfg.AppEnv,
+			}
+			if valErr := scraperCfg.Validate(); valErr != nil {
+				log.Printf("⚠️ Validasi config scraper gagal: %v", valErr)
+			} else {
+				selectorsCfg, selErr := scraper.LoadSelectors(cfg.ScraperSelectorsPath, enabledKinds)
+				if selErr != nil {
+					log.Printf("⚠️ Gagal memuat selector scraper YAML: %v", selErr)
+				} else {
+					scraperBreaker = scraper.NewCircuitBreaker(scraperStore)
+					robotsMgr := scraper.NewRobotsManager(&http.Client{Timeout: 10 * time.Second}, cfg.ScraperBaseURL, cfg.ScraperUserAgent, cfg.ScraperRespectRobots)
+					fetcher := scraper.NewFetcher(scraperCfg, robotsMgr)
+					scraperRunner = scraper.NewRunner(scraperCfg, scraperStore, fetcher, scraperBreaker, selectorsCfg, nil)
+					provider := scraper.NewProvider(scraperStore, cfg.ScraperMaxStaleHours)
+					scraperRunner.SetProvider(provider)
+					scraperSched = scraper.NewScheduler(scraperCfg, scraperRunner, scraperStore)
+					if err := scraperSched.Start(); err != nil {
+						log.Printf("⚠️ Gagal menjalankan scheduler scraper: %v", err)
+					}
+					// Connect scraper provider to bot router
+					botRouter.SetScraper(provider)
+					log.Printf("🕸️ [SCRAPER] Scraper otomatis BPS Bangka Barat aktif (Cron: %s | DB: %s)",
+						cfg.ScraperCronSpec, cfg.ScraperDBPath)
+				}
+			}
+		}
+	}
+
 	botStartTime := time.Now()
 
 	// 6. Register Event Listener
@@ -103,6 +173,9 @@ func main() {
 
 	// 8. Start Fiber REST API Server
 	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient, bpsClient)
+	if scraperRunner != nil && scraperStore != nil {
+		apiServer.SetScraper(scraperRunner, scraperStore, scraperSched, scraperBreaker)
+	}
 	go func() {
 		addr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)
 		log.Printf("🚀 Server Web Dashboard aktif di http://%s", addr)
@@ -123,6 +196,13 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
+	if scraperSched != nil {
+		scraperSched.Stop(shutdownCtx)
+	}
+	if scraperStore != nil {
+		_ = scraperStore.Close()
+	}
+
 	if err := apiServer.Shutdown(); err != nil {
 		log.Printf("⚠️ Gagal mematikan API server: %v", err)
 	}
@@ -134,6 +214,6 @@ func main() {
 	case <-shutdownCtx.Done():
 		log.Println("⏱️ Graceful shutdown timeout.")
 	default:
-		log.Println("👋 BOT ISTIMEWA v3.0 berhasil dimatikan dengan bersih.")
+		log.Println("👋 BOT ISTIMEWA v3.1 berhasil dimatikan dengan bersih.")
 	}
 }
