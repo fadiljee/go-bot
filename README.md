@@ -123,10 +123,10 @@ Buka dan sesuaikan variabel di dalam `.env`:
 ```env
 # Server & Port
 APP_PORT=3000
-API_SECRET_KEY=rahasia_internal_bps_1903
+API_SECRET_KEY=ganti_dengan_token_rahasia_anda
 
 # Keamanan Admin
-ADMIN_TRIGGER_KEYWORD="login admin - 1903"
+ADMIN_TRIGGER_KEYWORD="login admin"
 ADMIN_PASSWORD=ganti_password_admin_yang_kuat
 ADMIN_WHITELIST_NUMBERS=
 
@@ -270,13 +270,13 @@ curl http://localhost:3000/health
 
 **B. Mengambil Seluruh Indikator Strategis (JSON):**
 ```bash
-curl -H "X-API-Key: rahasia_internal_bps_1903" \
+curl -H "X-API-Key: <YOUR_API_SECRET_KEY>" \
   http://localhost:3000/api/v1/indicators
 ```
 
 **C. Mengambil Indikator Inflasi Terkini (Format Plaintext Siap Broadcast):**
 ```bash
-curl -H "X-API-Key: rahasia_internal_bps_1903" \
+curl -H "X-API-Key: <YOUR_API_SECRET_KEY>" \
   "http://localhost:3000/api/v1/indicators/inflasi?format=text"
 ```
 
@@ -290,29 +290,28 @@ curl -H "X-API-Key: rahasia_internal_bps_1903" \
 
 *Sumber*: Berita Resmi Statistik (BRS) BPS Kabupaten Bangka Barat
 *Dokumen Resmi*: September 2026, Inflasi Year on Year (y-on-y) Kabupaten Bangka Barat sebesar 4,49 persen.
-*Unduh PDF*: https://webapi.bps.go.id/download.php?f=...
 ```
 
 **D. Mengambil Layanan Data Statistik (Menu 1) Topik Kemiskinan:**
 ```bash
 # Format JSON (katalog tabel statis & publikasi)
-curl -H "X-API-Key: rahasia_internal_bps_1903" \
+curl -H "X-API-Key: <YOUR_API_SECRET_KEY>" \
   http://localhost:3000/api/v1/layanan-data/sosduk/kemiskinan
 
 # Format Plaintext siap kirim WhatsApp
-curl -H "X-API-Key: rahasia_internal_bps_1903" \
+curl -H "X-API-Key: <YOUR_API_SECRET_KEY>" \
   "http://localhost:3000/api/v1/layanan-data/sosduk/kemiskinan?format=text"
 ```
 
 **E. Memicu Scraping Manual via API:**
 ```bash
-curl -X POST -H "X-API-Key: rahasia_internal_bps_1903" \
+curl -X POST -H "X-API-Key: <YOUR_API_SECRET_KEY>" \
   "http://localhost:3000/api/v1/scraper/run?kind=all"
 ```
 
 **F. Mengirim Broadcast WhatsApp (Blast):**
 ```bash
-curl -X POST -H "X-API-Key: rahasia_internal_bps_1903" \
+curl -X POST -H "X-API-Key: <YOUR_API_SECRET_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
     "recipients": ["628123456789", "628987654321"],
@@ -366,6 +365,53 @@ Uji spesifik alur reservasi konsultasi & notifikasi grup:
 ```bash
 go test -v -run TestConsultationBookingWorkflow ./internal/bot
 ```
+
+---
+
+## Mode Admin WhatsApp & Pengelolaan Narahubung Pakar
+
+Bot dilengkapi dashboard khusus administrator yang dapat diakses langsung melalui chat WhatsApp untuk keperluan pemeliharaan dan pembaruan data:
+
+### 1. Cara Masuk ke Mode Admin
+1. Kirim pesan ke bot WhatsApp dengan kata kunci: `login admin` (atau variasi `login admin - 1903`, `login admin 1903`).
+2. Masukkan password administrator sesuai `ADMIN_PASSWORD` di `.env` (dilindungi sistem *lockout* otomatis jika 3 kali salah).
+
+### 2. Fitur Dashboard Admin
+* **Menu 1: Kelola Narahubung Para Pakar**:
+  - Menampilkan daftar 8 bidang pakar statistik (Sosial Kependudukan, Pertanian, Ekonomi, Distribusi/Inflasi, Sektoral, Khusus, Metodologi, dan Diseminasi).
+  - Admin dapat memperbarui nomor WhatsApp dan nama pakar langsung dari chat:
+    ```text
+    <nomor_bidang> <nomor_wa> <nama_pakar>
+    Contoh: 1 08123456789 Bpk. Rahmat, S.Tr.Stat.
+    ```
+  - Perubahan otomatis disimpan ke database SQLite (`storage/scraper.db`) dan langsung ter-update di REST API (`/api/v1/pakar`).
+* **Menu 2: Status Mesin Scraper & Database Lokal**:
+  - Menampilkan jumlah total item data tersimpan di SQLite per kategori (Tabel Statis, Publikasi, BRS, Berita Kegiatan).
+  - Menampilkan ringkasan eksekusi scraping terakhir (status, pemicu, durasi, jumlah data baru/update).
+* **Menu 3: Manual Scraping On-Demand**:
+  - Memicu mesin scraper secara instan di background untuk menyedot rilis data terbaru dari portal BPS Bangka Barat.
+  - Setelah tuntas (~1 menit), bot otomatis mengirimkan pesan konfirmasi laporan rekap ke WhatsApp admin.
+* **Menu 4: Tautan Google Sheets (Legacy)**:
+  - Menyajikan tautan cadangan spreadsheet pengelolaan data historis.
+* **Menu 0: Keluar dari Mode Admin**.
+
+---
+
+## Keamanan Repositori Publik & Privasi Data
+
+Repositori ini bersifat **Publik (Open Source)** untuk transparansi dan kolaborasi. Seluruh data rahasia dan konfigurasi internal wajib dijaga dengan standar berikut:
+
+1. **JANGAN PERNAH Commit File Kredensial & Database**:
+   - `.env` : Berisi kunci API, password admin, dan token WhatsApp.
+   - `storage/whatsmeow.db` : Berisi kunci sesi enkripsi WhatsApp (*Signal Protocol keys*).
+   - `storage/scraper.db` : Database operasional lokal dan riwayat tiket permohonan PST.
+   - Seluruh file di atas **sudah terdaftar di `.gitignore`** dan tidak boleh di-push ke GitHub.
+2. **Gunakan Template `.env.example`**:
+   - Selalu gunakan `.env.example` untuk mendokumentasikan variabel konfigurasi dengan nilai placeholder (*dummy*).
+3. **Penyembunyian Nomor & Identitas**:
+   - Jangan menyertakan nomor telepon riil, sandi produksi, atau URL webhook pribadi di dalam kode program atau dokumentasi markdown.
+4. **Perlindungan Token & API Secret**:
+   - Selalu ganti `API_SECRET_KEY` dan `ADMIN_PASSWORD` pada lingkungan produksi dengan kombinasi yang kuat dan unik.
 
 ---
 
