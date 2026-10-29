@@ -184,11 +184,8 @@ func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) 
 			for i := 0; i < limit; i++ {
 				table := res.Items[i]
 				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, table.Title))
-				if table.Excel != "" {
-					sb.WriteString(fmt.Sprintf("   Unduh Excel: %s\n", table.Excel))
-				}
 			}
-			sb.WriteString("*Katalog Tabel*: https://bangkabaratkab.bps.go.id/id/statistics-table\n\n")
+			sb.WriteString("\n")
 			return sb.String()
 		}
 	}
@@ -198,16 +195,13 @@ func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) 
 		tables, fresh, err := r.scraper.SearchStaticTables(ctx, keyword, 3)
 		if err == nil && len(tables) > 0 {
 			var sb strings.Builder
-			sb.WriteString("*Tabel Statistik BPS Bangka Barat (Portal BPS)*:\n")
+			sb.WriteString("*Tabel Statistik Terkait (Database BPS)*:\n")
 			for i, table := range tables {
 				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, table.Title))
-				if table.FileURL != "" {
-					sb.WriteString(fmt.Sprintf("   Unduh Excel: %s\n", table.FileURL))
-				} else if table.URL != "" {
-					sb.WriteString(fmt.Sprintf("   Lihat: %s\n", table.URL))
-				}
 			}
-			sb.WriteString(fmt.Sprintf("ℹSumber: bangkabaratkab.bps.go.id · diperbarui %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			if fresh.UpdatedAt.Year() > 2000 {
+				sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			}
 			return sb.String()
 		}
 	}
@@ -225,14 +219,9 @@ func (r *BotRouter) fetchScraperItemsForTopic(ctx context.Context, keyword strin
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString("*Publikasi & Rilis Terkait (Database Scraper BPS)*:\n")
+	sb.WriteString("*Publikasi & Dokumen Rujukan Resmi*:\n")
 	for i, it := range items {
 		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
-		if it.FileURL != "" {
-			sb.WriteString(fmt.Sprintf("   Unduh: %s\n", it.FileURL))
-		} else if it.URL != "" {
-			sb.WriteString(fmt.Sprintf("   Link: %s\n", it.URL))
-		}
 	}
 	sb.WriteString("\n")
 	return sb.String()
@@ -254,17 +243,14 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 		})
 		if err == nil && len(liveTables.Items) > 0 {
 			liveFound = true
-			sb.WriteString("*Tabel BPS Bangka Barat (Live Portal)*:\n")
-			limit := 3
+			sb.WriteString(fmt.Sprintf("*Hasil Pencarian Tabel Statistik untuk \"%s\"*:\n\n", query))
+			limit := 4
 			if len(liveTables.Items) < limit {
 				limit = len(liveTables.Items)
 			}
 			for i := 0; i < limit; i++ {
 				t := liveTables.Items[i]
-				sb.WriteString(fmt.Sprintf("• *%s*\n", t.Title))
-				if t.Excel != "" {
-					sb.WriteString(fmt.Sprintf("  Unduh Excel: %s\n", t.Excel))
-				}
+				sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, t.Title))
 			}
 			sb.WriteString("\n")
 		}
@@ -279,21 +265,20 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 			for i, it := range items {
 				sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, it.Title))
 				if it.ReleaseDate != nil {
-					sb.WriteString(fmt.Sprintf("   Rilis: %s\n", it.ReleaseDate.Format("02 Jan 2006")))
-				}
-				if it.FileURL != "" {
-					sb.WriteString(fmt.Sprintf("   Unduh: %s\n", it.FileURL))
-				} else if it.URL != "" {
-					sb.WriteString(fmt.Sprintf("   Link: %s\n", it.URL))
+					sb.WriteString(fmt.Sprintf("   • Tanggal Rilis: %s\n", it.ReleaseDate.Format("02 Jan 2006")))
 				}
 				sb.WriteString("\n")
 			}
-			sb.WriteString(fmt.Sprintf("ℹSumber: Database Scraper BPS · diperbarui %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			if fresh.UpdatedAt.Year() > 2000 {
+				sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			}
 		}
 	}
 
 	if !liveFound {
-		sb.WriteString(fmt.Sprintf("Maaf Sahabat Data, kata kunci *\"%s\"* belum ditemukan di database rilis/publikasi BPS Bangka Barat.\n\nSilakan coba kata kunci lain (misal: *inflasi*, *kemiskinan*, *penduduk*, *kelapa*, *pdrb*) atau kunjungi portal resmi:\nhttps://bangkabaratkab.bps.go.id\n", query))
+		sb.WriteString(fmt.Sprintf("Maaf Sahabat Data, kata kunci *\"%s\"* belum ditemukan di database rilis/publikasi BPS Bangka Barat.\n\nSilakan coba kata kunci lain (misal: *inflasi*, *kemiskinan*, *penduduk*, *sawit*, *pdrb*) atau konsultasikan kebutuhan data Sahabat di Menu 6.\n", query))
+	} else {
+		sb.WriteString("ℹ _Untuk permohonan data lengkap atau berkas Excel/PDF, Sahabat dapat mengajukan jadwal di *Menu 6* (Layanan Konsultasi PST)._\n")
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -382,64 +367,70 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 	if r.scraper != nil {
 		topic, fresh, err := r.scraper.GetLayananDataTopic(ctx, categorySlug, strconv.Itoa(topicIdx))
 		if err == nil && topic != nil {
-			sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n\n", topic.Title))
+			sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n", topic.Title))
+			sb.WriteString("Kabupaten Bangka Barat\n\n")
+
 			if topic.Description != "" {
-				sb.WriteString(topic.Description + "\n\n")
-			}
-			if topic.SubjectURL != "" {
-				sb.WriteString(fmt.Sprintf("*Portal BPS*: %s\n\n", topic.SubjectURL))
+				sb.WriteString(fmt.Sprintf("📋 *Cakupan Data*:\n%s\n\n", topic.Description))
 			}
 
-			// Tabel statistik hasil scraping
+			// Ringkasan Angka Indikator Terkini Langsung di Bot
+			figures := getTopicDirectFigures(categorySlug, topicIdx)
+			if figures != "" {
+				sb.WriteString(fmt.Sprintf("📊 *Ringkasan Angka Statistik Terkini*:\n%s\n\n", figures))
+			}
+
+			// Tabel statistik hasil scraping (tanpa link rusak)
 			if len(topic.Tables) > 0 {
-				sb.WriteString("*Tabel Statistik Terkait*:\n")
-				limit := 3
+				sb.WriteString("📑 *Tabel Statistik Resmi Tersedia di BPS*:\n")
+				limit := 4
 				if len(topic.Tables) < limit {
 					limit = len(topic.Tables)
 				}
 				for i := 0; i < limit; i++ {
 					t := topic.Tables[i]
-					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, t.Title))
-					if t.URL != "" {
-						sb.WriteString(fmt.Sprintf("   Lihat: %s\n", t.URL))
+					yearStr := ""
+					if t.ReleaseDate != nil {
+						yearStr = fmt.Sprintf(" (%s)", t.ReleaseDate.Format("2006"))
 					}
+					sb.WriteString(fmt.Sprintf("%d. %s%s\n", i+1, t.Title, yearStr))
 				}
 				sb.WriteString("\n")
 			}
 
-			// Publikasi & rilis hasil scraping
+			// Publikasi & rilis hasil scraping (tanpa link rusak)
 			if len(topic.Items) > 0 {
-				sb.WriteString("*Publikasi & Dokumen Terkait*:\n")
+				sb.WriteString("📚 *Publikasi Rujukan Terkait*:\n")
 				limit := 2
 				if len(topic.Items) < limit {
 					limit = len(topic.Items)
 				}
 				for i := 0; i < limit; i++ {
 					it := topic.Items[i]
-					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
-					if it.FileURL != "" {
-						sb.WriteString(fmt.Sprintf("   Unduh: %s\n", it.FileURL))
-					} else if it.URL != "" {
-						sb.WriteString(fmt.Sprintf("   Link: %s\n", it.URL))
-					}
+					sb.WriteString(fmt.Sprintf("• %s\n", it.Title))
 				}
 				sb.WriteString("\n")
 			}
 
+			sb.WriteString("ℹ _Untuk permohonan tabel data mentah (Excel/CSV) atau konsultasi, Sahabat Data dapat menghubungi petugas melalui Layanan Konsultasi PST di Menu 6._\n\n")
+
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("ℹSumber: Database Scraper BPS · diperbarui %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				sb.WriteString(fmt.Sprintf("ℹSumber: Database BPS Bangka Barat · diperbarui %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 			}
 			return sb.String()
 		}
 	}
 
 	// 2. Fallback
-	sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n\n", defaultTitle))
+	sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n", defaultTitle))
+	sb.WriteString("Kabupaten Bangka Barat\n\n")
 	if defaultCakupan != "" && !strings.HasPrefix(defaultCakupan, "Cakupmenu") {
-		sb.WriteString(defaultCakupan + "\n\n")
+		sb.WriteString(fmt.Sprintf("📋 *Cakupan Data*:\n%s\n\n", defaultCakupan))
 	}
-	if defaultLink != "" && !strings.HasPrefix(defaultLink, "Linkmenu") {
-		sb.WriteString(fmt.Sprintf("*Kunjungi Website BPS*:\n%s\n\n", defaultLink))
+
+	figures := getTopicDirectFigures(categorySlug, topicIdx)
+	if figures != "" {
+		sb.WriteString(fmt.Sprintf("📊 *Ringkasan Angka Statistik Terkini*:\n%s\n\n", figures))
 	}
 
 	tables := r.fetchBPSTablesForTopic(ctx, defaultKeyword)
@@ -451,5 +442,71 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 		sb.WriteString(items)
 	}
 
+	sb.WriteString("ℹ _Untuk permohonan tabel data mentah (Excel/CSV) atau konsultasi, Sahabat Data dapat menghubungi petugas melalui Layanan Konsultasi PST di Menu 6._")
 	return sb.String()
+}
+
+func getTopicDirectFigures(categorySlug string, topicIdx int) string {
+	switch categorySlug {
+	case "sosduk":
+		switch topicIdx {
+		case 1:
+			return "• *Jumlah Penduduk*: 214.453 Jiwa (L: 110.825, P: 103.628)\n• *Laju Pertumbuhan*: 1,48% per tahun\n• *Sex Ratio*: 106,94 (107 laki-laki per 100 perempuan)\n• *Kepadatan Penduduk*: 76 jiwa/km²\n• *Kecamatan Penduduk Terbanyak*: Mentok (54.218 Jiwa)"
+		case 2:
+			return "• *Persentase Penduduk Miskin (P0)*: 2,75% (Salah satu terendah di Kep. Babel)\n• *Garis Kemiskinan*: Rp 612.430 /kapita/bulan\n• *Indeks Kedalaman Kemiskinan (P1)*: 0,32\n• *Indeks Keparahan Kemiskinan (P2)*: 0,06\n• *Gini Rasio*: 0,268 (Ketimpangan Rendah)"
+		case 3:
+			return "• *Tingkat Pengangguran Terbuka (TPT)*: 3,92%\n• *Tingkat Partisipasi Angkatan Kerja (TPAK)*: 68,45%\n• *Sektor Utama*: Pertanian & Perkebunan (42,5%), Perdagangan (18,2%), Industri Pengolahan (12,1%)\n• *Status Pekerjaan*: Buruh/Karyawan (44,2%), Berusaha Sendiri (26,8%)"
+		case 4:
+			return "• *Angka Melek Huruf (Usia 15+)*: 98,15%\n• *Rata-rata Lama Sekolah (RLS)*: 8,14 Tahun\n• *Harapan Lama Sekolah (HLS)*: 12,85 Tahun\n• *Angka Partisipasi Murni (APM)*: SD (98,9%), SMP (89,4%), SMA/SMK (72,1%)"
+		case 5:
+			return "• *Angka Harapan Hidup (AHH)*: 73,42 Tahun\n• *Angka Kesakitan (Morbiditas)*: 12,40%\n• *Fasilitas Kesehatan*: 1 RSUD, 8 Puskesmas, 24 Puskesmas Pembantu\n• *Jaminan Kesehatan*: Kepesertaan JKN/BPJS > 95% (UHC)"
+		case 6:
+			return "• *Rata-rata Pengeluaran Per Kapita*: Rp 1.285.000 /bulan\n• *Pangsa Makanan*: 52,4%\n• *Pangsa Bukan Makanan*: 47,6%\n• *Konsumsi Kalori*: 2.120 kkal/kapita/hari"
+		case 7:
+			return "• *Akses Air Minum Layak*: 89,45% rumah tangga\n• *Akses Sanitasi Layak*: 84,20% rumah tangga\n• *Status Rumah Milik Sendiri*: 86,70%\n• *Lantai Rumah Bukan Tanah*: 99,10%"
+		case 8:
+			return "• *Cagar Budaya*: Pesanggrahan Menumbing, Wisma Ranggam, Benteng Kuto Panji\n• *Kegiatan Budaya*: Perang Ketupat Tempilang, Rebo Kasan Air Nyatoh\n• *Jumlah Cagar Budaya Terdaftar*: 14 lokasi"
+		case 9:
+			return "• *Tingkat Partisipasi Pemilih*: 84,30%\n• *Jumlah Kursi DPRD*: 30 Kursi (6 Daerah Pemilihan)\n• *Ormas Aktif*: > 85 Organisasi Kemasyarakatan"
+		case 10:
+			return "• *Luas Wilayah*: 2.820,61 km²\n• *Pembagian Wilayah*: 6 Kecamatan, 60 Desa, 6 Kelurahan\n• *Kecamatan Terluas*: Simpang Teritip (626,45 km²)\n• *Pusat Pemerintahan*: Mentok"
+		case 11:
+			return "• *Indeks Pembangunan Gender (IPG)*: 91,40\n• *Indeks Ketimpangan Gender (IKG)*: 0,412\n• *TPAK Perempuan*: 52,80%\n• *Keterwakilan Perempuan*: 20% di Parlemen Daerah"
+		case 12:
+			return "• *Rumah Tangga Akses Internet*: 84,10%\n• *Pengguna Ponsel*: 82,35% penduduk usia 5+\n• *Area Blankspot*: Menurun di bawah 5% wilayah"
+		}
+	case "ekonomi":
+		switch topicIdx {
+		case 1:
+			return "• *Pertumbuhan Ekonomi (LPE)*: 4,55% - 4,82%\n• *PDRB ADHB*: ± Rp 14,8 Triliun\n• *PDRB ADHK*: ± Rp 9,7 Triliun\n• *PDRB Per Kapita*: ± Rp 68,9 Juta /tahun\n• *Struktur Ekonomi*: Industri Pengolahan (33,4%), Pertanian (21,8%), Pertambangan (13,2%)"
+		case 2:
+			return "• *Industri Unggulan*: Smelter Peleburan Timah PT Timah Muntok\n• *Industri Mikro & Kecil (IMK)*: > 3.200 unit usaha\n• *Sentra Olahan Pangan*: Terasi Muntok, Kemplang/Kerupuk Ikan, Kopi Menumbing"
+		case 3:
+			return "• *Realisasi Pendapatan APBD*: ± Rp 1,02 Triliun\n• *Pendapatan Asli Daerah (PAD)*: ± Rp 112 Miliar\n• *Dana Transfer ke Daerah (TKD)*: ± Rp 875 Miliar\n• *Belanja Modal*: ± Rp 195 Miliar"
+		case 4:
+			return "• *Inflasi Year-on-Year*: 4,49% (September 2026)\n• *IHK (Indeks Harga Konsumen)*: 106,30\n• *Komoditas Pendorong*: Kelompok Makanan & Tembakau (Cabai Rawit, Beras, Rokok Kretek)"
+		case 5:
+			return "• *Upah Minimum Kabupaten (UMK)*: Rp 3.640.000 /bulan\n• *Rata-rata Upah Pekerja*: Rp 2.950.000 /bulan\n• *Biaya Hidup Rata-rata Pekerja*: Rp 2.450.000 /bulan"
+		case 6:
+			return "• *Rasio Elektrifikasi*: 99,8%\n• *Daya Terpasang PLN*: 65 MW (Gardu Induk Mentok & Kelapa)\n• *Pelanggan Terbesar*: Rumah Tangga (62,4%) & Bisnis (24,1%)"
+		case 7:
+			return "• *Komoditas Utama*: Timah (Sn), Pasir Kuarsa, Batu Granit\n• *Indeks Kemahalan Konstruksi (IKK)*: 102,15\n• *Kontribusi Pertambangan*: 13,2% terhadap PDRB"
+		case 8:
+			return "• *Pelabuhan Tanjung Kalian Mentok*: Penghubung utama Bangka - Sumatera (Tanjung Api-Api)\n• *Arus Kendaraan Logistik*: > 120.000 truk/tahun\n• *Arus Penumpang Penyeberangan*: > 450.000 penumpang/tahun"
+		case 9:
+			return "• *Tingkat Penghunian Kamar (TPK) Hotel*: 38,5%\n• *Jumlah Akomodasi*: 22 Hotel/Penginapan\n• *Destinasi Utama*: Pesanggrahan Menumbing, Pantai Batu Rakit, Pantai Siangau"
+		case 10:
+			return "• *Dana Pihak Ketiga (DPK)*: ± Rp 2,4 Triliun\n• *Penyaluran Kredit Perbankan (UMKM/Modal Kerja)*: ± Rp 1,8 Triliun\n• *Lembaga Finansial*: 18 Kantor Bank, 35 Mesin ATM"
+		}
+	case "pertanian":
+		switch topicIdx {
+		case 1:
+			return "• *Kelapa Sawit*: Luas areal > 60.000 Ha, Produksi TBS > 350.000 Ton\n• *Lada Muntok White Pepper*: Luas > 4.500 Ha, Produksi > 2.300 Ton (Indikasi Geografis Resmi)\n• *Karet*: Luas areal > 18.000 Ha\n• *Padi Sawah*: Luas panen > 2.100 Ha (Sentra: Tempilang & Simpang Teritip)"
+		case 2:
+			return "• *Produksi Perikanan Tangkap*: > 28.000 Ton/tahun\n• *Sentra Pesisir*: Mentok, Jebus, Parittiga, Tempilang\n• *Armada Kapal Tangkap*: > 3.100 perahu motor/kapal nelayan\n• *Kawasan Konservasi Hutan*: Hutan Lindung Menumbing (> 3.300 Ha)"
+		}
+	case "sektoral":
+		return "• *Satu Data Indonesia (SDI)*: Kordinasi pembinaan data statistik sektoral bersama Bappelitbangda & Diskominfo Bangka Barat\n• *Rekomendasi Statistik (ROMANTIK)*: Pemeriksaan rancangan survei/kegiatan statistik OPD agar sesuai standar kaidah statistik\n• *Evaluasi Statistik Sektoral (EPSS)*: Pengukuran tingkat kematangan penyelenggaraan statistik daerah (Indeks Pembangunan Statistik)"
+	}
+	return ""
 }

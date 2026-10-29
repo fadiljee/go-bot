@@ -132,6 +132,18 @@ func (s *APIServer) setupRoutes() {
 	servicesGroup.Get("/", s.handleGetLayananData)
 	servicesGroup.Get("/:category", s.handleGetLayananCategory)
 	servicesGroup.Get("/:category/:topic", s.handleGetLayananTopic)
+
+	// Expert Contacts Route Group (Menu 6: Tanya Para Pakar)
+	pakarGroup := api.Group("/v1/pakar")
+	pakarGroup.Get("/", s.handleGetPakarList)
+	pakarGroup.Get("/:id", s.handleGetPakarByID)
+	pakarGroup.Post("/:id", s.handleUpdatePakar)
+
+	// Alias for English endpoint: /api/v1/experts
+	expertsGroup := api.Group("/v1/experts")
+	expertsGroup.Get("/", s.handleGetPakarList)
+	expertsGroup.Get("/:id", s.handleGetPakarByID)
+	expertsGroup.Post("/:id", s.handleUpdatePakar)
 }
 
 func (s *APIServer) SetScraper(runner *scraper.Runner, store *scraper.Store, scheduler *scraper.Scheduler, breaker *scraper.CircuitBreaker, provider ...scraper.DataProvider) {
@@ -1037,6 +1049,102 @@ func (s *APIServer) handleGetLayananTopic(c *fiber.Ctx) error {
 		"success":   true,
 		"freshness": freshness,
 		"data":      topic,
+	})
+}
+
+func (s *APIServer) handleGetPakarList(c *fiber.Ctx) error {
+	p := s.getProvider()
+	if p == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "DataProvider not initialized",
+		})
+	}
+	contacts, err := p.GetExpertContacts(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    contacts,
+	})
+}
+
+func (s *APIServer) handleGetPakarByID(c *fiber.Ctx) error {
+	p := s.getProvider()
+	if p == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "DataProvider not initialized",
+		})
+	}
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil || id < 1 || id > 8 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "ID bidang tidak valid (1-8)",
+		})
+	}
+	contact, err := p.GetExpertContact(c.Context(), id)
+	if err != nil || contact == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"error":   "Kontak pakar tidak ditemukan",
+		})
+	}
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    contact,
+	})
+}
+
+type updatePakarReq struct {
+	Name  string `json:"name"`
+	Phone string `json:"phone"`
+}
+
+func (s *APIServer) handleUpdatePakar(c *fiber.Ctx) error {
+	p := s.getProvider()
+	if p == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "DataProvider not initialized",
+		})
+	}
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil || id < 1 || id > 8 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "ID bidang tidak valid (1-8)",
+		})
+	}
+	var req updatePakarReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "Format request tidak valid",
+		})
+	}
+	if req.Phone == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "Nomor telepon/WA wajib diisi",
+		})
+	}
+	if err := p.UpdateExpertContact(c.Context(), id, req.Name, req.Phone); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	updated, _ := p.GetExpertContact(c.Context(), id)
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Kontak pakar berhasil diperbarui",
+		"data":    updated,
 	})
 }
 

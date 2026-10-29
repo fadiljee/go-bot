@@ -217,10 +217,19 @@ Kirimkan API key pada setiap request melalui salah satu metode berikut:
 | `GET` | `/api/v1/services/data/:category/:topic` | Perlu | Alias bahasa Inggris untuk `/api/v1/layanan-data/:category/:topic`. |
 
 *Parameter Query Khusus Layanan Data:*
-* `format=text`: Mengembalikan format teks pesan WhatsApp berisi daftar tabel statis dan publikasi terkait lengkap dengan tautan portal BPS.
+* `format=text`: Mengembalikan format teks pesan WhatsApp berisi ringkasan angka statistik dan tabel terkait siap kirim.
 * `limit=<n>`: Batas jumlah tabel/publikasi per topik (default: 5).
 
-#### D. Pengelolaan & Kontrol Web Scraper (`/api/v1/scraper`)
+#### D. Narahubung Para Pakar (Menu 6 & Mode Admin)
+| Method | Endpoint | Auth | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/v1/pakar` | Perlu | Mengambil daftar lengkap narahubung 8 bidang pakar statistik dari database SQLite. |
+| `GET` | `/api/v1/pakar/:id` | Perlu | Mengambil detail 1 narahubung pakar berdasarkan ID bidang (`1`-`8`). |
+| `POST` | `/api/v1/pakar/:id` | Perlu | Memperbarui nama dan nomor WhatsApp pakar bidang tertentu (`{"name": "...", "phone": "..."}`). |
+| `GET` | `/api/v1/experts` | Perlu | Alias bahasa Inggris untuk `/api/v1/pakar`. |
+| `GET` | `/api/v1/experts/:id` | Perlu | Alias bahasa Inggris untuk `/api/v1/pakar/:id`. |
+
+#### E. Pengelolaan & Kontrol Web Scraper (`/api/v1/scraper`)
 | Method | Endpoint | Auth | Deskripsi |
 | :--- | :--- | :---: | :--- |
 | `GET` | `/api/v1/scraper/status` | Perlu | Status scraper, umur data (hours), jumlah item per kind, status circuit breaker, dan jadwal run berikutnya. |
@@ -229,13 +238,13 @@ Kirimkan API key pada setiap request melalui salah satu metode berikut:
 | `GET` | `/api/v1/scraper/items` | Perlu | Mengambil daftar item hasil scraping di database SQLite (`?kind=...&lang=id&limit=20`). |
 | `POST` | `/api/v1/scraper/breaker/reset` | Perlu | Mereset status circuit breaker scraper secara manual jika sedang terbuka (*open*). |
 
-#### E. Broadcast & Manajemen Cache (`/api/v1`)
+#### F. Broadcast & Manajemen Cache (`/api/v1`)
 | Method | Endpoint | Auth | Deskripsi |
 | :--- | :--- | :---: | :--- |
 | `POST` | `/api/v1/blast` | Perlu | Mengirimkan pesan siaran massal (*broadcast blast*) asynchronous dengan delay acak anti-banned. |
 | `POST` | `/api/v1/cache/clear` | Perlu | Membersihkan in-memory cache data di server. |
 
-#### F. BPS Web API Gateway / Proxy (`/api/v1/bps`)
+#### G. BPS Web API Gateway / Proxy (`/api/v1/bps`)
 Gateway proxy terintegrasi ke BPS Web API resmi (`domain: 1903` Bangka Barat):
 | Method | Endpoint | Auth | Deskripsi |
 | :--- | :--- | :---: | :--- |

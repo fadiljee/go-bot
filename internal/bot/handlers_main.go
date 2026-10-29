@@ -154,10 +154,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 
 		log.Printf("[ADMIN AUTH] Admin %s berhasil login", phone)
 		s.CurrentState = StateAdminLoggedIn
-		err := r.SendAdminDashboard(ctx, s, p)
-		// Auto-expire admin session back to normal state
-		s.ResetToRoot()
-		return err
+		return r.SendAdminDashboard(ctx, s, p)
 	}
 
 	// Password wrong
@@ -188,31 +185,22 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("Password admin salah! Percobaan %d/%d.\nKetik *0* untuk membatalkan dan kembali ke menu utama.", attempts, maxRetry))
 }
 
-// SendAdminDashboard displays the full 8 database management links for administrators
+// SendAdminDashboard displays the full admin panel options
 func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	adminText := fmt.Sprintf("*PANEL ADMIN BOT ISTIMEWA*\n\n" +
-		"Selamat datang di Panel Admin BPS Kabupaten Bangka Barat.\n" +
-		"Berikut tautan pengelolaan database Google Sheets:\n\n" +
-		"*1.* %s\n\n" +
-		"*2.* %s\n\n" +
-		"*3.* %s\n\n" +
-		"*4.* %s\n\n" +
-		"*5.* %s\n\n" +
-		"*6.* %s\n\n" +
-		"*7.* %s\n\n" +
-		"*8.* %s\n\n" +
+	s.CurrentState = StateAdminLoggedIn
+	adminText := "*PANEL KENDALI ADMIN — BOT ISTIMEWA BPS*\n\n" +
+		"Halo Admin BPS Kabupaten Bangka Barat. Silakan pilih menu pengelolaan:\n\n" +
+		"*1.* 👥 *Kelola Narahubung Para Pakar (SQLite)*\n" +
+		"     _Lihat & ubah nomor WhatsApp / nama penanggung jawab 8 bidang pakar._\n\n" +
+		"*2.* ⚙ *Status Scraper & Usia Data*\n" +
+		"     _Cek jumlah data di database, usia data scraper, dan circuit breaker._\n\n" +
+		"*3.* 🔄 *Jalankan Scraping Manual BPS Sekarang*\n" +
+		"     _Memicu scraping on-demand pembaruan data publikasi, rilis & tabel._\n\n" +
+		"*4.* 📊 *Tautan Database Google Sheets Legacy*\n" +
+		"     _Akses link spreadsheet internal (1-8)._\n\n" +
 		"───────────────────────────\n" +
-		"*Ketik angka (1-8)* untuk mengambil link database tertentu.\n" +
-		"*Ketik 0* untuk keluar dari Mode Admin dan kembali ke Menu Utama.",
-		locale.T("menuAdmin1"),
-		locale.T("menuAdmin2"),
-		locale.T("menuAdmin3"),
-		locale.T("menuAdmin4"),
-		locale.T("menuAdmin5"),
-		locale.T("menuAdmin6"),
-		locale.T("menuAdmin7"),
-		locale.T("menuAdmin8"),
-	)
+		"*Ketik angka (1-4)* untuk memilih menu.\n" +
+		"*Ketik 0* untuk keluar dari Mode Admin dan kembali ke Menu Utama."
 	return r.sender.SendTextMessage(ctx, p.JID, adminText)
 }
 

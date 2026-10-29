@@ -131,3 +131,50 @@ func TestStore_BreakerPersistence(t *testing.T) {
 		t.Errorf("mismatch: fails=%d, until=%v, reason=%s", fails, until, reason)
 	}
 }
+
+func TestStore_ExpertContacts(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "store_pakar_*")
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	store, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// 1. Verify default seed (8 contacts)
+	contacts, err := store.GetExpertContacts(ctx)
+	if err != nil {
+		t.Fatalf("GetExpertContacts failed: %v", err)
+	}
+	if len(contacts) != 8 {
+		t.Fatalf("expected 8 seeded expert contacts, got %d", len(contacts))
+	}
+
+	// 2. Fetch specific bidang
+	pakar1, err := store.GetExpertContactByBidang(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetExpertContactByBidang(1) failed: %v", err)
+	}
+	if pakar1.BidangID != 1 {
+		t.Errorf("expected bidang 1, got %d", pakar1.BidangID)
+	}
+
+	// 3. Update expert contact
+	err = store.UpdateExpertContact(ctx, 1, "Bpk. Rahmat, S.Tr.Stat.", "628123456789")
+	if err != nil {
+		t.Fatalf("UpdateExpertContact failed: %v", err)
+	}
+
+	updated, err := store.GetExpertContactByBidang(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetExpertContactByBidang(1) after update failed: %v", err)
+	}
+	if updated.PakarName != "Bpk. Rahmat, S.Tr.Stat." || updated.Phone != "628123456789" {
+		t.Errorf("expected updated name/phone, got %s / %s", updated.PakarName, updated.Phone)
+	}
+}
+

@@ -137,9 +137,53 @@ func (s *Store) migrate() error {
 		created_at     TEXT NOT NULL
 	);
 	CREATE INDEX IF NOT EXISTS idx_consultation_created ON consultation_bookings(created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS expert_contacts (
+		id             INTEGER PRIMARY KEY AUTOINCREMENT,
+		bidang_id      INTEGER UNIQUE NOT NULL,
+		bidang_title   TEXT NOT NULL,
+		pakar_name     TEXT NOT NULL,
+		phone          TEXT NOT NULL,
+		description    TEXT NOT NULL,
+		updated_at     TEXT NOT NULL
+	);
+	CREATE INDEX IF NOT EXISTS idx_expert_bidang ON expert_contacts(bidang_id);
 	`
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+
+	return s.seedDefaultExpertContacts()
+}
+
+func (s *Store) seedDefaultExpertContacts() error {
+	defaultPakars := []struct {
+		bidangID    int
+		bidangTitle string
+		pakarName   string
+		phone       string
+		description string
+	}{
+		{1, "Statistik Sosial Kependudukan", "Pakar Sosial Kependudukan BPS", "6282164302643", "Konsultasi data kependudukan, kemiskinan, ketenagakerjaan, pendidikan, dan kesehatan."},
+		{2, "Statistik Pertanian", "Pakar Pertanian & Perkebunan BPS", "6282164302643", "Konsultasi data komoditas kelapa sawit, lada Muntok White Pepper, karet, dan perikanan."},
+		{3, "Statistik Ekonomi & PDRB", "Pakar Neraca Ekonomi & PDRB BPS", "6282164302643", "Konsultasi data Produk Domestik Regional Bruto (PDRB), pertumbuhan ekonomi daerah, dan industri."},
+		{4, "Distribusi, Harga & KTIP", "Pakar Distribusi & Inflasi BPS", "6282164302643", "Konsultasi data inflasi, Indeks Harga Konsumen (IHK), pariwisata, perdagangan, dan transportasi."},
+		{5, "Statistik Sektoral", "Pakar Statistik Sektoral BPS", "6282164302643", "Konsultasi data sektoral OPD, Satu Data Indonesia (SDI), dan Rekomendasi Statistik (ROMANTIK)."},
+		{6, "Statistik Khusus", "Pakar Statistik Khusus BPS", "6282164302643", "Konsultasi analisis tematik khusus, survei kebutuhan data, dan evaluasi penyelenggaraan statistik sektoral (EPSS)."},
+		{7, "Metodologi Statistik", "Pakar Metodologi Statistik BPS", "6282164302643", "Konsultasi desain sampling, metodologi survei, manajemen kualitas data, dan kerangka sampel."},
+		{8, "Diseminasi & Layanan", "Pakar Diseminasi & Layanan BPS", "6282164302643", "Konsultasi akses publikasi, website BPS, portal PST online, dan perpustakaan statistik."},
+	}
+
+	for _, p := range defaultPakars {
+		query := `
+			INSERT OR IGNORE INTO expert_contacts (bidang_id, bidang_title, pakar_name, phone, description, updated_at)
+			VALUES (?, ?, ?, ?, ?, datetime('now'))
+		`
+		if _, err := s.db.Exec(query, p.bidangID, p.bidangTitle, p.pakarName, p.phone, p.description); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ApplyItems executes a transaction to upsert items and update missed_runs (§9.3).
@@ -613,3 +657,78 @@ func (s *Store) CreateConsultationBooking(ctx context.Context, b *ConsultationBo
 	}
 	return nil
 }
+
+// GetExpertContacts returns all expert contacts sorted by bidang_id.
+func (s *Store) GetExpertContacts(ctx context.Context) ([]ExpertContact, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	query := `
+		SELECT id, bidang_id, bidang_title, pakar_name, phone, description, updated_at
+		FROM expert_contacts
+		ORDER BY bidang_id ASC
+	`
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var contacts []ExpertContact
+	for rows.Next() {
+		var c ExpertContact
+		var upStr string
+		if err := rows.Scan(&c.ID, &c.BidangID, &c.BidangTitle, &c.PakarName, &c.Phone, &c.Description, &upStr); err != nil {
+			return nil, err
+		}
+		c.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", upStr)
+		contacts = append(contacts, c)
+	}
+	return contacts, nil
+}
+
+// GetExpertContactByBidang returns 1 expert contact for a specific bidang_id (1-8).
+func (s *Store) GetExpertContactByBidang(ctx context.Context, bidangID int) (*ExpertContact, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	query := `
+		SELECT id, bidang_id, bidang_title, pakar_name, phone, description, updated_at
+		FROM expert_contacts
+		WHERE bidang_id = ?
+		LIMIT 1
+	`
+	row := s.db.QueryRowContext(ctx, query, bidangID)
+	var c ExpertContact
+	var upStr string
+	if err := row.Scan(&c.ID, &c.BidangID, &c.BidangTitle, &c.PakarName, &c.Phone, &c.Description, &upStr); err != nil {
+		return nil, err
+	}
+	c.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", upStr)
+	return &c, nil
+}
+
+// UpdateExpertContact updates the name and phone number for a specific bidang_id.
+func (s *Store) UpdateExpertContact(ctx context.Context, bidangID int, name, phone string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	query := `
+		UPDATE expert_contacts
+		SET pakar_name = ?, phone = ?, updated_at = datetime('now')
+		WHERE bidang_id = ?
+	`
+	res, err := s.db.ExecContext(ctx, query, name, phone, bidangID)
+	if err != nil {
+		return err
+	}
+	rowsAff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAff == 0 {
+		return fmt.Errorf("pakar bidang %d tidak ditemukan", bidangID)
+	}
+	return nil
+}
+

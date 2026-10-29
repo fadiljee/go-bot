@@ -390,14 +390,14 @@ func (r *BotRouter) HandleKonsultasiPakarList(ctx context.Context, s *UserSessio
 	s.PushState(StateMenu6_Pakar)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "Statistik Sosial Kependudukan", Description: "Kependudukan, Kemiskinan, Pendidikan"},
-		{ID: "2", Title: "Statistik Pertanian", Description: "Perkebunan, Kehutanan, Perikanan"},
-		{ID: "3", Title: "Statistik Ekonomi", Description: "Neraca, PDRB, Industri"},
-		{ID: "4", Title: "Distribusi, Harga & KTIP", Description: "Inflasi, Pariwisata, Perdagangan"},
-		{ID: "5", Title: "Statistik Sektoral", Description: "Data OPD & Rekomendasi Statistik"},
-		{ID: "6", Title: "Statistik Khusus", Description: "Topik data tematik & khusus"},
-		{ID: "7", Title: "Metodologi Statistik", Description: "Desain sampling & pengumpulan data"},
-		{ID: "8", Title: "Diseminasi & Layanan", Description: "Publikasi, website & PST"},
+		{ID: "1", Title: "Statistik Sosial Kependudukan", Description: "Kependudukan, Kemiskinan, Pendidikan, Kesehatan"},
+		{ID: "2", Title: "Statistik Pertanian", Description: "Perkebunan Sawit, Lada, Karet, Perikanan"},
+		{ID: "3", Title: "Statistik Ekonomi & PDRB", Description: "Neraca Ekonomi, PDRB, Industri Manufaktur"},
+		{ID: "4", Title: "Distribusi, Harga & KTIP", Description: "Inflasi, IHK, Pariwisata, Perdagangan"},
+		{ID: "5", Title: "Statistik Sektoral", Description: "Data OPD, Satu Data Indonesia, ROMANTIK"},
+		{ID: "6", Title: "Statistik Khusus", Description: "Analisis Tematik Khusus & EPSS"},
+		{ID: "7", Title: "Metodologi Statistik", Description: "Desain Sampling, Survei & Kualitas Data"},
+		{ID: "8", Title: "Diseminasi & Layanan", Description: "Publikasi, Perpustakaan & Portal PST Online"},
 	}
 
 	introText := "*Pakar Statistik BPS Bangka Barat*\nSilakan pilih bidang kepakaran yang ingin Sahabat konsultasikan:"
@@ -417,28 +417,47 @@ func (r *BotRouter) HandleKonsultasiPakarList(ctx context.Context, s *UserSessio
 }
 
 func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
-	pakars := gsheet.DefaultPakar()
-	var pakar *gsheet.PakarItem
-	noStr := strconv.Itoa(idx)
-	for i := range pakars {
-		if pakars[i].No.String() == noStr {
-			pakar = &pakars[i]
-			break
+	var pakarName, bidangTitle, desc, phone string
+
+	// 1. Ambil kontak pakar langsung dari database SQLite scraper
+	if r.scraper != nil {
+		if c, err := r.scraper.GetExpertContact(ctx, idx); err == nil && c != nil {
+			pakarName = c.PakarName
+			bidangTitle = c.BidangTitle
+			desc = c.Description
+			phone = c.Phone
 		}
 	}
 
-	var pakarText string
-	var pakarImg string
-	if pakar != nil {
-		pakarText = fmt.Sprintf("Perkenalkan Sahabat Data, ini adalah *%s*\n\n%s\n\nBeliau akan membantu menjawab pertanyaan Sahabat Data.\n\nMohon diingat untuk menghubungi beliau hanya pada waktu kerja dan hari kerja yah sobat data \n\nSilakan hubungi melalui link WhatsApp berikut:\n%s", pakar.Nama, pakar.Penjelasan, pakar.Link)
-		pakarImg = pakar.Foto
-	} else {
-		pakarText = fmt.Sprintf("Pakar bidang %d sedang tidak bertugas. Silakan hubungi admin di menu 9.", idx)
+	// 2. Fallback jika database belum siap
+	if pakarName == "" {
+		pakars := gsheet.DefaultPakar()
+		noStr := strconv.Itoa(idx)
+		for i := range pakars {
+			if pakars[i].No.String() == noStr {
+				pakarName = pakars[i].Nama
+				bidangTitle = pakars[i].Nama
+				desc = pakars[i].Penjelasan
+				phone = "6282164302643"
+				break
+			}
+		}
 	}
 
-	if pakarImg != "" {
-		_ = r.sender.SendImageFromURL(ctx, p.JID, pakarImg, "Profil Pakar Statistik")
+	if phone == "" {
+		phone = "6282164302643"
 	}
+	cleanPhone := normalizePhone(phone)
+
+	waLink := fmt.Sprintf("https://wa.me/%s?text=Halo%%20%s,%%20saya%%20ingin%%20konsultasi%%20seputar%%20data%%20statistik%%20Bangka%%20Barat.", cleanPhone, strings.ReplaceAll(pakarName, " ", "%20"))
+
+	pakarText := fmt.Sprintf("*Narahubung Pakar: %s*\n\n"+
+		"👤 *Pakar / Penanggung Jawab*:\n%s\n\n"+
+		"📞 *No. WhatsApp*:\n+%s\n\n"+
+		"📝 *Bidang Konsultasi*:\n%s\n\n"+
+		"💬 *Hubungi via WhatsApp*:\n%s\n\n"+
+		"ℹ _Mohon menghubungi beliau pada hari dan jam kerja kedinasan (Senin - Jumat, 08.00 - 15.30 WIB). Terima kasih!_",
+		bidangTitle, pakarName, cleanPhone, desc, waLink)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Profil Pakar Statistik",

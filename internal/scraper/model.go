@@ -109,6 +109,20 @@ type DataProvider interface {
 	GetLayananDataCategories(ctx context.Context) ([]DataCategory, Freshness, error)
 	GetLayananDataCategory(ctx context.Context, categorySlug string) (*DataCategory, Freshness, error)
 	GetLayananDataTopic(ctx context.Context, categorySlug, topicIdOrSlug string) (*DataTopic, Freshness, error)
+	GetExpertContacts(ctx context.Context) ([]ExpertContact, error)
+	GetExpertContact(ctx context.Context, bidangID int) (*ExpertContact, error)
+	UpdateExpertContact(ctx context.Context, bidangID int, name, phone string) error
+}
+
+// ExpertContact represents a statistical subject-matter expert contact.
+type ExpertContact struct {
+	ID          int       `json:"id"`
+	BidangID    int       `json:"bidang_id"`
+	BidangTitle string    `json:"bidang_title"`
+	PakarName   string    `json:"pakar_name"`
+	Phone       string    `json:"phone"`
+	Description string    `json:"description"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // ConsultationBooking represents a consultation schedule request from WhatsApp bot users.

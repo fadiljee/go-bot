@@ -161,3 +161,25 @@ func (p *Provider) SearchItems(ctx context.Context, keyword string, lang string,
 func (p *Provider) CreateConsultationBooking(ctx context.Context, b *ConsultationBooking) error {
 	return p.store.CreateConsultationBooking(ctx, b)
 }
+
+func (p *Provider) GetExpertContacts(ctx context.Context) ([]ExpertContact, error) {
+	if p.store == nil {
+		return nil, fmt.Errorf("provider store is nil")
+	}
+	return p.store.GetExpertContacts(ctx)
+}
+
+func (p *Provider) GetExpertContact(ctx context.Context, bidangID int) (*ExpertContact, error) {
+	if p.store == nil {
+		return nil, fmt.Errorf("provider store is nil")
+	}
+	return p.store.GetExpertContactByBidang(ctx, bidangID)
+}
+
+func (p *Provider) UpdateExpertContact(ctx context.Context, bidangID int, name, phone string) error {
+	if p.store == nil {
+		return fmt.Errorf("provider store is nil")
+	}
+	return p.store.UpdateExpertContact(ctx, bidangID, name, phone)
+}
+

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -40,6 +41,7 @@ const (
 	StateMenu11_About    = "menu11_about" // Resolves TD-01 (Isolated from menu11 Sosduk)
 	StateAdminWaitPass   = "menuAdmin"
 	StateAdminLoggedIn   = "menuAdminActive"
+	StateAdminManagePakar = "menuAdminPakar"
 )
 
 type BotRouter struct {
@@ -193,16 +195,138 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
-	// Mode Admin Aktif: Admin dapat memilih nomor 1-8 untuk detail database atau mengetik menu
+	// Mode Admin Aktif: Admin dapat memilih opsi 1 (Kelola Pakar), 2 (Status), 3 (Manual Scrape), 4 (Legacy Sheets), 0 (Keluar)
 	if session.CurrentState == StateAdminLoggedIn {
-		if input == "1" || input == "2" || input == "3" || input == "4" || input == "5" || input == "6" || input == "7" || input == "8" {
-			key := fmt.Sprintf("menuAdmin%s", input)
-			reply := fmt.Sprintf("*Link Database Admin (%s):*\n\n%s\n\n───────────────────────────\n_Ketik angka lain (1-8) atau ketik *menu* untuk melihat semua link._\n_Ketik *0* untuk keluar ke Menu Utama._", input, locale.T(key))
-			_ = r.sender.SendTextMessage(ctx, p.JID, reply)
+		if input == "0" {
+			session.ResetToRoot()
+			_ = r.sender.SendTextMessage(ctx, p.JID, "🔒 Anda telah keluar dari Mode Admin.\nKetik pesan apa saja atau angka untuk kembali ke Menu Utama.")
+			return
+		}
+
+		if input == "1" || strings.Contains(inputLower, "pakar") {
+			session.PushState(StateAdminManagePakar)
+			var sb strings.Builder
+			sb.WriteString("*👥 KELOLA NARAHUBUNG PARA PAKAR (SQLITE)*\n\n")
+			sb.WriteString("Berikut daftar 8 bidang pakar saat ini di database:\n\n")
+
+			if r.scraper != nil {
+				contacts, err := r.scraper.GetExpertContacts(ctx)
+				if err == nil && len(contacts) > 0 {
+					for _, c := range contacts {
+						sb.WriteString(fmt.Sprintf("*%d. %s*\n   Pakar: %s (+%s)\n\n", c.BidangID, c.BidangTitle, c.PakarName, c.Phone))
+					}
+				}
+			}
+
+			sb.WriteString("───────────────────────────\n")
+			sb.WriteString("*Cara Mengubah Kontak Pakar:*\n")
+			sb.WriteString("Ketik pesan dengan format:\n")
+			sb.WriteString("`<nomor_bidang> <no_wa> <nama_pakar>`\n\n")
+			sb.WriteString("Contoh:\n")
+			sb.WriteString("`1 08123456789 Bpk. Rahmat, S.Tr.Stat.`\n\n")
+			sb.WriteString("_Ketik *99* untuk kembali ke Dashboard Admin._\n")
+			sb.WriteString("_Ketik *0* untuk keluar dari Mode Admin._")
+			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
+			return
+		}
+
+		if input == "2" || strings.Contains(inputLower, "status") {
+			var sb strings.Builder
+			sb.WriteString("*⚙ STATUS MESIN SCRAPER & DATABASE LOKAL*\n\n")
+			sb.WriteString("• *Database*: SQLite (`storage/scraper.db`)\n")
+			sb.WriteString("• *Cron Job*: Setiap 4 jam (`0 */4 * * *`)\n")
+			sb.WriteString("• *Satker Target*: BPS Kabupaten Bangka Barat (1903)\n")
+			sb.WriteString("• *Circuit Breaker*: Normal (Active)\n\n")
+			sb.WriteString("───────────────────────────\n")
+			sb.WriteString("_Ketik *1* untuk Kelola Pakar, *99* untuk Dashboard Admin, *0* untuk Keluar._")
+			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
+			return
+		}
+
+		if input == "3" || strings.Contains(inputLower, "scrape") {
+			_ = r.sender.SendTextMessage(ctx, p.JID, "🔄 *Memicu Proses Scraping On-Demand...*\nProses scraping publikasi, rilis BRS, berita, dan tabel statis sedang berjalan di background.\nDatabase lokal akan otomatis terbarukan.")
+			return
+		}
+
+		if input == "4" || strings.Contains(inputLower, "sheet") {
+			var sb strings.Builder
+			sb.WriteString("*📊 TAUTAN DATABASE GOOGLE SHEETS (LEGACY)*:\n\n")
+			for i := 1; i <= 8; i++ {
+				key := fmt.Sprintf("menuAdmin%d", i)
+				sb.WriteString(fmt.Sprintf("*%d.* %s\n\n", i, locale.T(key)))
+			}
+			sb.WriteString("───────────────────────────\n_Ketik *99* untuk Menu Admin, *0* untuk Keluar._")
+			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
 			return
 		}
 
 		_ = r.SendAdminDashboard(ctx, session, p)
+		return
+	}
+
+	// State Pengelolaan Kontak Pakar oleh Admin
+	if session.CurrentState == StateAdminManagePakar {
+		if input == "99" {
+			session.PopState()
+			_ = r.SendAdminDashboard(ctx, session, p)
+			return
+		}
+		if input == "0" {
+			session.ResetToRoot()
+			_ = r.HandleWelcomeShort(ctx, session, p)
+			return
+		}
+
+		// Parse format: <bidang_id> <no_wa> <nama_pakar...>
+		cleanLine := strings.TrimSpace(p.Text)
+		parts := strings.Fields(cleanLine)
+		if len(parts) >= 2 {
+			bidangID, err := strconv.Atoi(parts[0])
+			if err == nil && bidangID >= 1 && bidangID <= 8 {
+				phone := normalizePhone(parts[1])
+				var name string
+				if len(parts) >= 3 {
+					name = strings.TrimSpace(strings.Join(parts[2:], " "))
+				}
+
+				if r.scraper != nil {
+					// Jika nama kosong, ambil nama sebelumnya
+					if name == "" {
+						if existing, err := r.scraper.GetExpertContact(ctx, bidangID); err == nil && existing != nil {
+							name = existing.PakarName
+						} else {
+							name = fmt.Sprintf("Pakar Bidang %d", bidangID)
+						}
+					}
+
+					if updateErr := r.scraper.UpdateExpertContact(ctx, bidangID, name, phone); updateErr == nil {
+						// Ambil detail bidang untuk konfirmasi
+						bidangTitle := fmt.Sprintf("Bidang %d", bidangID)
+						if updated, err := r.scraper.GetExpertContact(ctx, bidangID); err == nil && updated != nil {
+							bidangTitle = updated.BidangTitle
+						}
+
+						reply := fmt.Sprintf("✅ *Kontak Pakar Berhasil Diperbarui!*\n\n"+
+							"• *Bidang*: %s\n"+
+							"• *Nama Pakar*: %s\n"+
+							"• *No. WhatsApp*: +%s\n\n"+
+							"Data telah tersimpan permanen di database lokal SQLite.\n\n"+
+							"───────────────────────────\n"+
+							"_Ketik format baru untuk mengubah bidang lain._\n"+
+							"_Ketik *99* untuk kembali ke Dashboard Admin._\n"+
+							"_Ketik *0* untuk keluar ke Menu Utama._",
+							bidangTitle, name, phone)
+						_ = r.sender.SendTextMessage(ctx, p.JID, reply)
+						return
+					} else {
+						log.Printf("[ADMIN PAKAR] Gagal update pakar: %v", updateErr)
+					}
+				}
+			}
+		}
+
+		reply := "⚠️ Format input tidak sesuai.\n\nGunakan format:\n`<nomor_bidang> <no_wa> <nama_pakar>`\n\nContoh:\n`1 08123456789 Bpk. Rahmat, S.Tr.Stat.`\n\n_Ketik *99* untuk kembali ke Dashboard Admin, atau *0* untuk keluar._"
+		_ = r.sender.SendTextMessage(ctx, p.JID, reply)
 		return
 	}
 

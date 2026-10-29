@@ -45,55 +45,28 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 	case 1:
 		title = "Berita Resmi Statistik (BRS)"
 		var sb strings.Builder
-		sb.WriteString("*Berita Resmi Statistik (BRS) — BPS Bangka Barat*\n\n")
+		sb.WriteString("*Berita Resmi Statistik (BRS) — BPS Kabupaten Bangka Barat*\n\n")
+		sb.WriteString("Rilis resmi indikator strategis dan sosial-ekonomi terkini:\n\n")
 
-		// Tarik data rilis BRS live dari Web API BPS Bangka Barat (domain: 1903)
+		// 1. Coba ambil dari database Scraper lokal SQLite (Priority 1)
 		itemsFound := false
-		if r.bps != nil {
-			brsRes, err := r.bps.GetPressReleases(ctx, bpsapi.ListParams{
-				Domain: "1903",
-				Page:   1,
-			})
-			if err == nil && len(brsRes.Items) > 0 {
-				itemsFound = true
-				sb.WriteString("*Daftar Rilis BRS Terbaru (Live Portal)*:\n\n")
-				limit := 4
-				if len(brsRes.Items) < limit {
-					limit = len(brsRes.Items)
-				}
-				for i := 0; i < limit; i++ {
-					item := brsRes.Items[i]
-					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, item.Title))
-					if item.RlDate != "" {
-						sb.WriteString(fmt.Sprintf("   Rilis: %s\n", item.RlDate))
-					}
-					if item.Pdf != "" {
-						sb.WriteString(fmt.Sprintf("   Unduh PDF: %s\n", item.Pdf))
-					}
-					sb.WriteString("\n")
-				}
-			}
-		}
-
-		// Fallback ke Scraper DataProvider (Priority 2) (§4.2)
-		if !itemsFound && r.scraper != nil {
+		if r.scraper != nil {
 			scrapedItems, fresh, err := r.scraper.LatestPressReleases(ctx, "id", 4)
 			if err == nil && len(scrapedItems) > 0 {
 				itemsFound = true
-				sb.WriteString("*Daftar Rilis BRS Terbaru (Portal BPS)*:\n\n")
 				for i, item := range scrapedItems {
 					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, item.Title))
 					if item.ReleaseDate != nil {
-						sb.WriteString(fmt.Sprintf("   Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
+						sb.WriteString(fmt.Sprintf("   • Tanggal Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
 					}
-					if item.FileURL != "" {
-						sb.WriteString(fmt.Sprintf("   Unduh PDF: %s\n", item.FileURL))
-					} else if item.URL != "" {
-						sb.WriteString(fmt.Sprintf("   Baca: %s\n", item.URL))
+					if item.Abstract != "" {
+						sb.WriteString(fmt.Sprintf("   • Ringkasan: %s\n", item.Abstract))
 					}
 					sb.WriteString("\n")
 				}
-				sb.WriteString(formatFreshnessFooter(fresh) + "\n\n")
+				if fresh.UpdatedAt.Year() > 2000 {
+					sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				}
 
 				// Kirim gambar rilis teratas jika tersedia
 				if len(scrapedItems) > 0 && scrapedItems[0].ImageURL != "" {
@@ -103,24 +76,78 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 			}
 		}
 
-		sb.WriteString("*Portal BRS Bangka Barat*:\nhttps://bangkabaratkab.bps.go.id/id/pressrelease")
+		// 2. Fallback ke Web API jika scraper belum siap
+		if !itemsFound && r.bps != nil {
+			brsRes, err := r.bps.GetPressReleases(ctx, bpsapi.ListParams{
+				Domain: "1903",
+				Page:   1,
+			})
+			if err == nil && len(brsRes.Items) > 0 {
+				itemsFound = true
+				limit := 4
+				if len(brsRes.Items) < limit {
+					limit = len(brsRes.Items)
+				}
+				for i := 0; i < limit; i++ {
+					item := brsRes.Items[i]
+					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, item.Title))
+					if item.RlDate != "" {
+						sb.WriteString(fmt.Sprintf("   • Tanggal Rilis: %s\n", item.RlDate))
+					}
+					sb.WriteString("\n")
+				}
+			}
+		}
+
+		sb.WriteString("ℹ _Untuk mendapatkan salinan lengkap berkas PDF Berita Resmi Statistik, Sahabat Data dapat mengajukan permohonan melalui Pelayanan Statistik Terpadu (PST) di Menu 6._")
 		content = sb.String()
 
 	case 2:
 		title = "Publikasi BPS"
 		var sb strings.Builder
 		sb.WriteString("*Publikasi Resmi BPS Kabupaten Bangka Barat*\n\n")
+		sb.WriteString("Koleksi buku dan laporan statistik komprehensif daerah:\n\n")
 
-		// Tarik katalog buku publikasi live dari Web API BPS Bangka Barat (domain: 1903)
+		// 1. Coba ambil dari database Scraper lokal SQLite (Priority 1)
 		pubFound := false
-		if r.bps != nil {
+		if r.scraper != nil {
+			scrapedPubs, fresh, err := r.scraper.LatestPublications(ctx, "id", 4)
+			if err == nil && len(scrapedPubs) > 0 {
+				pubFound = true
+				for i, item := range scrapedPubs {
+					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, item.Title))
+					if item.ReleaseDate != nil {
+						sb.WriteString(fmt.Sprintf("   • Tanggal Terbit: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
+					}
+					if item.Abstract != "" {
+						sb.WriteString(fmt.Sprintf("   • Cakupan Isi: %s\n", item.Abstract))
+					}
+					sb.WriteString("\n")
+				}
+				if fresh.UpdatedAt.Year() > 2000 {
+					sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				}
+
+				// Kirim gambar cover publikasi teratas jika tersedia
+				if len(scrapedPubs) > 0 && (scrapedPubs[0].ImageURL != "" || scrapedPubs[0].ThumbnailURL != "") {
+					coverURL := scrapedPubs[0].ImageURL
+					if coverURL == "" {
+						coverURL = scrapedPubs[0].ThumbnailURL
+					}
+					_ = r.sender.SendTextMessage(ctx, p.JID, "Menyiapkan sampul buku publikasi terbaru ... ")
+					_ = r.sender.SendImageFromURL(ctx, p.JID, coverURL, fmt.Sprintf("*%s*", scrapedPubs[0].Title))
+				}
+			}
+		}
+
+		// 2. Fallback ke Web API jika scraper belum siap
+		if !pubFound && r.bps != nil {
 			pubRes, err := r.bps.GetPublications(ctx, bpsapi.ListParams{
 				Domain: "1903",
 				Page:   1,
 			})
 			if err == nil && len(pubRes.Items) > 0 {
 				pubFound = true
-				sb.WriteString("*Publikasi Terbaru (Live Portal)*:\n\n")
 				limit := 4
 				if len(pubRes.Items) < limit {
 					limit = len(pubRes.Items)
@@ -129,50 +156,31 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					item := pubRes.Items[i]
 					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, item.Title))
 					if item.RlDate != "" {
-						sb.WriteString(fmt.Sprintf("   Rilis: %s\n", item.RlDate))
-					}
-					if item.Pdf != "" {
-						sb.WriteString(fmt.Sprintf("   Unduh: %s\n", item.Pdf))
+						sb.WriteString(fmt.Sprintf("   • Tanggal Terbit: %s\n", item.RlDate))
 					}
 					sb.WriteString("\n")
 				}
 			}
 		}
 
-		// Fallback ke Scraper DataProvider (Priority 2) (§4.2)
-		if !pubFound && r.scraper != nil {
-			scrapedPubs, fresh, err := r.scraper.LatestPublications(ctx, "id", 4)
-			if err == nil && len(scrapedPubs) > 0 {
-				pubFound = true
-				sb.WriteString("*Publikasi Terbaru (Portal BPS)*:\n\n")
-				for i, item := range scrapedPubs {
-					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, item.Title))
-					if item.ReleaseDate != nil {
-						sb.WriteString(fmt.Sprintf("   Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
-					}
-					if item.FileURL != "" {
-						sb.WriteString(fmt.Sprintf("   Unduh: %s\n", item.FileURL))
-					} else if item.URL != "" {
-						sb.WriteString(fmt.Sprintf("   Lihat: %s\n", item.URL))
-					}
-					sb.WriteString("\n")
-				}
-				sb.WriteString(formatFreshnessFooter(fresh) + "\n\n")
-
-				// Kirim gambar cover publikasi teratas jika tersedia
-				if len(scrapedPubs) > 0 && scrapedPubs[0].ImageURL != "" {
-					_ = r.sender.SendTextMessage(ctx, p.JID, "Menyiapkan sampul buku publikasi terbaru ... ")
-					_ = r.sender.SendImageFromURL(ctx, p.JID, scrapedPubs[0].ImageURL, fmt.Sprintf("*%s*", scrapedPubs[0].Title))
-				}
-			}
-		}
-
-		sb.WriteString("*Katalog Lengkap Publikasi*:\nhttps://bangkabaratkab.bps.go.id/id/publication")
+		sb.WriteString("ℹ _Untuk mendapatkan salinan digital buku publikasi lengkap (PDF), Sahabat Data dapat menghubungi petugas melalui Pelayanan Statistik Terpadu (PST) di Menu 6._")
 		content = sb.String()
 
 	case 3:
-		title = "Layanan Data Mikro"
-		content = "*Akses Data Mikro BPS*\n\nBPS menyediakan data mikro (raw data) level individu/rumah tangga/usaha yang telah di-anonymize untuk keperluan penelitian akademis dan perumusan kebijakan.\n\n*Akses Portal SILASTIK BPS*:\nhttps://silastik.bps.go.id/\n*Website BPS Bangka Barat*:\nhttps://bangkabaratkab.bps.go.id/"
+		title = "Layanan Data Mikro (SILASTIK)"
+		content = "*Layanan Data Mikro BPS (SILASTIK)*\n\n" +
+			"Data mikro adalah data mentah tingkat individu atau rumah tangga hasil sensus dan survei yang telah di-anonymize (dihilangkan identitas personalnya) untuk keperluan riset ilmiah dan kajian kebijakan.\n\n" +
+			"📋 *Koleksi Data Mikro BPS*:\n" +
+			"• *Susenas*: Sosial ekonomi, pengeluaran, konsumsi, pendidikan, dan kesehatan\n" +
+			"• *Sakernas*: Ketenagakerjaan, upah, jam kerja, dan pengangguran\n" +
+			"• *Sensus Pertanian (ST)*: Profil petani dan struktur usaha tani\n" +
+			"• *Sensus Penduduk (SP)*: Parameter demografi dan mobilitas penduduk\n\n" +
+			"📝 *Persyaratan Permohonan Data Mikro*:\n" +
+			"1. Surat Pengantar Resmi dari Perguruan Tinggi / Lembaga Penelitian / Instansi\n" +
+			"2. Proposal Riset / Penelitian yang jelas\n" +
+			"3. Identitas Pemohon (KTP / Kartu Mahasiswa)\n" +
+			"4. Menandatangani Komitmen Kerahasiaan Data (UU No. 16 Tahun 1997)\n\n" +
+			"💬 Sahabat dapat berkonsultasi mengenai prosedur permohonan data mikro dengan petugas kami di *Menu 6* (Layanan Konsultasi PST)."
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(

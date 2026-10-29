@@ -23,7 +23,7 @@ func (r *BotRouter) HandleMenu2_Indikator(ctx context.Context, s *UserSession, p
 		{ID: "7", Title: "Indikator Kesejahteraan", Description: "IPM, Harapan Hidup, Pengeluaran Per Kapita"},
 	}
 
-	introText := fmt.Sprintf("*Indikator Strategis BPS Bangka Barat (%s)*\nSilakan pilih indikator yang ingin Sahabat lihat \n\n*Booklet Indikator Strategis*:\nhttp://s.bps.go.id/IndikatorStrategisBabar\n\n◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉\n\n*Pilih nomor indikator:*", r.cfg.ActiveIndicatorYear)
+	introText := fmt.Sprintf("*Indikator Strategis BPS Bangka Barat (%s)*\nSilakan pilih indikator strategis yang ingin Sahabat lihat \n\n◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉\n\n*Pilih nomor indikator:*", r.cfg.ActiveIndicatorYear)
 	body := whatsapp.BuildBodyText(introText, items, "\n*0.* Menu Awal\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
 
 	msg := whatsapp.BuildInteractiveList(
@@ -51,7 +51,10 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 		ind, fresh, err := r.scraper.GetStrategicIndicator(ctx, strconv.Itoa(indicatorIdx))
 		if err == nil && ind != nil {
 			var sb strings.Builder
-			sb.WriteString(fmt.Sprintf("*%s Kabupaten Bangka Barat*\n\n", ind.Title))
+			sb.WriteString(fmt.Sprintf("*Indikator Strategis: %s*\n", ind.Title))
+			sb.WriteString("Kabupaten Bangka Barat\n\n")
+
+			sb.WriteString("📊 *Capaian Angka & Metrik Resmi*:\n")
 			for _, m := range ind.Metrics {
 				sb.WriteString(fmt.Sprintf("• *%s*: %s", m.Label, m.Value))
 				if m.Note != "" {
@@ -61,28 +64,26 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 			}
 			sb.WriteString("\n")
 
+			if ind.Description != "" {
+				sb.WriteString(fmt.Sprintf("📝 *Uraian & Analisis Statistik*:\n%s\n\n", ind.Description))
+			}
+
 			if len(ind.Items) > 0 {
-				sb.WriteString("*Publikasi / Rilis Terkait*:\n")
+				sb.WriteString("📚 *Dokumen Rujukan Resmi BPS*:\n")
 				limit := 2
 				if len(ind.Items) < limit {
 					limit = len(ind.Items)
 				}
 				for i := 0; i < limit; i++ {
 					it := ind.Items[i]
-					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, it.Title))
-					if it.ReleaseDate != nil {
-						sb.WriteString(fmt.Sprintf("   Rilis: %s\n", it.ReleaseDate.Format("02 Jan 2006")))
-					}
-					if it.FileURL != "" {
-						sb.WriteString(fmt.Sprintf("   Unduh: %s\n", it.FileURL))
-					} else if it.URL != "" {
-						sb.WriteString(fmt.Sprintf("   Link: %s\n", it.URL))
-					}
+					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
 				}
 				sb.WriteString("\n")
 			}
 
 			sb.WriteString(fmt.Sprintf("*Sumber Resmi*: %s\n", ind.Source))
+			sb.WriteString("ℹ _Untuk konsultasi data lebih mendalam, Sahabat dapat memanfaatkan Layanan Konsultasi PST di Menu 6._\n\n")
+
 			if fresh.UpdatedAt.Year() > 2000 {
 				sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 			}
