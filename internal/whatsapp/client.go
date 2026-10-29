@@ -52,7 +52,7 @@ func NewClientManager(cfg *config.Config) (*ClientManager, error) {
 
 	mgr := &ClientManager{
 		Client: client,
-		Sender: NewSender(client, mq),
+		Sender: NewSender(client, mq, cfg),
 		cfg:    cfg,
 	}
 

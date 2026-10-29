@@ -30,10 +30,11 @@ type Config struct {
 	MaxMediaSizeMB           int
 	HTTPClientTimeoutSeconds int
 
-	WABrowserName       string
-	AllowedNumbers      []string
-	IdleTimeoutMinutes  int
-	ActiveIndicatorYear string
+	WABrowserName          string
+	AllowedNumbers         []string
+	IdleTimeoutMinutes     int
+	ActiveIndicatorYear    string
+	EnableInteractiveMenus bool
 
 	GASUrlLayananData  string
 	GASUrlIndikator    string
@@ -153,6 +154,7 @@ func LoadConfig() *Config {
 		AllowedNumbers:             allowedNumbers,
 		IdleTimeoutMinutes:         idleTimeout,
 		ActiveIndicatorYear:        indicatorYear,
+		EnableInteractiveMenus:     getEnvBool("ENABLE_INTERACTIVE_MENUS", false),
 
 		GASUrlLayananData:  getEnv("GAS_URL_LAYANAN_DATA", ""),
 		GASUrlIndikator:    getEnv("GAS_URL_INDIKATOR", ""),

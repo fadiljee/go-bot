@@ -29,7 +29,16 @@ func getRootMenuItems() []whatsapp.ListRow {
 
 // HandleWelcomeFull handles first message / keyword 100
 func (r *BotRouter) HandleWelcomeFull(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.mu.Lock()
+	if !s.LastWelcomeSent.IsZero() && time.Since(s.LastWelcomeSent) < 3*time.Second {
+		s.mu.Unlock()
+		log.Printf("[ROUTER] Mengabaikan HandleWelcomeFull duplikat untuk %s (baru dikirim %v lalu)", p.JID.String(), time.Since(s.LastWelcomeSent).Round(time.Millisecond))
+		return nil
+	}
+	s.LastWelcomeSent = time.Now()
 	s.CurrentState = StateRoot
+	s.HistoryStack = nil
+	s.mu.Unlock()
 
 	// 1. Send sticker selamat datang
 	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - selamat datang new.webp")
@@ -61,7 +70,16 @@ func (r *BotRouter) HandleWelcomeFull(ctx context.Context, s *UserSession, p *wh
 
 // HandleWelcomeShort handles returning to main menu (keyword 0)
 func (r *BotRouter) HandleWelcomeShort(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.mu.Lock()
+	if !s.LastWelcomeSent.IsZero() && time.Since(s.LastWelcomeSent) < 2*time.Second {
+		s.mu.Unlock()
+		log.Printf("[ROUTER] Mengabaikan HandleWelcomeShort duplikat untuk %s (baru dikirim %v lalu)", p.JID.String(), time.Since(s.LastWelcomeSent).Round(time.Millisecond))
+		return nil
+	}
+	s.LastWelcomeSent = time.Now()
 	s.CurrentState = StateRoot
+	s.HistoryStack = nil
+	s.mu.Unlock()
 
 	// Send sticker siap
 	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - siap new.webp")
@@ -92,7 +110,11 @@ func (r *BotRouter) HandleWelcomeShort(ctx context.Context, s *UserSession, p *w
 
 // HandleReset clears the user session state
 func (r *BotRouter) HandleReset(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	r.sessions.Delete(p.JID)
+	sessionKey := p.JID.ToNonAD().String()
+	if p.PhoneNumber != "" {
+		sessionKey = p.PhoneNumber
+	}
+	r.sessions.Delete(p.JID, sessionKey)
 	text := "Sesi percakapan Anda telah berhasil direset.\nKetik pesan apa saja atau ketik *0* untuk kembali ke menu utama ISTIMEWA."
 	return r.sender.SendTextMessage(ctx, p.JID, text)
 }
@@ -103,6 +125,9 @@ func (r *BotRouter) HandleBack(ctx context.Context, s *UserSession, p *whatsapp.
 	log.Printf("[NAVIGASI] Tombol Kembali (99) ditekan oleh %s -> Kembali ke state: %s", p.JID.User, prevState)
 
 	switch prevState {
+	case StateAdminLoggedIn, StateAdminManagePakar:
+		s.CurrentState = StateAdminLoggedIn
+		return r.SendAdminDashboard(ctx, s, p)
 	case StateRoot:
 		return r.HandleWelcomeShort(ctx, s, p)
 	case StateMenu1:

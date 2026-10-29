@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"bot-istimewa/internal/config"
+
 	"go.mau.fi/whatsmeow"
 	waBinary "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -35,15 +37,25 @@ type Sender struct {
 	mediaMu    sync.RWMutex
 	mediaCache map[string]*CachedMedia
 	httpClient *http.Client
+	cfg        *config.Config
 }
 
-func NewSender(client *whatsmeow.Client, queue *MessageQueue) *Sender {
+func NewSender(client *whatsmeow.Client, queue *MessageQueue, cfg ...*config.Config) *Sender {
+	var c *config.Config
+	if len(cfg) > 0 {
+		c = cfg[0]
+	}
 	return &Sender{
 		client:     client,
 		queue:      queue,
 		mediaCache: make(map[string]*CachedMedia),
 		httpClient: &http.Client{Timeout: 15 * time.Second},
+		cfg:        c,
 	}
+}
+
+func (s *Sender) SetConfig(cfg *config.Config) {
+	s.cfg = cfg
 }
 
 func (s *Sender) Queue() *MessageQueue {
@@ -109,11 +121,24 @@ func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string
 	return nil
 }
 
-// SendInteractiveMessage sends native list dropdown or quick-reply buttons message via queue with text fallback
+// SendInteractiveMessage sends native list dropdown or quick-reply buttons message via queue.
+// When EnableInteractiveMenus is false (default for 100% iOS iPhone & Android cross-compatibility),
+// or if sending native flow fails, it automatically delivers the message as a beautifully
+// formatted standard text menu that renders reliably on all devices (iPhone iOS, Android, Web).
 func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg *waE2E.Message) error {
 	if s == nil {
 		return nil
 	}
+
+	// 1. If interactive menus are disabled (default for universal 100% iOS iPhone & Android compatibility)
+	if s.cfg == nil || !s.cfg.EnableInteractiveMenus {
+		text := ExtractTextFromMessage(msg)
+		if text != "" {
+			log.Printf("[SENDER] Mengirim pesan menu sebagai teks terformat universal (Kompatibel 100%% iOS & Android) ke %s", jid.String())
+			return s.SendTextMessage(ctx, jid, text)
+		}
+	}
+
 	log.Printf("[SENDER] Mengirim pesan tombol resmi WhatsApp (Native Flow List / Buttons) ke %s...", jid.String())
 
 	extra := &whatsmeow.SendRequestExtra{
@@ -145,24 +170,7 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 
 	if err != nil {
 		log.Printf("[SENDER ERROR] Gagal mengirim pesan tombol ke %s: %v. Mengirim versi teks cadangan...", jid.String(), err)
-		var textToSend string
-		if msg != nil {
-			unwrapped := msg
-			if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
-				unwrapped = msg.GetViewOnceMessage().GetMessage()
-			}
-			if inter := unwrapped.GetInteractiveMessage(); inter != nil {
-				if body := inter.GetBody(); body != nil {
-					textToSend = body.GetText()
-				}
-			} else if list := unwrapped.GetListMessage(); list != nil {
-				textToSend = list.GetDescription()
-			} else if btn := unwrapped.GetButtonsMessage(); btn != nil {
-				textToSend = btn.GetContentText()
-			} else if conv := unwrapped.GetConversation(); conv != "" {
-				textToSend = conv
-			}
-		}
+		textToSend := ExtractTextFromMessage(msg)
 		if textToSend != "" {
 			return s.SendTextMessage(ctx, jid, textToSend)
 		}
@@ -175,6 +183,9 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 
 // SendSticker sends a webp sticker from local file path with media upload caching
 func (s *Sender) SendSticker(ctx context.Context, jid types.JID, filePath string) error {
+	if s == nil {
+		return nil
+	}
 	s.mediaMu.RLock()
 	cached, found := s.mediaCache[filePath]
 	s.mediaMu.RUnlock()

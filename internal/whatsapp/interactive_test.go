@@ -135,3 +135,25 @@ func TestBuildBodyText(t *testing.T) {
 		t.Errorf("expected navigation 0 in footer, got:\n%s", body)
 	}
 }
+
+func TestExtractTextFromMessage(t *testing.T) {
+	// 1. From List Message
+	rows := []ListRow{
+		{ID: "1", Title: "Opsi 1"},
+	}
+	listMsg := BuildInteractiveList("Judul Header", "Isi pesan body...", "Footer info", "Buka", []ListSection{{Title: "Sec", Rows: rows}})
+	extractedList := ExtractTextFromMessage(listMsg)
+	if !strings.Contains(extractedList, "*Judul Header*") || !strings.Contains(extractedList, "Isi pesan body...") || !strings.Contains(extractedList, "_Footer info_") {
+		t.Errorf("ExtractTextFromMessage list failed: %s", extractedList)
+	}
+
+	// 2. From Quick Reply Buttons Message
+	buttons := []QuickReplyButton{
+		{ID: "0", DisplayText: "Menu Utama"},
+	}
+	btnMsg := BuildQuickReplyButtons("Header Tombol", "Isi teks...", "Footer BPS", buttons)
+	extractedBtn := ExtractTextFromMessage(btnMsg)
+	if !strings.Contains(extractedBtn, "*Header Tombol*") || !strings.Contains(extractedBtn, "Isi teks...") || !strings.Contains(extractedBtn, "Ketik *0* untuk Menu Utama") {
+		t.Errorf("ExtractTextFromMessage buttons failed: %s", extractedBtn)
+	}
+}

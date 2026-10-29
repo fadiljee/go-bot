@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -140,6 +141,8 @@ func main() {
 		log.Printf("ℹ[CONFIG] INTERNAL_PST_GROUP_JID kosong di .env")
 	}
 
+	msgDedup := whatsapp.NewMessageDeduplicator(60 * time.Second)
+
 	// 6. Register Event Listener
 	clientMgr.Client.AddEventHandler(func(rawEvt interface{}) {
 		switch evt := rawEvt.(type) {
@@ -159,17 +162,26 @@ func main() {
 				return
 			}
 
-			parsed := whatsapp.ParseIncomingMessage(evt)
-			if parsed != nil {
-				if parsed.PhoneNumber == "" && clientMgr.Client != nil && clientMgr.Client.Store != nil && clientMgr.Client.Store.LIDs != nil {
-					if pn, err := clientMgr.Client.Store.LIDs.GetPNForLID(context.Background(), parsed.JID); err == nil && pn.User != "" {
-						parsed.PhoneNumber = pn.User
-					} else if pn, err := clientMgr.Client.Store.LIDs.GetPNForLID(context.Background(), parsed.SenderJID); err == nil && pn.User != "" {
-						parsed.PhoneNumber = pn.User
-					}
-				}
-				go botRouter.Dispatch(context.Background(), parsed)
+			// Message Deduplication: ignore duplicate message IDs (WhatsApp retries/multi-device echoes)
+			if evt.Info.ID != "" && msgDedup.IsDuplicate(evt.Info.ID) {
+				log.Printf("[DEDUP] Mengabaikan pesan duplikat ID: %s dari %s", evt.Info.ID, evt.Info.Sender.User)
+				return
 			}
+
+			parsed := whatsapp.ParseIncomingMessage(evt)
+			if parsed == nil || strings.TrimSpace(parsed.Text) == "" {
+				// Abaikan pesan tanpa teks/pilihan (misal protokol pesan, receipt, reaksi)
+				return
+			}
+
+			if parsed.PhoneNumber == "" && clientMgr.Client != nil && clientMgr.Client.Store != nil && clientMgr.Client.Store.LIDs != nil {
+				if pn, err := clientMgr.Client.Store.LIDs.GetPNForLID(context.Background(), parsed.JID); err == nil && pn.User != "" {
+					parsed.PhoneNumber = pn.User
+				} else if pn, err := clientMgr.Client.Store.LIDs.GetPNForLID(context.Background(), parsed.SenderJID); err == nil && pn.User != "" {
+					parsed.PhoneNumber = pn.User
+				}
+			}
+			go botRouter.Dispatch(context.Background(), parsed)
 
 		case *events.Connected:
 			clientMgr.IsLoggedIn = true

@@ -508,7 +508,7 @@ func (r *BotRouter) HandleMenu8_Pengaduan(ctx context.Context, s *UserSession, p
 func (r *BotRouter) HandleMenu9_HubDev(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	devPhone := r.cfg.DeveloperPhone
 	if devPhone == "" {
-		devPhone = "6281234567890"
+		devPhone = "6283843607098"
 	}
 	text := fmt.Sprintf("*Hubungi Pengembang Bot ISTIMEWA*\n\nJika Sahabat Data mengalami kendala teknis, bot tidak merespons, atau memiliki ide peningkatan fitur untuk BOT ISTIMEWA, silakan hubungi tim IT BPS Kabupaten Bangka Barat:\n\n*Kontak Developer*:\nhttps://wa.me/%s\n\n*Email*:\nbps1903@bps.go.id", devPhone)
 

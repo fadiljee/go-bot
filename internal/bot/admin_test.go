@@ -84,3 +84,50 @@ func TestAdminWhitelistAndLockout(t *testing.T) {
 	}
 	_ = err
 }
+
+func TestAdminSessionBackAndExit(t *testing.T) {
+	cfg := &config.Config{
+		AdminTriggerKeyword: "login admin",
+		AdminPassword:       "pass123",
+		IdleTimeoutMinutes:  30,
+	}
+	router := NewBotRouter(cfg, nil, nil)
+
+	phone := "6289999999999"
+	jid := types.NewJID(phone, types.DefaultUserServer)
+
+	// 1. In StateAdminLoggedIn, typing 99 should keep state as StateAdminLoggedIn
+	sess := router.sessions.GetOrCreate(jid, nil)
+	sess.CurrentState = StateAdminLoggedIn
+
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:  jid,
+		Text: "99",
+	})
+
+	if sess.CurrentState != StateAdminLoggedIn {
+		t.Errorf("expected state to remain StateAdminLoggedIn after typing 99, got %s", sess.CurrentState)
+	}
+
+	// 2. In StateAdminManagePakar, typing 99 should transition back to StateAdminLoggedIn
+	sess.CurrentState = StateAdminManagePakar
+
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:  jid,
+		Text: "99",
+	})
+
+	if sess.CurrentState != StateAdminLoggedIn {
+		t.Errorf("expected state to transition to StateAdminLoggedIn after typing 99 from ManagePakar, got %s", sess.CurrentState)
+	}
+
+	// 3. In StateAdminLoggedIn, typing 0 should exit admin mode to StateRoot
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:  jid,
+		Text: "0",
+	})
+
+	if sess.CurrentState != StateRoot {
+		t.Errorf("expected state to reset to StateRoot after typing 0 in admin mode, got %s", sess.CurrentState)
+	}
+}

@@ -118,23 +118,37 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	}
 
 	// 1. Per-User Token Bucket Rate Limiting (Anti-Flooding / DDoS Protection)
-	if !r.rateLimiter.Allow(p.JID.User) {
-		log.Printf("[RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", p.JID.User)
+	userKey := p.JID.User
+	if p.PhoneNumber != "" {
+		userKey = p.PhoneNumber
+	}
+	if !r.rateLimiter.Allow(userKey) {
+		log.Printf("[RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", userKey)
 		return
 	}
 
-	// Get or create session
-	session := r.sessions.GetOrCreate(p.JID, func(s *UserSession) {
-		r.HandleIdleTimeout(context.Background(), s)
-	})
-
 	// Input sanitization & 100 character limit (Anti-ReDoS / Anti-OOM)
 	input := strings.TrimSpace(p.Text)
+	if input == "" {
+		// Abaikan pesan tanpa konten teks / respon interaktif (misal protokol, keepalive, reaksi)
+		log.Printf("[ROUTER] Mengabaikan pesan tanpa teks/pilihan dari %s", p.JID.String())
+		return
+	}
+
 	runes := []rune(input)
 	if len(runes) > 100 {
 		input = string(runes[:100])
 	}
 	inputLower := strings.ToLower(input)
+
+	// Get or create session (Unified by PhoneNumber if resolved to prevent LID/PN split)
+	sessionKey := p.JID.ToNonAD().String()
+	if p.PhoneNumber != "" {
+		sessionKey = p.PhoneNumber
+	}
+	session := r.sessions.GetOrCreate(p.JID, func(s *UserSession) {
+		r.HandleIdleTimeout(context.Background(), s)
+	}, sessionKey)
 
 	log.Printf("[ROUTER] Dari: %s | State: %s | Input: '%s'", p.JID.User, session.CurrentState, input)
 
@@ -153,15 +167,22 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
-	if input == "0" {
-		session.ResetToRoot()
-		_ = r.HandleWelcomeShort(ctx, session, p)
-		return
-	}
+	// Jangan intersep 0 dan 99 jika user sedang berada di dalam Mode Admin
+	inAdminMode := session.CurrentState == StateAdminLoggedIn ||
+		session.CurrentState == StateAdminManagePakar ||
+		session.CurrentState == StateAdminWaitPass
 
-	if input == "99" {
-		_ = r.HandleBack(ctx, session, p)
-		return
+	if !inAdminMode {
+		if input == "0" {
+			session.ResetToRoot()
+			_ = r.HandleWelcomeShort(ctx, session, p)
+			return
+		}
+
+		if input == "99" {
+			_ = r.HandleBack(ctx, session, p)
+			return
+		}
 	}
 
 	// Opt-Out / Berhenti Berlangganan (Anti-Spam Report Protection)
@@ -212,6 +233,11 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		if input == "0" {
 			session.ResetToRoot()
 			_ = r.sender.SendTextMessage(ctx, p.JID, "🔒 Anda telah keluar dari Mode Admin.\nKetik pesan apa saja atau angka untuk kembali ke Menu Utama.")
+			return
+		}
+
+		if input == "99" {
+			_ = r.SendAdminDashboard(ctx, session, p)
 			return
 		}
 
@@ -336,13 +362,13 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	// State Pengelolaan Kontak Pakar oleh Admin
 	if session.CurrentState == StateAdminManagePakar {
 		if input == "99" {
-			session.PopState()
+			session.CurrentState = StateAdminLoggedIn
 			_ = r.SendAdminDashboard(ctx, session, p)
 			return
 		}
 		if input == "0" {
 			session.ResetToRoot()
-			_ = r.HandleWelcomeShort(ctx, session, p)
+			_ = r.sender.SendTextMessage(ctx, p.JID, "🔒 Anda telah keluar dari Mode Admin.\nKetik pesan apa saja atau angka untuk kembali ke Menu Utama.")
 			return
 		}
 

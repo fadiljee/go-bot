@@ -196,3 +196,89 @@ func BuildBodyText(intro string, rows []ListRow, footer string) string {
 
 	return strings.TrimSpace(sb.String())
 }
+
+// ExtractTextFromMessage converts any interactive message (List, Buttons, or Native Flow)
+// into clean, fully-readable plain text compatible with 100% of WhatsApp clients (including iOS iPhone).
+func ExtractTextFromMessage(msg *waE2E.Message) string {
+	if msg == nil {
+		return ""
+	}
+
+	unwrapped := msg
+	if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
+		unwrapped = msg.GetViewOnceMessage().GetMessage()
+	} else if msg.GetViewOnceMessageV2() != nil && msg.GetViewOnceMessageV2().GetMessage() != nil {
+		unwrapped = msg.GetViewOnceMessageV2().GetMessage()
+	}
+
+	if inter := unwrapped.GetInteractiveMessage(); inter != nil {
+		var parts []string
+		if header := inter.GetHeader(); header != nil && header.GetTitle() != "" {
+			parts = append(parts, fmt.Sprintf("*%s*", strings.TrimSpace(header.GetTitle())))
+		}
+		if body := inter.GetBody(); body != nil && body.GetText() != "" {
+			parts = append(parts, strings.TrimSpace(body.GetText()))
+		}
+
+		// If there are quick reply buttons, extract options if not already listed in body
+		if nativeFlow := inter.GetNativeFlowMessage(); nativeFlow != nil {
+			var buttonTexts []string
+			bodyText := ""
+			if inter.GetBody() != nil {
+				bodyText = inter.GetBody().GetText()
+			}
+			for _, b := range nativeFlow.GetButtons() {
+				if b.GetName() == "quick_reply" {
+					var p quickReplyParams
+					if err := json.Unmarshal([]byte(b.GetButtonParamsJSON()), &p); err == nil && p.DisplayText != "" {
+						if !strings.Contains(bodyText, fmt.Sprintf("*%s*", p.ID)) && !strings.Contains(bodyText, fmt.Sprintf("(%s)", p.ID)) {
+							buttonTexts = append(buttonTexts, fmt.Sprintf("• Ketik *%s* untuk %s", p.ID, p.DisplayText))
+						}
+					}
+				}
+			}
+			if len(buttonTexts) > 0 {
+				parts = append(parts, "*Pilihan Navigasi:*\n"+strings.Join(buttonTexts, "\n"))
+			}
+		}
+
+		if footer := inter.GetFooter(); footer != nil && footer.GetText() != "" {
+			parts = append(parts, fmt.Sprintf("_%s_", strings.TrimSpace(footer.GetText())))
+		}
+		return strings.Join(parts, "\n\n")
+	}
+
+	if list := unwrapped.GetListMessage(); list != nil {
+		var parts []string
+		if list.GetTitle() != "" {
+			parts = append(parts, fmt.Sprintf("*%s*", strings.TrimSpace(list.GetTitle())))
+		}
+		if list.GetDescription() != "" {
+			parts = append(parts, strings.TrimSpace(list.GetDescription()))
+		}
+		if list.GetFooterText() != "" {
+			parts = append(parts, fmt.Sprintf("_%s_", strings.TrimSpace(list.GetFooterText())))
+		}
+		return strings.Join(parts, "\n\n")
+	}
+
+	if btn := unwrapped.GetButtonsMessage(); btn != nil {
+		var parts []string
+		if btn.GetContentText() != "" {
+			parts = append(parts, strings.TrimSpace(btn.GetContentText()))
+		}
+		if btn.GetFooterText() != "" {
+			parts = append(parts, fmt.Sprintf("_%s_", strings.TrimSpace(btn.GetFooterText())))
+		}
+		return strings.Join(parts, "\n\n")
+	}
+
+	if conv := unwrapped.GetConversation(); conv != "" {
+		return conv
+	}
+	if ext := unwrapped.GetExtendedTextMessage(); ext != nil {
+		return ext.GetText()
+	}
+
+	return ""
+}

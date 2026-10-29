@@ -8,12 +8,13 @@ import (
 )
 
 type UserSession struct {
-	mu           sync.Mutex
-	JID          types.JID
-	CurrentState string
-	HistoryStack []string
-	IdleTimer    *time.Timer
-	LastActive   time.Time
+	mu              sync.Mutex
+	JID             types.JID
+	CurrentState    string
+	HistoryStack    []string
+	IdleTimer       *time.Timer
+	LastActive      time.Time
+	LastWelcomeSent time.Time
 }
 
 func (s *UserSession) PushState(newState string) {
@@ -60,13 +61,18 @@ func NewSessionManager(timeoutMinutes int) *SessionManager {
 	}
 }
 
-func (sm *SessionManager) GetOrCreate(jid types.JID, onTimeout func(s *UserSession)) *UserSession {
+func (sm *SessionManager) GetOrCreate(jid types.JID, onTimeout func(s *UserSession), optionalKey ...string) *UserSession {
 	key := jid.ToNonAD().String()
+	if len(optionalKey) > 0 && optionalKey[0] != "" {
+		key = optionalKey[0]
+	}
 	val, loaded := sm.sessions.Load(key)
 	if loaded {
 		sess := val.(*UserSession)
 		sess.mu.Lock()
 		sess.LastActive = time.Now()
+		// Update JID in case it changed (e.g. from LID to PN)
+		sess.JID = jid
 		// Reset cancelable timer (Resolves TD-04)
 		if sess.IdleTimer != nil {
 			sess.IdleTimer.Stop()
@@ -96,8 +102,11 @@ func (sm *SessionManager) GetOrCreate(jid types.JID, onTimeout func(s *UserSessi
 	return sess
 }
 
-func (sm *SessionManager) Delete(jid types.JID) {
+func (sm *SessionManager) Delete(jid types.JID, optionalKey ...string) {
 	key := jid.ToNonAD().String()
+	if len(optionalKey) > 0 && optionalKey[0] != "" {
+		key = optionalKey[0]
+	}
 	if val, ok := sm.sessions.LoadAndDelete(key); ok {
 		sess := val.(*UserSession)
 		sess.mu.Lock()
