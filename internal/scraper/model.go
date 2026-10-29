@@ -76,6 +76,26 @@ type StrategicIndicator struct {
 	Items       []Item            `json:"items,omitempty"`
 }
 
+// DataTopic represents an individual statistical topic within Layanan Data (Menu 1).
+type DataTopic struct {
+	ID          int    `json:"id"`
+	Slug        string `json:"slug"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	SubjectURL  string `json:"subject_url,omitempty"`
+	Tables      []Item `json:"tables,omitempty"`
+	Items       []Item `json:"items,omitempty"`
+}
+
+// DataCategory represents a major category under Layanan Data (Menu 1: Sosduk, Ekonomi, Pertanian, Sektoral).
+type DataCategory struct {
+	ID          string      `json:"id"`
+	Slug        string      `json:"slug"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	Topics      []DataTopic `json:"topics,omitempty"`
+}
+
 // DataProvider is consumed by bot handlers and API (§6.3).
 type DataProvider interface {
 	LatestPressReleases(ctx context.Context, lang string, limit int) ([]Item, Freshness, error)
@@ -86,6 +106,9 @@ type DataProvider interface {
 	CreateConsultationBooking(ctx context.Context, b *ConsultationBooking) error
 	GetStrategicIndicator(ctx context.Context, idOrSlug string) (*StrategicIndicator, Freshness, error)
 	GetAllStrategicIndicators(ctx context.Context) ([]StrategicIndicator, Freshness, error)
+	GetLayananDataCategories(ctx context.Context) ([]DataCategory, Freshness, error)
+	GetLayananDataCategory(ctx context.Context, categorySlug string) (*DataCategory, Freshness, error)
+	GetLayananDataTopic(ctx context.Context, categorySlug, topicIdOrSlug string) (*DataTopic, Freshness, error)
 }
 
 // ConsultationBooking represents a consultation schedule request from WhatsApp bot users.

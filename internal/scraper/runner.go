@@ -300,6 +300,11 @@ var serverActions = map[Kind]serverActionDef{
 		actionID:    "608404231d97eefc336168319bc8c592791e348afc",
 		arrayPrefix: `[{"news_id":`,
 	},
+	KindStaticTable: {
+		path:        "/id/statistics-table",
+		actionID:    "40043348a3c6d33ba8e1e4554e4e5c37b872433488",
+		arrayPrefix: `[{"id":`,
+	},
 }
 
 func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *url.URL) ([]Item, int, error) {
@@ -322,6 +327,9 @@ func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *
 
 	for page := 1; page <= maxPages; page++ {
 		payload := fmt.Sprintf(`["id",{"page":%d}]`, page)
+		if kind == KindStaticTable {
+			payload = fmt.Sprintf(`[{"locale":"id","page":%d,"perpage":20}]`, page)
+		}
 		respBody, err := r.fetcher.PostAction(ctx, pageURL, def.actionID, payload)
 		if err != nil {
 			if len(allItems) > 0 {
@@ -456,6 +464,58 @@ func (r *Runner) parseServerActionJSON(kind Kind, block []byte, baseParsed *url.
 				ThumbnailURL: it.Picture,
 				ImageURL:     it.Picture,
 				IsActive:     true,
+			}
+			item.ContentHash = CalculateContentHash(&item)
+			items = append(items, item)
+		}
+		return items, nil
+
+	case KindStaticTable:
+		var raw []struct {
+			ID         string `json:"id"`
+			Title      string `json:"title"`
+			Subject    string `json:"subject"`
+			IDSubject  int    `json:"id_subject"`
+			SubcatName string `json:"subcat_name"`
+			LastUpdate string `json:"last_update"`
+		}
+		if err := json.Unmarshal(block, &raw); err != nil {
+			return nil, err
+		}
+		var items []Item
+		for _, it := range raw {
+			cleanTitle := CleanText(it.Title)
+			slug := strings.ToLower(cleanTitle)
+			slug = strings.ReplaceAll(slug, "%", "-persen")
+			var slugClean strings.Builder
+			for _, r := range slug {
+				if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+					slugClean.WriteRune(r)
+				} else {
+					slugClean.WriteRune('-')
+				}
+			}
+			slugStr := strings.Trim(slugClean.String(), "-")
+
+			u := fmt.Sprintf("%s://%s/id/statistics-table/%s/%s.html",
+				baseParsed.Scheme, baseParsed.Host, it.ID, slugStr)
+
+			var relDate *time.Time
+			if t, err := time.Parse("2006-01-02 15:04:05", it.LastUpdate); err == nil {
+				relDate = &t
+			} else if t, err := time.Parse("2006-01-02", it.LastUpdate); err == nil {
+				relDate = &t
+			}
+
+			item := Item{
+				Kind:        KindStaticTable,
+				Lang:        "id",
+				SourceKey:   it.ID,
+				URL:         u,
+				Title:       cleanTitle,
+				Subject:     it.Subject,
+				ReleaseDate: relDate,
+				IsActive:    true,
 			}
 			item.ContentHash = CalculateContentHash(&item)
 			items = append(items, item)

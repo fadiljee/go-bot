@@ -120,6 +120,18 @@ func (s *APIServer) setupRoutes() {
 	aliasGroup := api.Group("/v1/indikator")
 	aliasGroup.Get("/", s.handleGetIndicators)
 	aliasGroup.Get("/:id", s.handleGetIndicatorByID)
+
+	// Layanan Data Route Group (Menu 1: Sosduk, Ekonomi, Pertanian, Sektoral)
+	layananGroup := api.Group("/v1/layanan-data")
+	layananGroup.Get("/", s.handleGetLayananData)
+	layananGroup.Get("/:category", s.handleGetLayananCategory)
+	layananGroup.Get("/:category/:topic", s.handleGetLayananTopic)
+
+	// Alias for English endpoint: /api/v1/services/data
+	servicesGroup := api.Group("/v1/services/data")
+	servicesGroup.Get("/", s.handleGetLayananData)
+	servicesGroup.Get("/:category", s.handleGetLayananCategory)
+	servicesGroup.Get("/:category/:topic", s.handleGetLayananTopic)
 }
 
 func (s *APIServer) SetScraper(runner *scraper.Runner, store *scraper.Store, scheduler *scraper.Scheduler, breaker *scraper.CircuitBreaker, provider ...scraper.DataProvider) {
@@ -846,6 +858,185 @@ func (s *APIServer) handleGetIndicatorByID(c *fiber.Ctx) error {
 		"success":   true,
 		"freshness": freshness,
 		"data":      ind,
+	})
+}
+
+// handleGetLayananData handles GET /api/v1/layanan-data (Menu 1 Layanan Data)
+func (s *APIServer) handleGetLayananData(c *fiber.Ctx) error {
+	prov := s.getProvider()
+	if prov == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper database/provider is not initialized",
+		})
+	}
+
+	// Keyword search query if passed: ?q=<search>
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		query = strings.TrimSpace(c.Query("keyword"))
+	}
+	if query != "" {
+		items, freshness, err := prov.SearchItems(c.Context(), query, "id", 10)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"error":   err.Error(),
+			})
+		}
+		tables, _, _ := prov.SearchStaticTables(c.Context(), query, 10)
+		return c.JSON(fiber.Map{
+			"success":      true,
+			"query":        query,
+			"total_tables": len(tables),
+			"total_items":  len(items),
+			"freshness":    freshness,
+			"tables":       tables,
+			"items":        items,
+		})
+	}
+
+	categories, freshness, err := prov.GetLayananDataCategories(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	format := strings.ToLower(c.Query("format"))
+	if format == "text" {
+		var sb strings.Builder
+		sb.WriteString("=== LAYANAN DATA BPS KABUPATEN BANGKA BARAT (MENU 1) ===\n\n")
+		for _, cat := range categories {
+			sb.WriteString(fmt.Sprintf("*[%s] %s*\n", cat.ID, cat.Title))
+			sb.WriteString(cat.Description + "\n")
+			for _, top := range cat.Topics {
+				sb.WriteString(fmt.Sprintf("  • %d. %s (%d tabel, %d dokumen)\n", top.ID, top.Title, len(top.Tables), len(top.Items)))
+			}
+			sb.WriteString("\n")
+		}
+		return c.Type("text").SendString(sb.String())
+	}
+
+	return c.JSON(fiber.Map{
+		"success":          true,
+		"total_categories": len(categories),
+		"freshness":        freshness,
+		"data":             categories,
+	})
+}
+
+// handleGetLayananCategory handles GET /api/v1/layanan-data/:category
+func (s *APIServer) handleGetLayananCategory(c *fiber.Ctx) error {
+	catSlug := c.Params("category")
+	prov := s.getProvider()
+	if prov == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper database/provider is not initialized",
+		})
+	}
+
+	cat, freshness, err := prov.GetLayananDataCategory(c.Context(), catSlug)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	format := strings.ToLower(c.Query("format"))
+	if format == "text" {
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("*%s*\n\n", cat.Title))
+		sb.WriteString(cat.Description + "\n\n")
+		sb.WriteString("*Daftar Topik Statistik*:\n")
+		for _, top := range cat.Topics {
+			sb.WriteString(fmt.Sprintf("%d. *%s*\n", top.ID, top.Title))
+			if top.Description != "" {
+				sb.WriteString(fmt.Sprintf("   %s\n", top.Description))
+			}
+			if len(top.Tables) > 0 {
+				sb.WriteString(fmt.Sprintf("   Tabel Utama: %s\n", top.Tables[0].Title))
+			}
+			if len(top.Items) > 0 {
+				sb.WriteString(fmt.Sprintf("   Dokumen: %s\n", top.Items[0].Title))
+			}
+			sb.WriteString("\n")
+		}
+		return c.Type("text").SendString(sb.String())
+	}
+
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"freshness": freshness,
+		"data":      cat,
+	})
+}
+
+// handleGetLayananTopic handles GET /api/v1/layanan-data/:category/:topic
+func (s *APIServer) handleGetLayananTopic(c *fiber.Ctx) error {
+	catSlug := c.Params("category")
+	topicIdOrSlug := c.Params("topic")
+	prov := s.getProvider()
+	if prov == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper database/provider is not initialized",
+		})
+	}
+
+	topic, freshness, err := prov.GetLayananDataTopic(c.Context(), catSlug, topicIdOrSlug)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	format := strings.ToLower(c.Query("format"))
+	if format == "text" {
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("*%s*\n\n", topic.Title))
+		if topic.Description != "" {
+			sb.WriteString(topic.Description + "\n\n")
+		}
+		if topic.SubjectURL != "" {
+			sb.WriteString(fmt.Sprintf("*Portal BPS*: %s\n\n", topic.SubjectURL))
+		}
+		if len(topic.Tables) > 0 {
+			sb.WriteString("*Tabel Statistik Terkait*:\n")
+			for i, t := range topic.Tables {
+				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, t.Title))
+				if t.URL != "" {
+					sb.WriteString(fmt.Sprintf("   Lihat: %s\n", t.URL))
+				}
+			}
+			sb.WriteString("\n")
+		}
+		if len(topic.Items) > 0 {
+			sb.WriteString("*Publikasi & Dokumen Terkait*:\n")
+			for i, it := range topic.Items {
+				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
+				if it.FileURL != "" {
+					sb.WriteString(fmt.Sprintf("   Unduh: %s\n", it.FileURL))
+				} else if it.URL != "" {
+					sb.WriteString(fmt.Sprintf("   Link: %s\n", it.URL))
+				}
+			}
+			sb.WriteString("\n")
+		}
+		if freshness.UpdatedAt.Year() > 2000 {
+			sb.WriteString(fmt.Sprintf("ℹSumber: Database Scraper BPS · diperbarui %s WIB", freshness.UpdatedAt.Format("02 Jan 2006 15:04")))
+		}
+		return c.Type("text").SendString(sb.String())
+	}
+
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"freshness": freshness,
+		"data":      topic,
 	})
 }
 

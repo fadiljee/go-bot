@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"bot-istimewa/internal/bpsapi"
@@ -310,64 +311,16 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 
 // HandleSosdukTopic renders topic details (1 - 12)
 func (r *BotRouter) HandleSosdukTopic(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, topicIdx int) error {
-	cakupKey := fmt.Sprintf("Cakupmenu11%dSosduk", topicIdx)
-	linkKey := fmt.Sprintf("Linkmenu11%dSosduk", topicIdx)
-	cakupan := locale.T(cakupKey)
-	link := locale.T(linkKey)
-
-	// Keyword mapping for BPS Bangka Barat portal
-	var topicKeyword string
-	switch topicIdx {
-	case 1:
-		topicKeyword = "kependudukan"
-	case 2:
-		topicKeyword = "kemiskinan"
-	case 3:
-		topicKeyword = "tenaga kerja"
-	case 4:
-		topicKeyword = "pendidikan"
-	case 5:
-		topicKeyword = "kesehatan"
-	case 6:
-		topicKeyword = "konsumsi"
-	case 7:
-		topicKeyword = "perumahan"
-	case 8:
-		topicKeyword = "budaya"
-	case 9:
-		topicKeyword = "politik"
-	case 10:
-		topicKeyword = "geografi"
-	case 11:
-		topicKeyword = "gender"
-	case 12:
-		topicKeyword = "informasi"
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n\n", locale.T(fmt.Sprintf("menu11%dSosduk", topicIdx))))
-	if cakupan != "" && cakupan != cakupKey {
-		sb.WriteString(cakupan + "\n\n")
-	}
-	if link != "" && link != linkKey {
-		sb.WriteString(fmt.Sprintf("*Kunjungi Website BPS*:\n%s\n\n", link))
-	}
-
-	// 1. Live tables from BPS Bangka Barat portal
-	liveTables := r.fetchBPSTablesForTopic(ctx, topicKeyword)
-	if liveTables != "" {
-		sb.WriteString(liveTables)
-	} else {
-		// 2. Scraped publications & releases from local SQLite scraper
-		relatedItems := r.fetchScraperItemsForTopic(ctx, topicKeyword)
-		if relatedItems != "" {
-			sb.WriteString(relatedItems)
-		}
-	}
+	bodyText := r.buildTopicBody(ctx, "sosduk", topicIdx,
+		locale.T(fmt.Sprintf("menu11%dSosduk", topicIdx)),
+		locale.T(fmt.Sprintf("Cakupmenu11%dSosduk", topicIdx)),
+		locale.T(fmt.Sprintf("Linkmenu11%dSosduk", topicIdx)),
+		"penduduk",
+	)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Detail Statistik Sosduk",
-		sb.String(),
+		bodyText,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
 			{ID: "99", DisplayText: "Menu Sebelumnya (99)"},
@@ -380,59 +333,16 @@ func (r *BotRouter) HandleSosdukTopic(ctx context.Context, s *UserSession, p *wh
 
 // HandleEkonomiTopic renders topic details (1 - 10)
 func (r *BotRouter) HandleEkonomiTopic(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, topicIdx int) error {
-	cakupKey := fmt.Sprintf("Cakupmenu12%dEkonomi", topicIdx)
-	linkKey := fmt.Sprintf("Linkmenu12%dEkonomi", topicIdx)
-	cakupan := locale.T(cakupKey)
-	link := locale.T(linkKey)
-
-	var topicKeyword string
-	switch topicIdx {
-	case 1:
-		topicKeyword = "pdrb"
-	case 2:
-		topicKeyword = "industri"
-	case 3:
-		topicKeyword = "keuangan"
-	case 4:
-		topicKeyword = "harga"
-	case 5:
-		topicKeyword = "upah"
-	case 6:
-		topicKeyword = "energi"
-	case 7:
-		topicKeyword = "pertambangan"
-	case 8:
-		topicKeyword = "transportasi"
-	case 9:
-		topicKeyword = "pariwisata"
-	case 10:
-		topicKeyword = "keuangan"
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n\n", locale.T(fmt.Sprintf("menu12%dEkonomi", topicIdx))))
-	if cakupan != "" && cakupan != cakupKey {
-		sb.WriteString(cakupan + "\n\n")
-	}
-	if link != "" && link != linkKey {
-		sb.WriteString(fmt.Sprintf("*Kunjungi Website BPS*:\n%s\n\n", link))
-	}
-
-	// 1. Live tables from BPS Bangka Barat portal
-	liveTables := r.fetchBPSTablesForTopic(ctx, topicKeyword)
-	if liveTables != "" {
-		sb.WriteString(liveTables)
-	} else {
-		// 2. Scraped publications & releases from local SQLite scraper
-		relatedItems := r.fetchScraperItemsForTopic(ctx, topicKeyword)
-		if relatedItems != "" {
-			sb.WriteString(relatedItems)
-		}
-	}
+	bodyText := r.buildTopicBody(ctx, "ekonomi", topicIdx,
+		locale.T(fmt.Sprintf("menu12%dEkonomi", topicIdx)),
+		locale.T(fmt.Sprintf("Cakupmenu12%dEkonomi", topicIdx)),
+		locale.T(fmt.Sprintf("Linkmenu12%dEkonomi", topicIdx)),
+		"pdrb",
+	)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Detail Statistik Ekonomi",
-		sb.String(),
+		bodyText,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
 			{ID: "99", DisplayText: "Menu Sebelumnya (99)"},
@@ -445,47 +355,16 @@ func (r *BotRouter) HandleEkonomiTopic(ctx context.Context, s *UserSession, p *w
 
 // HandlePertanianTopic renders topic details (1 - 2)
 func (r *BotRouter) HandlePertanianTopic(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, topicIdx int) error {
-	cakupKey := fmt.Sprintf("Cakupmenu13%dPertanian", topicIdx)
-	linkKey := fmt.Sprintf("Linkmenu13%dPertanian", topicIdx)
-	cakupan := locale.T(cakupKey)
-	link := locale.T(linkKey)
-
-	var topicKeyword string
-	switch topicIdx {
-	case 1:
-		topicKeyword = "padi"
-	case 2:
-		topicKeyword = "hortikultura"
-	case 3:
-		topicKeyword = "sawit"
-	default:
-		topicKeyword = "pertanian"
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n\n", locale.T(fmt.Sprintf("menu13%dPertanian", topicIdx))))
-	if cakupan != "" && cakupan != cakupKey {
-		sb.WriteString(cakupan + "\n\n")
-	}
-	if link != "" && link != linkKey {
-		sb.WriteString(fmt.Sprintf("*Kunjungi Website BPS*:\n%s\n\n", link))
-	}
-
-	// 1. Live tables from BPS Bangka Barat portal
-	liveTables := r.fetchBPSTablesForTopic(ctx, topicKeyword)
-	if liveTables != "" {
-		sb.WriteString(liveTables)
-	} else {
-		// 2. Scraped publications & releases from local SQLite scraper
-		relatedItems := r.fetchScraperItemsForTopic(ctx, topicKeyword)
-		if relatedItems != "" {
-			sb.WriteString(relatedItems)
-		}
-	}
+	bodyText := r.buildTopicBody(ctx, "pertanian", topicIdx,
+		locale.T(fmt.Sprintf("menu13%dPertanian", topicIdx)),
+		locale.T(fmt.Sprintf("Cakupmenu13%dPertanian", topicIdx)),
+		locale.T(fmt.Sprintf("Linkmenu13%dPertanian", topicIdx)),
+		"pertanian",
+	)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Detail Statistik Pertanian",
-		sb.String(),
+		bodyText,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
 			{ID: "99", DisplayText: "Menu Sebelumnya (99)"},
@@ -494,4 +373,83 @@ func (r *BotRouter) HandlePertanianTopic(ctx context.Context, s *UserSession, p 
 	)
 
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
+}
+
+func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, topicIdx int, defaultTitle, defaultCakupan, defaultLink, defaultKeyword string) string {
+	var sb strings.Builder
+
+	// 1. Cek Data Provider Scraper
+	if r.scraper != nil {
+		topic, fresh, err := r.scraper.GetLayananDataTopic(ctx, categorySlug, strconv.Itoa(topicIdx))
+		if err == nil && topic != nil {
+			sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n\n", topic.Title))
+			if topic.Description != "" {
+				sb.WriteString(topic.Description + "\n\n")
+			}
+			if topic.SubjectURL != "" {
+				sb.WriteString(fmt.Sprintf("*Portal BPS*: %s\n\n", topic.SubjectURL))
+			}
+
+			// Tabel statistik hasil scraping
+			if len(topic.Tables) > 0 {
+				sb.WriteString("*Tabel Statistik Terkait*:\n")
+				limit := 3
+				if len(topic.Tables) < limit {
+					limit = len(topic.Tables)
+				}
+				for i := 0; i < limit; i++ {
+					t := topic.Tables[i]
+					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, t.Title))
+					if t.URL != "" {
+						sb.WriteString(fmt.Sprintf("   Lihat: %s\n", t.URL))
+					}
+				}
+				sb.WriteString("\n")
+			}
+
+			// Publikasi & rilis hasil scraping
+			if len(topic.Items) > 0 {
+				sb.WriteString("*Publikasi & Dokumen Terkait*:\n")
+				limit := 2
+				if len(topic.Items) < limit {
+					limit = len(topic.Items)
+				}
+				for i := 0; i < limit; i++ {
+					it := topic.Items[i]
+					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
+					if it.FileURL != "" {
+						sb.WriteString(fmt.Sprintf("   Unduh: %s\n", it.FileURL))
+					} else if it.URL != "" {
+						sb.WriteString(fmt.Sprintf("   Link: %s\n", it.URL))
+					}
+				}
+				sb.WriteString("\n")
+			}
+
+			if fresh.UpdatedAt.Year() > 2000 {
+				sb.WriteString(fmt.Sprintf("ℹSumber: Database Scraper BPS · diperbarui %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			}
+			return sb.String()
+		}
+	}
+
+	// 2. Fallback
+	sb.WriteString(fmt.Sprintf("*Detail Statistik: %s*\n\n", defaultTitle))
+	if defaultCakupan != "" && !strings.HasPrefix(defaultCakupan, "Cakupmenu") {
+		sb.WriteString(defaultCakupan + "\n\n")
+	}
+	if defaultLink != "" && !strings.HasPrefix(defaultLink, "Linkmenu") {
+		sb.WriteString(fmt.Sprintf("*Kunjungi Website BPS*:\n%s\n\n", defaultLink))
+	}
+
+	tables := r.fetchBPSTablesForTopic(ctx, defaultKeyword)
+	if tables != "" {
+		sb.WriteString(tables)
+	}
+	items := r.fetchScraperItemsForTopic(ctx, defaultKeyword)
+	if items != "" {
+		sb.WriteString(items)
+	}
+
+	return sb.String()
 }

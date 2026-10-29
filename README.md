@@ -1,41 +1,46 @@
-# BOT ISTIMEWA v3.3 (Go Native, Scraper & Strategic Indicators API Edition)
+# BOT ISTIMEWA v3.4 (Go Native, Scraper, Strategic Indicators & Layanan Data REST API Edition)
 **Chatbot WhatsApp & REST API Resmi Badan Pusat Statistik (BPS) Kabupaten Bangka Barat**
 
-Migrasi penuh ke arsitektur native **Golang** menggunakan `go.mau.fi/whatsmeow`, `github.com/gofiber/fiber/v2`, dan mesin internal **Web Scraper BPS Bangka Barat** berbasis SQLite. Bot ini beroperasi **100% mandiri tanpa ketergantungan pada Google Apps Script (GAS / Google Sheets)** serta menyediakan layanan interaktif WhatsApp dan **REST API Indikator Strategis**.
+Migrasi penuh ke arsitektur native **Golang** menggunakan `go.mau.fi/whatsmeow`, `github.com/gofiber/fiber/v2`, dan mesin internal **Web Scraper BPS Bangka Barat** berbasis SQLite. Bot ini beroperasi **100% mandiri tanpa ketergantungan pada Google Apps Script (GAS / Google Sheets)** serta menyediakan layanan interaktif WhatsApp, **REST API Indikator Strategis (Menu 2)**, dan **REST API Layanan Data Statistik (Menu 1)**.
 
 ---
 
 ## Fitur Utama & Keunggulan
 
 1. **Mandiri Tanpa Ketergantungan Eksternal (Zero-GAS Dependency)**:
-   - Seluruh data publikasi, Berita Resmi Statistik (BRS), berita kegiatan, dan indikator strategis dilayani langsung oleh **mesin scraper internal** dan database SQLite lokal ([`storage/scraper.db`](storage/scraper.db)).
+   - Seluruh data publikasi, Berita Resmi Statistik (BRS), berita kegiatan, tabel statistik statis, dan indikator strategis dilayani langsung oleh **mesin scraper internal** dan database SQLite lokal ([`storage/scraper.db`](file:///home/fadil/fadil/go-bot/storage/scraper.db)).
    - Tidak lagi bergantung pada kuota atau latensi Google Apps Script / Google Sheets.
 
-2. **REST API Indikator Strategis Daerah (Menu 2 Terintegrasi)**:
+2. **REST API Layanan Data Statistik (Menu 1 Terintegrasi)**:
+   - Menyediakan katalog lengkap topik data BPS: **Sosial & Kependudukan (12 topik)**, **Ekonomi & Perdagangan (10 topik)**, **Pertanian & Pertambangan (2 topik)**, dan **Statistik Sektoral & Khusus (1 topik)**.
+   - Endpoint: `/api/v1/layanan-data`, `/api/v1/layanan-data/:category`, dan `/api/v1/layanan-data/:category/:topic` (serta alias bahasa Inggris `/api/v1/services/data`).
+   - Secara dinamis menyajikan daftar tabel statistik (`statictable`) dan publikasi terkait hasil scraping portal BPS Kabupaten Bangka Barat lengkap dengan tautan unduh/portal resmi.
+
+3. **REST API Indikator Strategis Daerah (Menu 2 Terintegrasi)**:
    - Menyediakan endpoint REST API terstruktur untuk 7 Indikator Strategis resmi BPS Bangka Barat: Kependudukan, Pertanian, Kemiskinan, Ketenagakerjaan, Pertumbuhan Ekonomi (PDRB), Harga & Inflasi terkini, serta Kesejahteraan & IPM.
    - Dilengkapi parameter format dinamis (`?format=json` atau `?format=text` siap broadcast) dan filter kategori.
    - Terintegrasi dua arah: data di-scrape berkala, di-cache di memori, dan disajikan secara real-time ke WhatsApp Chatbot dan aplikasi pihak ketiga / dashboard.
 
-3. **Mesin Scraper Terintegrasi (Next.js Server Actions Extractor)**:
+4. **Mesin Scraper Terintegrasi (Next.js Server Actions Extractor)**:
    - Ditulis murni dalam Go (tanpa headless browser / tanpa Chrome / tanpa Puppeteer).
    - Menarik data langsung dari portal resmi [bangkabaratkab.bps.go.id](https://bangkabaratkab.bps.go.id/):
+     - **100+ Tabel Statistik Statis** (`statictable`) via Next.js Server Actions.
      - **34+ Berita Resmi Statistik (BRS)** beserta thumbnail dan berkas PDF.
      - **50+ Publikasi Statistik** beserta cover buku resolusi tinggi dan berkas PDF.
      - **10+ Berita Kegiatan** beserta foto dokumentasi lapangan.
-     - Tabel statistik statis dan data indikator strategis daerah.
    - Penjadwalan otomatis via Cron (`0 */4 * * *`) setiap 4 jam dengan automatic cache invalidation, *circuit breaker*, *rate limiting*, dan *jitter delay*.
 
-4. **Penyajian Media Interaktif di WhatsApp**:
+5. **Penyajian Media Interaktif di WhatsApp**:
    - **Kirim Cover Gambar Otomatis**: Bot langsung mengirimkan foto cover publikasi atau thumbnail rilis BRS ke chat WhatsApp pengguna (`SendImageFromURL`) saat memilih rincian data.
    - **Video In-App Player**: Video literasi statistik menggunakan tautan YouTube resmi BPS yang dapat diputar langsung di dalam aplikasi WhatsApp (*Picture-in-Picture*) tanpa membebani storage server (0 MB local video storage).
 
-5. **Reservasi Konsultasi PST & Notifikasi Grup Internal Kantor**:
+6. **Reservasi Konsultasi PST & Notifikasi Grup Internal Kantor**:
    - **Alur Pengajuan Jadwal Interaktif (Menu 6)**: Pemohon (masyarakat/OPD) dapat mengajukan jadwal konsultasi statistik dan kebutuhan data secara langsung melalui bot.
    - **Penerbitan Nomor Tiket Resmi**: Setiap pengajuan diterbitkan nomor tiket resmi (contoh: `#PST-261028-561`) dan disimpan ke tabel `consultation_bookings` di SQLite.
    - **Auto-Forward ke Grup WA Kantor**: Bot secara otomatis meneruskan rincian pemohon ke grup WhatsApp internal kantor (`INTERNAL_PST_GROUP_JID`) agar petugas piket PST dan pakar terkait dapat segera menindaklanjuti.
    - **Auto-Discovery Group JID**: Bot secara otomatis mendeteksi dan menampilkan daftar Group JID yang diikuti di terminal saat terhubung, memudahkan konfigurasi pada lingkungan lokal maupun produksi.
 
-6. **Efisiensi Memori & Keamanan Maksimal**:
+7. **Efisiensi Memori & Keamanan Maksimal**:
    - Penggunaan RAM sangat rendah (**< 35 MB** saat aktif).
    - Proteksi banjir pesan (*Token-Bucket Rate Limiting* per nomor).
    - Sanitasi input anti-ReDoS (maksimal 100 karakter).
@@ -56,8 +61,9 @@ go-bot/
 │       └── main.go                 # Seeder database scraper
 ├── internal/
 │   ├── api/
-│   │   ├── server.go               # REST API Fiber v2, Web QR scanner (/qr) & endpoint indikator
+│   │   ├── server.go               # REST API Fiber v2, Web QR scanner (/qr) & endpoints
 │   │   ├── indicators_test.go      # Unit test REST API indikator strategis
+│   │   ├── layanan_data_test.go    # Unit test REST API layanan data statistik
 │   │   └── handlers_scraper.go     # Endpoint API status data scraper (/api/v1/scraper)
 │   ├── bot/
 │   │   ├── router.go               # Table-driven state machine dispatcher
@@ -70,6 +76,7 @@ go-bot/
 │   ├── scraper/
 │   │   ├── indicators.go           # Engine kurasi & metadata 7 Indikator Strategis
 │   │   ├── indicators_test.go      # Unit test provider indikator strategis
+│   │   ├── layanan_data.go         # Mapper & query Layanan Data (Sosduk, Ekonomi, Pertanian, Sektoral)
 │   │   ├── runner.go               # Engine scraper Next.js Server Actions
 │   │   ├── fetcher.go              # HTTP client dengan cookie jar & anti-bot bypass
 │   │   ├── store.go                # Penyimpanan SQLite (scraped_items, bookings, runs)
@@ -199,22 +206,36 @@ Kirimkan API key pada setiap request melalui salah satu metode berikut:
 * `format=text`: Mengembalikan format teks pesan terstruktur yang siap kirim via WhatsApp atau terminal.
 * `category=<slug>`: Memfilter daftar indikator berdasarkan nama kategori atau slug.
 
-#### C. Pengelolaan & Kontrol Web Scraper (`/api/v1/scraper`)
+#### C. Layanan Data Statistik (Menu 1)
+| Method | Endpoint | Auth | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/v1/layanan-data` | Perlu | Mengambil seluruh 4 kategori layanan data (Sosial Kependudukan, Ekonomi, Pertanian, Sektoral) beserta ringkasan topik. |
+| `GET` | `/api/v1/layanan-data/:category` | Perlu | Mengambil rincian 1 kategori (`sosduk`, `ekonomi`, `pertanian`, `sektoral`) beserta daftar topik di dalamnya. |
+| `GET` | `/api/v1/layanan-data/:category/:topic` | Perlu | Mengambil daftar tabel statistik (`statictable`) dan publikasi terkait suatu topik (misal: `kemiskinan`, `penduduk`, `inflasi`, `sawit`, dll). |
+| `GET` | `/api/v1/services/data` | Perlu | Alias bahasa Inggris untuk `/api/v1/layanan-data`. |
+| `GET` | `/api/v1/services/data/:category` | Perlu | Alias bahasa Inggris untuk `/api/v1/layanan-data/:category`. |
+| `GET` | `/api/v1/services/data/:category/:topic` | Perlu | Alias bahasa Inggris untuk `/api/v1/layanan-data/:category/:topic`. |
+
+*Parameter Query Khusus Layanan Data:*
+* `format=text`: Mengembalikan format teks pesan WhatsApp berisi daftar tabel statis dan publikasi terkait lengkap dengan tautan portal BPS.
+* `limit=<n>`: Batas jumlah tabel/publikasi per topik (default: 5).
+
+#### D. Pengelolaan & Kontrol Web Scraper (`/api/v1/scraper`)
 | Method | Endpoint | Auth | Deskripsi |
 | :--- | :--- | :---: | :--- |
 | `GET` | `/api/v1/scraper/status` | Perlu | Status scraper, umur data (hours), jumlah item per kind, status circuit breaker, dan jadwal run berikutnya. |
-| `POST` | `/api/v1/scraper/run` | Perlu | Menjalankan proses scraping manual on-demand (query `?kind=all`, `pressrelease`, `publication`, dll). |
+| `POST` | `/api/v1/scraper/run` | Perlu | Menjalankan proses scraping manual on-demand (query `?kind=all`, `pressrelease`, `publication`, `statictable`, dll). |
 | `GET` | `/api/v1/scraper/runs` | Perlu | Riwayat log audit siklus scraping (`?limit=10`). |
 | `GET` | `/api/v1/scraper/items` | Perlu | Mengambil daftar item hasil scraping di database SQLite (`?kind=...&lang=id&limit=20`). |
 | `POST` | `/api/v1/scraper/breaker/reset` | Perlu | Mereset status circuit breaker scraper secara manual jika sedang terbuka (*open*). |
 
-#### D. Broadcast & Manajemen Cache (`/api/v1`)
+#### E. Broadcast & Manajemen Cache (`/api/v1`)
 | Method | Endpoint | Auth | Deskripsi |
 | :--- | :--- | :---: | :--- |
 | `POST` | `/api/v1/blast` | Perlu | Mengirimkan pesan siaran massal (*broadcast blast*) asynchronous dengan delay acak anti-banned. |
 | `POST` | `/api/v1/cache/clear` | Perlu | Membersihkan in-memory cache data di server. |
 
-#### E. BPS Web API Gateway / Proxy (`/api/v1/bps`)
+#### F. BPS Web API Gateway / Proxy (`/api/v1/bps`)
 Gateway proxy terintegrasi ke BPS Web API resmi (`domain: 1903` Bangka Barat):
 | Method | Endpoint | Auth | Deskripsi |
 | :--- | :--- | :---: | :--- |
@@ -263,13 +284,24 @@ curl -H "X-API-Key: rahasia_internal_bps_1903" \
 *Unduh PDF*: https://webapi.bps.go.id/download.php?f=...
 ```
 
-**D. Memicu Scraping Manual via API:**
+**D. Mengambil Layanan Data Statistik (Menu 1) Topik Kemiskinan:**
+```bash
+# Format JSON (katalog tabel statis & publikasi)
+curl -H "X-API-Key: rahasia_internal_bps_1903" \
+  http://localhost:3000/api/v1/layanan-data/sosduk/kemiskinan
+
+# Format Plaintext siap kirim WhatsApp
+curl -H "X-API-Key: rahasia_internal_bps_1903" \
+  "http://localhost:3000/api/v1/layanan-data/sosduk/kemiskinan?format=text"
+```
+
+**E. Memicu Scraping Manual via API:**
 ```bash
 curl -X POST -H "X-API-Key: rahasia_internal_bps_1903" \
   "http://localhost:3000/api/v1/scraper/run?kind=all"
 ```
 
-**E. Mengirim Broadcast WhatsApp (Blast):**
+**F. Mengirim Broadcast WhatsApp (Blast):**
 ```bash
 curl -X POST -H "X-API-Key: rahasia_internal_bps_1903" \
   -H "Content-Type: application/json" \
@@ -306,9 +338,14 @@ Jalankan seluruh test suite otomatis:
 go test -v ./...
 ```
 
-Uji spesifik REST API Indikator Strategis:
+Uji spesifik REST API Indikator Strategis (Menu 2):
 ```bash
 go test -v -run TestAPIIndicators ./internal/api
+```
+
+Uji spesifik REST API Layanan Data Statistik (Menu 1):
+```bash
+go test -v -run TestAPILayananData ./internal/api
 ```
 
 Uji spesifik provider & parser metrik indikator:

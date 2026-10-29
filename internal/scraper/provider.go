@@ -42,6 +42,7 @@ func (p *Provider) InvalidateCache() {
 	defer p.mu.Unlock()
 	p.cache = make(map[string]cacheEntry)
 	InvalidateIndicatorCache()
+	InvalidateLayananDataCache()
 }
 
 func (p *Provider) getCached(key string) ([]Item, Freshness, bool) {
