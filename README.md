@@ -164,38 +164,87 @@ Saat bot pertama kali dijalankan:
 
 ---
 
-## Dokumentasi REST API Indikator Strategis (Menu 2)
+---
 
-Bot Istimewa menyediakan endpoint REST API untuk integrasi aplikasi eksternal, dashboard pimpinan daerah, atau portal web OPD. Seluruh endpoint dilindungi oleh `API_SECRET_KEY`.
+## Dokumentasi REST API Lengkap (Master API Reference)
 
-### 1. Daftar Endpoint
+Server REST API dibangun menggunakan framework performa tinggi **Fiber v2** dan berjalan di port `APP_PORT` (default: `3000`). Seluruh endpoint di bawah `/api/*` dilindungi oleh `API_SECRET_KEY`.
 
-| Method | Endpoint | Deskripsi |
-| :--- | :--- | :--- |
-| `GET` | `/api/v1/indicators` | Mengambil seluruh 7 indikator strategis beserta metrik dan link unduh dokumen resmi. |
-| `GET` | `/api/v1/indicators/:id` | Mengambil 1 indikator berdasarkan ID (`1`-`7`) atau slug (`inflasi`, `kemiskinan`, `kependudukan`, dll). |
-| `GET` | `/api/v1/indikator` | Alias berbahasa Indonesia untuk endpoint indikator. |
-| `GET` | `/api/v1/indikator/:id` | Alias berbahasa Indonesia per ID/slug. |
+### 1. Metode Autentikasi API
+Kirimkan API key pada setiap request melalui salah satu metode berikut:
+- **Header**: `X-API-Key: <API_SECRET_KEY>`
+- **Bearer Token**: `Authorization: Bearer <API_SECRET_KEY>`
+- **Query Parameter**: `?key=<API_SECRET_KEY>`
 
-### 2. Autentikasi
-Gunakan salah satu metode autentikasi berikut:
-- **Header**: `X-API-Key: rahasia_internal_bps_1903`
-- **Bearer**: `Authorization: Bearer rahasia_internal_bps_1903`
-- **Query Parameter**: `?key=rahasia_internal_bps_1903`
+---
 
-### 3. Parameter Tambahan (Query Parameters)
-- `format=text`: Mengembalikan format teks pesan terstruktur yang siap dikirimkan via chat/WhatsApp atau dicetak di terminal.
-- `category=<kata_kunci>`: Memfilter daftar indikator berdasarkan nama kategori atau slug.
+### 2. Daftar Lengkap Endpoint
 
-### 4. Contoh Penggunaan (`curl`)
+#### A. Public & Sistem (Tanpa / Dengan Auth)
+| Method | Endpoint | Auth | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/health` | Publik | Health check server, penggunaan memori RAM, status database scraper, dan circuit breaker. |
+| `GET` | `/qr` | Publik | Halaman web pemindai QR code WhatsApp di browser (otomatis terkunci setelah login). |
+| `GET` | `/api/v1/qr` | Perlu | Mengambil payload / data QR code WhatsApp dalam format JSON Base64. |
 
-**A. Mengambil Seluruh Indikator (Format JSON):**
+#### B. Indikator Strategis Daerah (Menu 2)
+| Method | Endpoint | Auth | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/v1/indicators` | Perlu | Mengambil seluruh 7 indikator strategis beserta metrik dan link unduh dokumen resmi. |
+| `GET` | `/api/v1/indicators/:id` | Perlu | Mengambil 1 indikator berdasarkan ID (`1`-`7`) atau slug (`inflasi`, `kemiskinan`, `kependudukan`, dll). |
+| `GET` | `/api/v1/indikator` | Perlu | Alias berbahasa Indonesia untuk `/api/v1/indicators`. |
+| `GET` | `/api/v1/indikator/:id` | Perlu | Alias berbahasa Indonesia untuk `/api/v1/indicators/:id`. |
+
+*Parameter Query Khusus Indikator:*
+* `format=text`: Mengembalikan format teks pesan terstruktur yang siap kirim via WhatsApp atau terminal.
+* `category=<slug>`: Memfilter daftar indikator berdasarkan nama kategori atau slug.
+
+#### C. Pengelolaan & Kontrol Web Scraper (`/api/v1/scraper`)
+| Method | Endpoint | Auth | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/v1/scraper/status` | Perlu | Status scraper, umur data (hours), jumlah item per kind, status circuit breaker, dan jadwal run berikutnya. |
+| `POST` | `/api/v1/scraper/run` | Perlu | Menjalankan proses scraping manual on-demand (query `?kind=all`, `pressrelease`, `publication`, dll). |
+| `GET` | `/api/v1/scraper/runs` | Perlu | Riwayat log audit siklus scraping (`?limit=10`). |
+| `GET` | `/api/v1/scraper/items` | Perlu | Mengambil daftar item hasil scraping di database SQLite (`?kind=...&lang=id&limit=20`). |
+| `POST` | `/api/v1/scraper/breaker/reset` | Perlu | Mereset status circuit breaker scraper secara manual jika sedang terbuka (*open*). |
+
+#### D. Broadcast & Manajemen Cache (`/api/v1`)
+| Method | Endpoint | Auth | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/v1/blast` | Perlu | Mengirimkan pesan siaran massal (*broadcast blast*) asynchronous dengan delay acak anti-banned. |
+| `POST` | `/api/v1/cache/clear` | Perlu | Membersihkan in-memory cache data di server. |
+
+#### E. BPS Web API Gateway / Proxy (`/api/v1/bps`)
+Gateway proxy terintegrasi ke BPS Web API resmi (`domain: 1903` Bangka Barat):
+| Method | Endpoint | Auth | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/v1/bps/list` | Perlu | Query list dinamis BPS API (`?model=...&page=...`). |
+| `GET` | `/api/v1/bps/subjects` | Perlu | Daftar subjek statistik BPS Bangka Barat. |
+| `GET` | `/api/v1/bps/subcats` | Perlu | Daftar subkategori statistik BPS. |
+| `GET` | `/api/v1/bps/variables` | Perlu | Daftar variabel statistik BPS. |
+| `GET` | `/api/v1/bps/statictables` | Perlu | Tabel statistik statis dari portal resmi BPS. |
+| `GET` | `/api/v1/bps/publications` | Perlu | Katalog buku publikasi BPS Bangka Barat. |
+| `GET` | `/api/v1/bps/pressreleases` | Perlu | Daftar Berita Resmi Statistik (BRS) terkini. |
+| `GET` | `/api/v1/bps/infographics` | Perlu | Katalog infografis visual BPS. |
+| `GET` | `/api/v1/bps/data` | Perlu | Data agregat statistik dinamis BPS. |
+| `POST` | `/api/v1/bps/cache/clear` | Perlu | Membersihkan in-memory cache gateway Web API BPS. |
+
+---
+
+### 3. Contoh Penggunaan (`curl`)
+
+**A. Cek Status Scraper & Kesehatan Sistem:**
+```bash
+curl http://localhost:3000/health
+```
+
+**B. Mengambil Seluruh Indikator Strategis (JSON):**
 ```bash
 curl -H "X-API-Key: rahasia_internal_bps_1903" \
   http://localhost:3000/api/v1/indicators
 ```
 
-**B. Mengambil Indikator Inflasi Terkini (Format Teks WhatsApp):**
+**C. Mengambil Indikator Inflasi Terkini (Format Plaintext Siap Broadcast):**
 ```bash
 curl -H "X-API-Key: rahasia_internal_bps_1903" \
   "http://localhost:3000/api/v1/indicators/inflasi?format=text"
@@ -212,6 +261,23 @@ curl -H "X-API-Key: rahasia_internal_bps_1903" \
 *Sumber*: Berita Resmi Statistik (BRS) BPS Kabupaten Bangka Barat
 *Dokumen Resmi*: September 2026, Inflasi Year on Year (y-on-y) Kabupaten Bangka Barat sebesar 4,49 persen.
 *Unduh PDF*: https://webapi.bps.go.id/download.php?f=...
+```
+
+**D. Memicu Scraping Manual via API:**
+```bash
+curl -X POST -H "X-API-Key: rahasia_internal_bps_1903" \
+  "http://localhost:3000/api/v1/scraper/run?kind=all"
+```
+
+**E. Mengirim Broadcast WhatsApp (Blast):**
+```bash
+curl -X POST -H "X-API-Key: rahasia_internal_bps_1903" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipients": ["628123456789", "628987654321"],
+    "message": "Halo Sahabat Data! BRS Inflasi Bangka Barat September 2026 telah rilis."
+  }' \
+  http://localhost:3000/api/v1/blast
 ```
 
 ---
