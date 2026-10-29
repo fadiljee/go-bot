@@ -53,6 +53,29 @@ type Freshness struct {
 	Source    string    `json:"source"` // "scraper" | "bpsapi" | "gsheet"
 }
 
+// IndicatorMetric represents an individual metric within a strategic indicator.
+type IndicatorMetric struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Value string `json:"value"`
+	Note  string `json:"note,omitempty"`
+}
+
+// StrategicIndicator represents one of the 7 strategic statistical indicators (Menu 2).
+type StrategicIndicator struct {
+	ID          int               `json:"id"`
+	Slug        string            `json:"slug"`
+	Title       string            `json:"title"`
+	Category    string            `json:"category"`
+	Description string            `json:"description"`
+	Metrics     []IndicatorMetric `json:"metrics"`
+	Source      string            `json:"source"`
+	SourceURL   string            `json:"source_url,omitempty"`
+	ImageURL    string            `json:"image_url,omitempty"`
+	UpdatedAt   string            `json:"updated_at"`
+	Items       []Item            `json:"items,omitempty"`
+}
+
 // DataProvider is consumed by bot handlers and API (§6.3).
 type DataProvider interface {
 	LatestPressReleases(ctx context.Context, lang string, limit int) ([]Item, Freshness, error)
@@ -61,6 +84,8 @@ type DataProvider interface {
 	SearchStaticTables(ctx context.Context, keyword string, limit int) ([]Item, Freshness, error)
 	SearchItems(ctx context.Context, keyword string, lang string, limit int) ([]Item, Freshness, error)
 	CreateConsultationBooking(ctx context.Context, b *ConsultationBooking) error
+	GetStrategicIndicator(ctx context.Context, idOrSlug string) (*StrategicIndicator, Freshness, error)
+	GetAllStrategicIndicators(ctx context.Context) ([]StrategicIndicator, Freshness, error)
 }
 
 // ConsultationBooking represents a consultation schedule request from WhatsApp bot users.

@@ -183,7 +183,7 @@ func LoadConfig() *Config {
 		ScraperRunTimeoutMinutes:   getEnvInt("SCRAPER_RUN_TIMEOUT_MINUTES", 10),
 		ScraperStartupCatchupHours: getEnvInt("SCRAPER_STARTUP_CATCHUP_HOURS", 6),
 		ScraperManualCooldownMinutes: getEnvInt("SCRAPER_MANUAL_COOLDOWN_MINUTES", 5),
-		ScraperEnabledKinds:        getEnvSlice("SCRAPER_ENABLED_KINDS", []string{"pressrelease", "publication", "infographic", "statictable"}),
+		ScraperEnabledKinds:        getEnvSlice("SCRAPER_ENABLED_KINDS", []string{"pressrelease", "publication", "infographic", "statictable", "news"}),
 		ScraperMinDelayMs:          getEnvInt("SCRAPER_MIN_DELAY_MS", 3000),
 		ScraperJitterMs:            getEnvInt("SCRAPER_JITTER_MS", 1000),
 		ScraperHTTPTimeoutSeconds:  getEnvInt("SCRAPER_HTTP_TIMEOUT_SECONDS", 20),

@@ -41,6 +41,7 @@ func (p *Provider) InvalidateCache() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.cache = make(map[string]cacheEntry)
+	InvalidateIndicatorCache()
 }
 
 func (p *Provider) getCached(key string) ([]Item, Freshness, bool) {

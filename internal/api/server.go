@@ -35,6 +35,7 @@ type APIServer struct {
 	scraperStore     *scraper.Store
 	scraperScheduler *scraper.Scheduler
 	scraperBreaker   *scraper.CircuitBreaker
+	scraperProvider  scraper.DataProvider
 	startTime        time.Time
 }
 
@@ -109,13 +110,37 @@ func (s *APIServer) setupRoutes() {
 	scraperGroup.Get("/runs", s.handleScraperRuns)
 	scraperGroup.Get("/items", s.handleScraperItems)
 	scraperGroup.Post("/breaker/reset", s.handleScraperBreakerReset)
+
+	// Strategic Indicators Route Group (Menu 2)
+	indGroup := api.Group("/v1/indicators")
+	indGroup.Get("/", s.handleGetIndicators)
+	indGroup.Get("/:id", s.handleGetIndicatorByID)
+
+	// Alias for Indonesian endpoint: /api/v1/indikator
+	aliasGroup := api.Group("/v1/indikator")
+	aliasGroup.Get("/", s.handleGetIndicators)
+	aliasGroup.Get("/:id", s.handleGetIndicatorByID)
 }
 
-func (s *APIServer) SetScraper(runner *scraper.Runner, store *scraper.Store, scheduler *scraper.Scheduler, breaker *scraper.CircuitBreaker) {
+func (s *APIServer) SetScraper(runner *scraper.Runner, store *scraper.Store, scheduler *scraper.Scheduler, breaker *scraper.CircuitBreaker, provider ...scraper.DataProvider) {
 	s.scraperRunner = runner
 	s.scraperStore = store
 	s.scraperScheduler = scheduler
 	s.scraperBreaker = breaker
+	if len(provider) > 0 && provider[0] != nil {
+		s.scraperProvider = provider[0]
+	}
+}
+
+func (s *APIServer) getProvider() scraper.DataProvider {
+	if s.scraperProvider != nil {
+		return s.scraperProvider
+	}
+	if s.scraperStore != nil {
+		s.scraperProvider = scraper.NewProvider(s.scraperStore, s.cfg.ScraperMaxStaleHours)
+		return s.scraperProvider
+	}
+	return nil
 }
 
 func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
@@ -712,6 +737,115 @@ func (s *APIServer) handleScraperBreakerReset(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"success": true,
 		"message": "Circuit breaker reset successfully",
+	})
+}
+
+// handleGetIndicators handles GET /api/v1/indicators (Menu 2 Strategic Indicators)
+func (s *APIServer) handleGetIndicators(c *fiber.Ctx) error {
+	prov := s.getProvider()
+	if prov == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper database/provider is not initialized",
+		})
+	}
+
+	indicators, freshness, err := prov.GetAllStrategicIndicators(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	// Filter by category or search keyword if requested
+	catFilter := strings.ToLower(c.Query("category"))
+	if catFilter != "" {
+		filtered := make([]scraper.StrategicIndicator, 0)
+		for _, ind := range indicators {
+			if strings.Contains(strings.ToLower(ind.Category), catFilter) || strings.Contains(strings.ToLower(ind.Slug), catFilter) {
+				filtered = append(filtered, ind)
+			}
+		}
+		indicators = filtered
+	}
+
+	format := strings.ToLower(c.Query("format"))
+	if format == "text" {
+		var sb strings.Builder
+		sb.WriteString("=== INDIKATOR STRATEGIS BPS KABUPATEN BANGKA BARAT ===\n\n")
+		for _, ind := range indicators {
+			sb.WriteString(fmt.Sprintf("[%d] %s (%s)\n", ind.ID, ind.Title, ind.Category))
+			for _, m := range ind.Metrics {
+				sb.WriteString(fmt.Sprintf("  • %s: %s", m.Label, m.Value))
+				if m.Note != "" {
+					sb.WriteString(fmt.Sprintf(" (%s)", m.Note))
+				}
+				sb.WriteString("\n")
+			}
+			if len(ind.Items) > 0 {
+				sb.WriteString(fmt.Sprintf("  Dokumen: %s\n", ind.Items[0].Title))
+				if ind.Items[0].FileURL != "" {
+					sb.WriteString(fmt.Sprintf("  Unduh: %s\n", ind.Items[0].FileURL))
+				}
+			}
+			sb.WriteString("\n")
+		}
+		return c.Type("text").SendString(sb.String())
+	}
+
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"total":     len(indicators),
+		"freshness": freshness,
+		"data":      indicators,
+	})
+}
+
+// handleGetIndicatorByID handles GET /api/v1/indicators/:id
+func (s *APIServer) handleGetIndicatorByID(c *fiber.Ctx) error {
+	idOrSlug := c.Params("id")
+	prov := s.getProvider()
+	if prov == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scraper database/provider is not initialized",
+		})
+	}
+
+	ind, freshness, err := prov.GetStrategicIndicator(c.Context(), idOrSlug)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	format := strings.ToLower(c.Query("format"))
+	if format == "text" {
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("*%s*\n\n", ind.Title))
+		for _, m := range ind.Metrics {
+			sb.WriteString(fmt.Sprintf("• *%s*: %s", m.Label, m.Value))
+			if m.Note != "" {
+				sb.WriteString(fmt.Sprintf(" (%s)", m.Note))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("\n*Sumber*: %s\n", ind.Source))
+		if len(ind.Items) > 0 {
+			sb.WriteString(fmt.Sprintf("*Dokumen Resmi*: %s\n", ind.Items[0].Title))
+			if ind.Items[0].FileURL != "" {
+				sb.WriteString(fmt.Sprintf("*Unduh PDF*: %s\n", ind.Items[0].FileURL))
+			}
+		}
+		return c.Type("text").SendString(sb.String())
+	}
+
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"freshness": freshness,
+		"data":      ind,
 	})
 }
 

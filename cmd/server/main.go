@@ -67,6 +67,7 @@ func main() {
 	var scraperSched *scraper.Scheduler
 	var scraperRunner *scraper.Runner
 	var scraperBreaker *scraper.CircuitBreaker
+	var scraperProvider scraper.DataProvider
 
 	if cfg.ScraperEnabled {
 		store, err := scraper.NewStore(cfg.ScraperDBPath)
@@ -116,6 +117,7 @@ func main() {
 					fetcher := scraper.NewFetcher(scraperCfg, robotsMgr)
 					scraperRunner = scraper.NewRunner(scraperCfg, scraperStore, fetcher, scraperBreaker, selectorsCfg, nil)
 					provider := scraper.NewProvider(scraperStore, cfg.ScraperMaxStaleHours)
+					scraperProvider = provider
 					scraperRunner.SetProvider(provider)
 					scraperSched = scraper.NewScheduler(scraperCfg, scraperRunner, scraperStore)
 					if err := scraperSched.Start(); err != nil {
@@ -205,7 +207,7 @@ func main() {
 	// 8. Start Fiber REST API Server
 	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient, bpsClient)
 	if scraperRunner != nil && scraperStore != nil {
-		apiServer.SetScraper(scraperRunner, scraperStore, scraperSched, scraperBreaker)
+		apiServer.SetScraper(scraperRunner, scraperStore, scraperSched, scraperBreaker, scraperProvider)
 	}
 	go func() {
 		addr := fmt.Sprintf("%s:%s", cfg.AppHost, cfg.AppPort)
