@@ -66,3 +66,7 @@ desktop.ini
 # 8. Dokumentasi Internal & PRD (Private)
 prd/
 
+# 9. Script Dependencies & Build Tools
+scripts/lib/
+scripts/wheels/
+
