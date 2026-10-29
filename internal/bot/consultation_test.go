@@ -148,3 +148,110 @@ Ketik *0* untuk batal dan kembali ke Menu Utama._`
 	}
 }
 
+func TestParseConsultationBookingInput_UserReportedCase(t *testing.T) {
+	input := `_*Pengajuan Jadwal Konsultasi Statistik*
+  
+  Silakan kirimkan data permohonan konsultasi
+  Sahabat dengan membalas pesan ini menggunakan
+  format berikut:
+  
+  ` + "```" + `Nama:Fadil
+  Instansi / Asal: Bps Babar
+  No. WhatsApp / HP: 08216262626
+  Topik / Kebutuhan Data: Kemiskinan
+  Rencana Hari / Jam:` + "```" + `Kamis, 20 Oktober 2026
+  10.00 WIB
+  
+  *Contoh Pengisian*:
+  Nama: Ahmad Fauzi
+  Instansi: Dinas Pertanian Bangka Barat
+  No. WhatsApp / HP: 082164302643
+  Topik: Data Produksi Padi & Sawit 2025
+  Rencana Hari / Jam: Kamis, 29 Okt jam 10.00 WIB
+  
+  *(Atau cukup ketik informasi di atas secara
+  bebas)*
+  
+  Ketik *0* untuk batal dan kembali ke Menu
+  Utama._`
+
+	details := parseConsultationBookingInput(input)
+
+	if details.Name != "Fadil" {
+		t.Errorf("expected Name 'Fadil', got '%s'", details.Name)
+	}
+	if details.Instansi != "Bps Babar" {
+		t.Errorf("expected Instansi 'Bps Babar', got '%s'", details.Instansi)
+	}
+	if details.Phone != "628216262626" {
+		t.Errorf("expected Phone '628216262626', got '%s'", details.Phone)
+	}
+	if details.Topic != "Kemiskinan" {
+		t.Errorf("expected Topic 'Kemiskinan', got '%s'", details.Topic)
+	}
+	if !strings.Contains(details.PreferredTime, "Kamis, 20 Oktober 2026") {
+		t.Errorf("expected PreferredTime to contain 'Kamis, 20 Oktober 2026', got '%s'", details.PreferredTime)
+	}
+	if strings.Contains(details.CleanNotes, "Ahmad Fauzi") {
+		t.Errorf("expected CleanNotes to NOT contain 'Ahmad Fauzi', got: %s", details.CleanNotes)
+	}
+	if strings.Contains(details.CleanNotes, "format berikut") {
+		t.Errorf("expected CleanNotes to NOT contain 'format berikut', got: %s", details.CleanNotes)
+	}
+}
+
+func TestParseConsultationBookingInput_MultilineAndNumbered(t *testing.T) {
+	// Case with numbered list
+	inputNumbered := `1. Nama: Fadil
+2. Instansi / Asal: BPS Bangka Barat
+3. No. WhatsApp: 08216262626
+4. Topik: Data Inflasi 2026
+5. Jadwal: Jumat, 30 Okt jam 09.00 WIB
+
+Contoh:
+Nama: Ahmad Fauzi`
+
+	details := parseConsultationBookingInput(inputNumbered)
+	if details.Name != "Fadil" {
+		t.Errorf("expected Name 'Fadil', got '%s'", details.Name)
+	}
+	if details.Instansi != "BPS Bangka Barat" {
+		t.Errorf("expected Instansi 'BPS Bangka Barat', got '%s'", details.Instansi)
+	}
+	if details.Phone != "628216262626" {
+		t.Errorf("expected Phone '628216262626', got '%s'", details.Phone)
+	}
+	if details.Topic != "Data Inflasi 2026" {
+		t.Errorf("expected Topic 'Data Inflasi 2026', got '%s'", details.Topic)
+	}
+	if strings.Contains(details.CleanNotes, "Ahmad Fauzi") {
+		t.Errorf("expected CleanNotes to NOT contain 'Ahmad Fauzi', got: %s", details.CleanNotes)
+	}
+
+	// Case with multiline values (value on next line)
+	inputMultiline := `Nama:
+Fadil
+Instansi:
+BPS Bangka Barat
+No HP:
+08216262626
+Topik:
+Data PDRB
+Jadwal:
+Kamis 10.00 WIB`
+
+	detailsMulti := parseConsultationBookingInput(inputMultiline)
+	if detailsMulti.Name != "Fadil" {
+		t.Errorf("expected Name 'Fadil', got '%s'", detailsMulti.Name)
+	}
+	if detailsMulti.Instansi != "BPS Bangka Barat" {
+		t.Errorf("expected Instansi 'BPS Bangka Barat', got '%s'", detailsMulti.Instansi)
+	}
+	if detailsMulti.Phone != "628216262626" {
+		t.Errorf("expected Phone '628216262626', got '%s'", detailsMulti.Phone)
+	}
+	if detailsMulti.Topic != "Data PDRB" {
+		t.Errorf("expected Topic 'Data PDRB', got '%s'", detailsMulti.Topic)
+	}
+}
+
