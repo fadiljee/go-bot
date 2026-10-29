@@ -50,6 +50,7 @@ type BotRouter struct {
 	gsheet              *gsheet.Client
 	bps                 *bpsapi.Client
 	scraper             scraper.DataProvider
+	scraperRunner       *scraper.Runner
 	sessions            *SessionManager
 	handlerMap          map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error
 	rateLimiter         *RateLimiter
@@ -60,6 +61,10 @@ type BotRouter struct {
 
 func (r *BotRouter) SetScraper(p scraper.DataProvider) {
 	r.scraper = p
+}
+
+func (r *BotRouter) SetScraperRunner(runner *scraper.Runner) {
+	r.scraperRunner = runner
 }
 
 func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client, bpsClient ...*bpsapi.Client) *BotRouter {
@@ -251,7 +256,35 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		}
 
 		if input == "3" || strings.Contains(inputLower, "scrape") {
-			_ = r.sender.SendTextMessage(ctx, p.JID, "🔄 *Memicu Proses Scraping On-Demand...*\nProses scraping publikasi, rilis BRS, berita, dan tabel statis sedang berjalan di background.\nDatabase lokal akan otomatis terbarukan.")
+			if r.scraperRunner == nil {
+				_ = r.sender.SendTextMessage(ctx, p.JID, "⚠️ Mesin scraper belum terhubung atau dinonaktifkan di konfigurasi.")
+				return
+			}
+			_ = r.sender.SendTextMessage(ctx, p.JID, "🔄 *Memicu Proses Scraping On-Demand...*\nProses scraping publikasi, rilis BRS, berita, dan tabel statis dari portal BPS Bangka Barat sedang berjalan di background.\n\nDatabase lokal (`storage/scraper.db`) akan otomatis diperbarui setelah selesai. Anda akan menerima notifikasi jika proses telah tuntas.")
+
+			adminJID := p.JID
+			go func() {
+				bgCtx := context.Background()
+				res, err := r.scraperRunner.RunAll(bgCtx, scraper.TriggerManual)
+				if err != nil {
+					_ = r.sender.SendTextMessage(context.Background(), adminJID, fmt.Sprintf("❌ *Scraping Manual Gagal:*\n%v", err))
+					return
+				}
+				durStr := "-"
+				timeStr := time.Now().Format("15:04:05 WIB")
+				if res.FinishedAt != nil {
+					durStr = res.FinishedAt.Sub(res.StartedAt).Round(time.Second).String()
+					timeStr = res.FinishedAt.Format("15:04:05 WIB")
+				}
+				_ = r.sender.SendTextMessage(context.Background(), adminJID, fmt.Sprintf("✅ *Scraping Manual Selesai!*\n\n• Waktu: %s\n• Durasi: %s\n• Item Ditemukan: %d\n• Item Baru: %d\n• Item Diperbarui: %d\n• Status: %s",
+					timeStr,
+					durStr,
+					res.ItemsFound,
+					res.ItemsNew,
+					res.ItemsUpdated,
+					res.Status,
+				))
+			}()
 			return
 		}
 

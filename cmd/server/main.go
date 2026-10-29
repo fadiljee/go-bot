@@ -123,8 +123,9 @@ func main() {
 					if err := scraperSched.Start(); err != nil {
 						log.Printf("Gagal menjalankan scheduler scraper: %v", err)
 					}
-					// Connect scraper provider to bot router
+					// Connect scraper provider and runner to bot router
 					botRouter.SetScraper(provider)
+					botRouter.SetScraperRunner(scraperRunner)
 					log.Printf("[SCRAPER] Scraper otomatis BPS Bangka Barat aktif (Cron: %s | DB: %s)",
 						cfg.ScraperCronSpec, cfg.ScraperDBPath)
 				}
