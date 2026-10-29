@@ -422,5 +422,3 @@ Repositori ini bersifat **Publik (Open Source)** untuk transparansi dan kolabora
 - **Data Privacy**: Kerahasiaan nomor dan data pengguna dilindungi sesuai amanat UU No. 16 Tahun 1997 tentang Statistik.
 
 ---
-**BPS Kabupaten Bangka Barat**  
-*Statistik Berkualitas untuk Indonesia Maju*
