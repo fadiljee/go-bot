@@ -248,9 +248,38 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 			sb.WriteString("• *Database*: SQLite (`storage/scraper.db`)\n")
 			sb.WriteString("• *Cron Job*: Setiap 4 jam (`0 */4 * * *`)\n")
 			sb.WriteString("• *Satker Target*: BPS Kabupaten Bangka Barat (1903)\n")
-			sb.WriteString("• *Circuit Breaker*: Normal (Active)\n\n")
-			sb.WriteString("───────────────────────────\n")
-			sb.WriteString("_Ketik *1* untuk Kelola Pakar, *99* untuk Dashboard Admin, *0* untuk Keluar._")
+
+			if r.scraperRunner != nil && r.scraperRunner.Store() != nil {
+				st := r.scraperRunner.Store()
+				counts, err := st.GetCountsByKind(ctx)
+				if err == nil && len(counts) > 0 {
+					sb.WriteString("\n*📊 Total Data Tersimpan di Database:*\n")
+					sb.WriteString(fmt.Sprintf("• Tabel Statis: %d item\n", counts[string(scraper.KindStaticTable)]))
+					sb.WriteString(fmt.Sprintf("• Publikasi BPS: %d item\n", counts[string(scraper.KindPublication)]))
+					sb.WriteString(fmt.Sprintf("• Berita Resmi (BRS): %d item\n", counts[string(scraper.KindPressRelease)]))
+					sb.WriteString(fmt.Sprintf("• Infografis: %d item\n", counts[string(scraper.KindInfographic)]))
+					sb.WriteString(fmt.Sprintf("• Berita Kegiatan: %d item\n", counts[string(scraper.KindNews)]))
+				}
+
+				lastRun, err := st.GetLastRun(ctx)
+				if err == nil && lastRun != nil {
+					dur := "-"
+					if lastRun.FinishedAt != nil {
+						dur = lastRun.FinishedAt.Sub(lastRun.StartedAt).Round(time.Second).String()
+					}
+					sb.WriteString("\n*⏱ Riwayat Scraping Terakhir:*\n")
+					sb.WriteString(fmt.Sprintf("• Status: *%s*\n", strings.ToUpper(lastRun.Status)))
+					sb.WriteString(fmt.Sprintf("• Waktu: %s\n", lastRun.StartedAt.Format("02 Jan 2006, 15:04 WIB")))
+					sb.WriteString(fmt.Sprintf("• Pemicu: %s | Durasi: %s\n", lastRun.Trigger, dur))
+					sb.WriteString(fmt.Sprintf("• Hasil: Ditemukan %d, Baru %d, Update %d\n", lastRun.ItemsFound, lastRun.ItemsNew, lastRun.ItemsUpdated))
+					if lastRun.ErrorMessage != "" {
+						sb.WriteString(fmt.Sprintf("• Pesan Error: %s\n", lastRun.ErrorMessage))
+					}
+				}
+			}
+
+			sb.WriteString("\n───────────────────────────\n")
+			sb.WriteString("_Ketik *3* untuk Manual Scraping, *1* untuk Kelola Pakar, *99* untuk Dashboard Admin, *0* untuk Keluar._")
 			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
 			return
 		}

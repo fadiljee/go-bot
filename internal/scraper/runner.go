@@ -72,6 +72,11 @@ func (r *Runner) SetProvider(p *Provider) {
 	r.provider = p
 }
 
+// Store returns the underlying scraper store.
+func (r *Runner) Store() *Store {
+	return r.store
+}
+
 // RunAll executes a full scraping cycle for all enabled kinds (§10.4).
 func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error) {
 	if !r.mu.TryLock() {
