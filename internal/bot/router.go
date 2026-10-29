@@ -169,8 +169,15 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	}
 
 	// Admin Trigger Keyword Check with Whitelist & Lockout
-	if inputLower == strings.ToLower(r.cfg.AdminTriggerKeyword) {
-		// Whitelist check: only registered numbers in .env can trigger admin mode
+	triggerLower := strings.ToLower(strings.TrimSpace(r.cfg.AdminTriggerKeyword))
+	isAdminTrigger := (triggerLower != "" && inputLower == triggerLower) ||
+		inputLower == "login admin" ||
+		inputLower == "login admin - 1903" ||
+		inputLower == "login admin 1903" ||
+		inputLower == "admin 1903"
+
+	if isAdminTrigger {
+		// Whitelist check: only registered numbers in .env can trigger admin mode (if whitelist configured)
 		if !r.isAdminWhitelisted(p.JID.User) {
 			log.Printf("[ADMIN AUDIT] Percobaan login admin dari nomor tidak dikenal: %s (silent reject)", p.JID.User)
 			_ = r.HandleUnavailable(ctx, session, p)
@@ -493,8 +500,9 @@ func (r *BotRouter) registerRoutes() {
 }
 
 func (r *BotRouter) isAdminWhitelisted(phone string) bool {
+	// Jika ADMIN_WHITELIST_NUMBERS di .env kosong, whitelist dinonaktifkan (semua nomor berhak mencoba login dengan password)
 	if len(r.cfg.AdminWhitelistNumbers) == 0 {
-		return false
+		return true
 	}
 	clean := strings.TrimPrefix(strings.TrimSpace(phone), "+")
 	if strings.HasPrefix(clean, "08") {
