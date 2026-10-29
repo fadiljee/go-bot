@@ -12,13 +12,13 @@ func (r *BotRouter) HandleMenu2_Indikator(ctx context.Context, s *UserSession, p
 	s.PushState(StateMenu2)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Indikator Kependudukan", Description: "Jumlah penduduk, laju pertumbuhan, kepadatan"},
-		{ID: "2", Title: "2. Indikator Pertanian", Description: "Produksi, produktivitas, luas panen"},
-		{ID: "3", Title: "3. Indikator Kemiskinan", Description: "P0, P1, P2, Garis Kemiskinan"},
-		{ID: "4", Title: "4. Indikator Ketenagakerjaan", Description: "TPT, TPAK, Upah Minimum"},
-		{ID: "5", Title: "5. Indikator Ekonomi", Description: "PDRB, LPE, IPM"},
-		{ID: "6", Title: "6. Indikator Harga", Description: "Inflasi, NTP, Harga Bahan Pokok"},
-		{ID: "7", Title: "7. Indikator Kesejahteraan", Description: "IPM, Harapan Hidup, Pengeluaran Per Kapita"},
+		{ID: "1", Title: "Indikator Kependudukan", Description: "Jumlah penduduk, laju pertumbuhan, kepadatan"},
+		{ID: "2", Title: "Indikator Pertanian", Description: "Produksi, produktivitas, luas panen"},
+		{ID: "3", Title: "Indikator Kemiskinan", Description: "P0, P1, P2, Garis Kemiskinan"},
+		{ID: "4", Title: "Indikator Ketenagakerjaan", Description: "TPT, TPAK, Upah Minimum"},
+		{ID: "5", Title: "Indikator Ekonomi", Description: "PDRB, LPE, IPM"},
+		{ID: "6", Title: "Indikator Harga", Description: "Inflasi, NTP, Harga Bahan Pokok"},
+		{ID: "7", Title: "Indikator Kesejahteraan", Description: "IPM, Harapan Hidup, Pengeluaran Per Kapita"},
 	}
 
 	introText := fmt.Sprintf("*Indikator Strategis BPS Bangka Barat (%s)*\nSilakan pilih indikator yang ingin Sahabat lihat \n\n*Booklet Indikator Strategis*:\nhttp://s.bps.go.id/IndikatorStrategisBabar\n\n◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉◌◉\n\n*Pilih nomor indikator:*", r.cfg.ActiveIndicatorYear)
