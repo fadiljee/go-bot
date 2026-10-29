@@ -62,3 +62,7 @@ VideoliterasiStatistik/
 Thumbs.db
 desktop.ini
 .gocache/
+
+# 8. Dokumentasi Internal & PRD (Private)
+prd/
+
