@@ -3,8 +3,6 @@
 
 Migrasi penuh ke arsitektur native **Golang** menggunakan `go.mau.fi/whatsmeow`, `github.com/gofiber/fiber/v2`, dan mesin internal **Web Scraper BPS Bangka Barat** berbasis SQLite. Bot ini beroperasi **100% mandiri tanpa ketergantungan pada Google Apps Script (GAS / Google Sheets)** serta menyediakan layanan interaktif WhatsApp, **REST API Indikator Strategis (Menu 2)**, dan **REST API Layanan Data Statistik (Menu 1)**.
 
-📄 **Dokumentasi Lengkap Sistem:** [DOKUMENTASI_SISTEM_BOT_ISTIMEWA.pdf](DOKUMENTASI_SISTEM_BOT_ISTIMEWA.pdf) *(Termasuk Diagram Arsitektur, Flowchart WhatsApp, Pipeline Scraper, & Master REST API)*
-
 ---
 
 ## Fitur Utama & Keunggulan
