@@ -21,9 +21,9 @@ func (r *BotRouter) HandleMenu6_Konsultasi(ctx context.Context, s *UserSession, 
 	s.PushState(StateMenu6)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Ajukan Jadwal Konsultasi", Description: "Reservasi jadwal konsultasi tatap muka/online"},
-		{ID: "2", Title: "2. Tanya Para Pakar", Description: "Hubungi pakar statistik BPS langsung"},
-		{ID: "3", Title: "3. Informasi PST & Jam Layanan", Description: "Jadwal operasional & kontak petugas PST"},
+		{ID: "1", Title: "Ajukan Jadwal Konsultasi", Description: "Reservasi jadwal konsultasi tatap muka/online"},
+		{ID: "2", Title: "Tanya Para Pakar", Description: "Hubungi pakar statistik BPS langsung"},
+		{ID: "3", Title: "Informasi PST & Jam Layanan", Description: "Jadwal operasional & kontak petugas PST"},
 	}
 
 	introText := "*Konsultasi Statistik*\nAda yang ingin Sahabat tanyakan seputar data & statistik? \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih jenis layanan konsultasi:*"
@@ -390,14 +390,14 @@ func (r *BotRouter) HandleKonsultasiPakarList(ctx context.Context, s *UserSessio
 	s.PushState(StateMenu6_Pakar)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Statistik Sosial Kependudukan", Description: "Kependudukan, Kemiskinan, Pendidikan"},
-		{ID: "2", Title: "2. Statistik Pertanian", Description: "Perkebunan, Kehutanan, Perikanan"},
-		{ID: "3", Title: "3. Statistik Ekonomi", Description: "Neraca, PDRB, Industri"},
-		{ID: "4", Title: "4. Distribusi, Harga & KTIP", Description: "Inflasi, Pariwisata, Perdagangan"},
-		{ID: "5", Title: "5. Statistik Sektoral", Description: "Data OPD & Rekomendasi Statistik"},
-		{ID: "6", Title: "6. Statistik Khusus", Description: "Topik data tematik & khusus"},
-		{ID: "7", Title: "7. Metodologi Statistik", Description: "Desain sampling & pengumpulan data"},
-		{ID: "8", Title: "8. Diseminasi & Layanan", Description: "Publikasi, website & PST"},
+		{ID: "1", Title: "Statistik Sosial Kependudukan", Description: "Kependudukan, Kemiskinan, Pendidikan"},
+		{ID: "2", Title: "Statistik Pertanian", Description: "Perkebunan, Kehutanan, Perikanan"},
+		{ID: "3", Title: "Statistik Ekonomi", Description: "Neraca, PDRB, Industri"},
+		{ID: "4", Title: "Distribusi, Harga & KTIP", Description: "Inflasi, Pariwisata, Perdagangan"},
+		{ID: "5", Title: "Statistik Sektoral", Description: "Data OPD & Rekomendasi Statistik"},
+		{ID: "6", Title: "Statistik Khusus", Description: "Topik data tematik & khusus"},
+		{ID: "7", Title: "Metodologi Statistik", Description: "Desain sampling & pengumpulan data"},
+		{ID: "8", Title: "Diseminasi & Layanan", Description: "Publikasi, website & PST"},
 	}
 
 	introText := "*Pakar Statistik BPS Bangka Barat*\nSilakan pilih bidang kepakaran yang ingin Sahabat konsultasikan:"
@@ -510,11 +510,11 @@ func (r *BotRouter) HandleMenu10_FAQ(ctx context.Context, s *UserSession, p *wha
 	s.PushState(StateMenu10)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Cara Mendapatkan Data BPS", Description: "Panduan akses data resmi"},
-		{ID: "2", Title: "2. Biaya Layanan Data", Description: "Informasi tarif PST BPS"},
-		{ID: "3", Title: "3. Data Tingkat Desa/Kelurahan", Description: "Ketersediaan data level mikro"},
-		{ID: "4", Title: "4. Permohonan Rekomendasi Kegiatan", Description: "Rekomendasi statistik sektoral"},
-		{ID: "5", Title: "5. Jadwal Rilis Data", Description: "Kalender rilis publikasi BPS"},
+		{ID: "1", Title: "Cara Mendapatkan Data BPS", Description: "Panduan akses data resmi"},
+		{ID: "2", Title: "Biaya Layanan Data", Description: "Informasi tarif PST BPS"},
+		{ID: "3", Title: "Data Tingkat Desa/Kelurahan", Description: "Ketersediaan data level mikro"},
+		{ID: "4", Title: "Permohonan Rekomendasi Kegiatan", Description: "Rekomendasi statistik sektoral"},
+		{ID: "5", Title: "Jadwal Rilis Data", Description: "Kalender rilis publikasi BPS"},
 	}
 
 	introText := "*Pertanyaan yang Sering Diajukan (FAQs)*\nSilakan pilih topik pertanyaan yang ingin Sahabat ketahui penjelasannya:"

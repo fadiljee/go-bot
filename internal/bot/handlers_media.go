@@ -18,9 +18,9 @@ func (r *BotRouter) HandleMenu3_Produk(ctx context.Context, s *UserSession, p *w
 	s.PushState(StateMenu3)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Berita Rilis Statistik (BRS)", Description: "Rilis data terbaru BPS Bangka Barat"},
-		{ID: "2", Title: "2. Publikasi", Description: "Buku & laporan statistik resmi BPS"},
-		{ID: "3", Title: "3. Data Mikro", Description: "Akses data unit level via SILASTIK"},
+		{ID: "1", Title: "Berita Rilis Statistik (BRS)", Description: "Rilis data terbaru BPS Bangka Barat"},
+		{ID: "2", Title: "Publikasi", Description: "Buku & laporan statistik resmi BPS"},
+		{ID: "3", Title: "Data Mikro", Description: "Akses data unit level via SILASTIK"},
 	}
 
 	introText := "*Produk Statistik BPS*\nSilakan pilih jenis produk statistik yang Sahabat butuhkan \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih nomor produk:*"
@@ -193,14 +193,14 @@ func (r *BotRouter) HandleMenu4_Video(ctx context.Context, s *UserSession, p *wh
 	s.PushState(StateMenu4)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Statistik Sosial Kependudukan", Description: "Video edukasi data sosial & kependudukan"},
-		{ID: "2", Title: "2. Statistik Pertanian", Description: "Video edukasi data sektor pertanian"},
-		{ID: "3", Title: "3. Statistik Ekonomi", Description: "Video edukasi PDRB, inflasi & ekonomi"},
-		{ID: "4", Title: "4. Sensus", Description: "Video Sensus Penduduk & Sensus Pertanian"},
-		{ID: "5", Title: "5. Statistik Sektoral", Description: "Video data lintas sektor OPD"},
-		{ID: "6", Title: "6. Statistik Khusus", Description: "Video topik statistik khusus & tematik"},
-		{ID: "7", Title: "7. Metodologi Statistik", Description: "Video konsep & metodologi pengumpulan data"},
-		{ID: "8", Title: "8. Tips & Trik Statistik", Description: "Video cara baca & manfaatkan data"},
+		{ID: "1", Title: "Statistik Sosial Kependudukan", Description: "Video edukasi data sosial & kependudukan"},
+		{ID: "2", Title: "Statistik Pertanian", Description: "Video edukasi data sektor pertanian"},
+		{ID: "3", Title: "Statistik Ekonomi", Description: "Video edukasi PDRB, inflasi & ekonomi"},
+		{ID: "4", Title: "Sensus", Description: "Video Sensus Penduduk & Sensus Pertanian"},
+		{ID: "5", Title: "Statistik Sektoral", Description: "Video data lintas sektor OPD"},
+		{ID: "6", Title: "Statistik Khusus", Description: "Video topik statistik khusus & tematik"},
+		{ID: "7", Title: "Metodologi Statistik", Description: "Video konsep & metodologi pengumpulan data"},
+		{ID: "8", Title: "Tips & Trik Statistik", Description: "Video cara baca & manfaatkan data"},
 	}
 
 	introText := "*Video Literasi Statistik*\nNonton video edukasi BPS untuk memahami data lebih mudah \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih topik video:*"
@@ -267,11 +267,11 @@ func (r *BotRouter) HandleVideoSub_Sosduk(ctx context.Context, s *UserSession, p
 	s.PushState(StateMenu4_Sosduk)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Garis Kemiskinan", Description: "Konsep penentuan batas garis kemiskinan"},
-		{ID: "2", Title: "2. Indeks Pembangunan Manusia", Description: "Memahami indikator IPM BPS"},
-		{ID: "3", Title: "3. Ketenagakerjaan", Description: "Definisi angkatan kerja & konsep kerja"},
-		{ID: "4", Title: "4. Pengangguran Kota vs Desa", Description: "Mengapa pengangguran kota lebih tinggi"},
-		{ID: "5", Title: "5. Hitung Angka Kemiskinan", Description: "Metode penghitungan angka kemiskinan"},
+		{ID: "1", Title: "Garis Kemiskinan", Description: "Konsep penentuan batas garis kemiskinan"},
+		{ID: "2", Title: "Indeks Pembangunan Manusia", Description: "Memahami indikator IPM BPS"},
+		{ID: "3", Title: "Ketenagakerjaan", Description: "Definisi angkatan kerja & konsep kerja"},
+		{ID: "4", Title: "Pengangguran Kota vs Desa", Description: "Mengapa pengangguran kota lebih tinggi"},
+		{ID: "5", Title: "Hitung Angka Kemiskinan", Description: "Metode penghitungan angka kemiskinan"},
 	}
 
 	introText := "*Video Literasi: Statistik Sosial Kependudukan*\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp :\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●"
@@ -325,11 +325,11 @@ func (r *BotRouter) HandleVideoSub_Ekonomi(ctx context.Context, s *UserSession, 
 	s.PushState(StateMenu4_Ekonomi)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Membaca PDRB Lapangan Usaha", Description: "Struktur ekonomi & sektor unggulan daerah"},
-		{ID: "2", Title: "2. Memahami PDB per Kapita", Description: "Pendapatan rata-rata dan kesejahteraan"},
-		{ID: "3", Title: "3. Memaknai Data Inflasi", Description: "Indeks Harga Konsumen & laju inflasi"},
-		{ID: "4", Title: "4. Kualitas Hidup dengan IPM", Description: "Kaitan ekonomi dengan pembangunan manusia"},
-		{ID: "5", Title: "5. Pertumbuhan Ekonomi", Description: "Konsep laju pertumbuhan ekonomi daerah"},
+		{ID: "1", Title: "Membaca PDRB Lapangan Usaha", Description: "Struktur ekonomi & sektor unggulan daerah"},
+		{ID: "2", Title: "Memahami PDB per Kapita", Description: "Pendapatan rata-rata dan kesejahteraan"},
+		{ID: "3", Title: "Memaknai Data Inflasi", Description: "Indeks Harga Konsumen & laju inflasi"},
+		{ID: "4", Title: "Kualitas Hidup dengan IPM", Description: "Kaitan ekonomi dengan pembangunan manusia"},
+		{ID: "5", Title: "Pertumbuhan Ekonomi", Description: "Konsep laju pertumbuhan ekonomi daerah"},
 	}
 
 	introText := "*Video Literasi: Statistik Ekonomi*\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp :\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●"
@@ -426,10 +426,10 @@ func (r *BotRouter) HandleMenu5_Infografik(ctx context.Context, s *UserSession, 
 	s.PushState(StateMenu5)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Infografik Sosial Kependudukan", Description: "Visualisasi data kependudukan, kemiskinan, pendidikan"},
-		{ID: "2", Title: "2. Infografik Pertanian", Description: "Visualisasi produksi & lahan pertanian"},
-		{ID: "3", Title: "3. Infografik Ekonomi", Description: "Visualisasi PDRB, inflasi & ekonomi"},
-		{ID: "4", Title: "4. Infografik Sensus", Description: "Visualisasi data hasil sensus BPS"},
+		{ID: "1", Title: "Infografik Sosial Kependudukan", Description: "Visualisasi data kependudukan, kemiskinan, pendidikan"},
+		{ID: "2", Title: "Infografik Pertanian", Description: "Visualisasi produksi & lahan pertanian"},
+		{ID: "3", Title: "Infografik Ekonomi", Description: "Visualisasi PDRB, inflasi & ekonomi"},
+		{ID: "4", Title: "Infografik Sensus", Description: "Visualisasi data hasil sensus BPS"},
 	}
 
 	introText := "*Infografik Statistik*\nNikmati visualisasi ringkas data BPS Bangka Barat \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih kategori infografik:*"

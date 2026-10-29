@@ -13,17 +13,17 @@ import (
 
 func getRootMenuItems() []whatsapp.ListRow {
 	return []whatsapp.ListRow{
-		{ID: "1", Title: "1. Layanan Data", Description: "Statistik Sosial, Ekonomi & Pertanian"},
-		{ID: "2", Title: "2. Indikator Strategis", Description: "Kemiskinan, Inflasi, IPM, PDRB, dll"},
-		{ID: "3", Title: "3. Produk Statistik", Description: "BRS, Publikasi, Data Mikro"},
-		{ID: "4", Title: "4. Video Literasi Statistik", Description: "Video edukasi dan pemahaman statistik"},
-		{ID: "5", Title: "5. Infografik", Description: "Visualisasi ringkas data BPS"},
-		{ID: "6", Title: "6. Konsultasi Statistik", Description: "Konsultasi online dengan pakar BPS"},
-		{ID: "7", Title: "7. Berlangganan Gratis", Description: "Langganan rilis publikasi berkala"},
-		{ID: "8", Title: "8. Pengaduan & Aspirasi", Description: "Sampaikan kritik dan saran layanan"},
-		{ID: "9", Title: "9. Hubungi Developer", Description: "Kontak pengembang bot"},
-		{ID: "10", Title: " FAQs", Description: "Pertanyaan yang sering diajukan"},
-		{ID: "11", Title: "1. 1. Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
+		{ID: "1", Title: "Layanan Data", Description: "Statistik Sosial, Ekonomi & Pertanian"},
+		{ID: "2", Title: "Indikator Strategis", Description: "Kemiskinan, Inflasi, IPM, PDRB, dll"},
+		{ID: "3", Title: "Produk Statistik", Description: "BRS, Publikasi, Data Mikro"},
+		{ID: "4", Title: "Video Literasi Statistik", Description: "Video edukasi dan pemahaman statistik"},
+		{ID: "5", Title: "Infografik", Description: "Visualisasi ringkas data BPS"},
+		{ID: "6", Title: "Konsultasi Statistik", Description: "Konsultasi online dengan pakar BPS"},
+		{ID: "7", Title: "Berlangganan Gratis", Description: "Langganan rilis publikasi berkala"},
+		{ID: "8", Title: "Pengaduan & Aspirasi", Description: "Sampaikan kritik dan saran layanan"},
+		{ID: "9", Title: "Hubungi Developer", Description: "Kontak pengembang bot"},
+		{ID: "10", Title: "FAQs", Description: "Pertanyaan yang sering diajukan"},
+		{ID: "11", Title: "Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
 	}
 }
 

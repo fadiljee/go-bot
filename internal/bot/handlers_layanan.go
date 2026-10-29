@@ -15,11 +15,11 @@ func (r *BotRouter) HandleMenu1_LayananData(ctx context.Context, s *UserSession,
 	s.PushState(StateMenu1)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "1. Statistik Sosial Kependudukan", Description: "Kependudukan, Kemiskinan, Pendidikan, Tenaga Kerja"},
-		{ID: "2", Title: "2. Statistik Ekonomi", Description: "PDRB, Inflasi, Ekspor-Impor, Pariwisata"},
-		{ID: "3", Title: "3. Statistik Pertanian", Description: "Produksi Padi, Kelapa Sawit, Hortikultura"},
-		{ID: "4", Title: "4. Statistik Sektoral", Description: "Data Organisasi Perangkat Daerah (OPD)"},
-		{ID: "5", Title: "5. Cari Data Kata Kunci", Description: "Pencarian cepat topik data spesifik"},
+		{ID: "1", Title: "Statistik Sosial Kependudukan", Description: "Kependudukan, Kemiskinan, Pendidikan, Tenaga Kerja"},
+		{ID: "2", Title: "Statistik Ekonomi", Description: "PDRB, Inflasi, Ekspor-Impor, Pariwisata"},
+		{ID: "3", Title: "Statistik Pertanian", Description: "Produksi Padi, Kelapa Sawit, Hortikultura"},
+		{ID: "4", Title: "Statistik Sektoral", Description: "Data Organisasi Perangkat Daerah (OPD)"},
+		{ID: "5", Title: "Cari Data Kata Kunci", Description: "Pencarian cepat topik data spesifik"},
 	}
 
 	introText := "*Layanan Data BPS*\nSilakan pilih kategori statistik yang ingin Sahabat telusuri \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih nomor kategori data:*"
