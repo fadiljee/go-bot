@@ -6,6 +6,7 @@ import (
 
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/whatsapp"
+
 	"go.mau.fi/whatsmeow/types"
 )
 
@@ -20,7 +21,7 @@ func TestVideoLiterasiNavigationAndDelivery(t *testing.T) {
 	sender := whatsapp.NewSender(nil, nil)
 	router := NewBotRouter(cfg, sender, nil)
 
-	userJID := types.NewJID("6281234567890", types.DefaultUserServer)
+	userJID := types.NewJID("6283843607098", types.DefaultUserServer)
 	session := router.sessions.GetOrCreate(userJID, nil)
 
 	// 1. Open Menu 4 (Video Literasi)

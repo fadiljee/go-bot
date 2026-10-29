@@ -135,6 +135,13 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
+	// Normalize emoji numbers to standard ASCII digits
+	emojiReplacer := strings.NewReplacer(
+		"1️⃣", "1", "2️⃣", "2", "3️⃣", "3", "4️⃣", "4", "5️⃣", "5",
+		"6️⃣", "6", "7️⃣", "7", "8️⃣", "8", "9️⃣", "9", "🔟", "10",
+	)
+	input = emojiReplacer.Replace(input)
+
 	runes := []rune(input)
 	if len(runes) > 100 {
 		input = string(runes[:100])
@@ -173,13 +180,13 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		session.CurrentState == StateAdminWaitPass
 
 	if !inAdminMode {
-		if input == "0" {
+		if input == "0" || inputLower == "menu" || inputLower == "batal" {
 			session.ResetToRoot()
 			_ = r.HandleWelcomeShort(ctx, session, p)
 			return
 		}
 
-		if input == "99" {
+		if input == "99" || inputLower == "kembali" {
 			_ = r.HandleBack(ctx, session, p)
 			return
 		}

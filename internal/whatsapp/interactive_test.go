@@ -123,11 +123,11 @@ func TestBuildBodyText(t *testing.T) {
 	footer := "*99. Menu sebelumnya*\n*0. Menu Awal*"
 	body := BuildBodyText("Pilih menu:", rows, footer)
 
-	if !strings.Contains(body, "*1.* Layanan Data") {
+	if !strings.Contains(body, "1️⃣  Layanan Data") {
 		t.Errorf("expected option 1, got:\n%s", body)
 	}
 
-	if !strings.Contains(body, "*2.* Indikator") {
+	if !strings.Contains(body, "2️⃣  Indikator") {
 		t.Errorf("expected option 2, got:\n%s", body)
 	}
 

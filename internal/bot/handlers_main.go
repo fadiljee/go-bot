@@ -15,16 +15,61 @@ func getRootMenuItems() []whatsapp.ListRow {
 	return []whatsapp.ListRow{
 		{ID: "1", Title: "Layanan Data", Description: "Statistik Sosial, Ekonomi & Pertanian"},
 		{ID: "2", Title: "Indikator Strategis", Description: "Kemiskinan, Inflasi, IPM, PDRB, dll"},
-		{ID: "3", Title: "Produk Statistik", Description: "BRS, Publikasi, Data Mikro"},
-		{ID: "4", Title: "Video Literasi Statistik", Description: "Video edukasi dan pemahaman statistik"},
-		{ID: "5", Title: "Infografik", Description: "Visualisasi ringkas data BPS"},
-		{ID: "6", Title: "Konsultasi Statistik", Description: "Konsultasi online dengan pakar BPS"},
-		{ID: "7", Title: "Berlangganan Gratis", Description: "Langganan rilis publikasi berkala"},
-		{ID: "8", Title: "Pengaduan & Aspirasi", Description: "Sampaikan kritik dan saran layanan"},
-		{ID: "9", Title: "Hubungi Developer", Description: "Kontak pengembang bot"},
-		{ID: "10", Title: "FAQs", Description: "Pertanyaan yang sering diajukan"},
+		{ID: "3", Title: "BRS & Publikasi Rilis", Description: "Rilis Berita Resmi Statistik & Publikasi"},
+		{ID: "4", Title: "Video Edukasi Literasi", Description: "Video edukasi dan literasi statistik"},
+		{ID: "5", Title: "Galeri Infografis Daerah", Description: "Visualisasi ringkas data BPS Bangka Barat"},
+		{ID: "6", Title: "Tanya Pakar", Description: "Konsultasi online dengan pakar BPS"},
+		{ID: "7", Title: "Langganan Publikasi", Description: "Langganan rilis berkala gratis"},
+		{ID: "8", Title: "Pengaduan & Saran", Description: "Sampaikan kritik dan saran layanan"},
+		{ID: "9", Title: "Kontak Developer", Description: "Kontak pengembang bot"},
+		{ID: "10", Title: "Bantuan & FAQ", Description: "Pertanyaan yang sering diajukan"},
 		{ID: "11", Title: "Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
 	}
+}
+
+func getTimeGreeting() string {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	now := time.Now()
+	if err == nil {
+		now = now.In(loc)
+	}
+	hour := now.Hour()
+	if hour >= 4 && hour < 11 {
+		return "Selamat Pagi"
+	} else if hour >= 11 && hour < 15 {
+		return "Selamat Siang"
+	} else if hour >= 15 && hour < 18 {
+		return "Selamat Sore"
+	}
+	return "Selamat Malam"
+}
+
+func buildWelcomeMenuBody(greetingLine, introSubtitle string) string {
+	var sb strings.Builder
+	sb.WriteString("🟢 *BOT ISTIMEWA*\n")
+	sb.WriteString("_BPS Kabupaten Bangka Barat_\n\n")
+	sb.WriteString(greetingLine + "\n")
+	sb.WriteString(introSubtitle + "\n\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
+	sb.WriteString("📊 *DATA & INDIKATOR*\n")
+	sb.WriteString("1️⃣  Layanan Data\n")
+	sb.WriteString("2️⃣  Indikator Strategis\n")
+	sb.WriteString("3️⃣  BRS & Publikasi Rilis\n\n")
+	sb.WriteString("🎨 *KONTEN & VISUAL*\n")
+	sb.WriteString("4️⃣  Video Edukasi Literasi\n")
+	sb.WriteString("5️⃣  Galeri Infografis Daerah\n\n")
+	sb.WriteString("💬 *KONSULTASI & LAYANAN*\n")
+	sb.WriteString("6️⃣  Tanya Pakar\n")
+	sb.WriteString("7️⃣  Langganan Publikasi\n")
+	sb.WriteString("8️⃣  Pengaduan & Saran\n\n")
+	sb.WriteString("⚙️ *INFORMASI*\n")
+	sb.WriteString("9️⃣  Kontak Developer\n")
+	sb.WriteString("🔟  Bantuan & FAQ\n")
+	sb.WriteString("🏛️  Ketik *11* untuk Tentang BPS\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+	sb.WriteString("⌨️ Balas dengan *angka menu*\n")
+	sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
+	return sb.String()
 }
 
 // HandleWelcomeFull handles first message / keyword 100
@@ -43,23 +88,24 @@ func (r *BotRouter) HandleWelcomeFull(ctx context.Context, s *UserSession, p *wh
 	// 1. Send sticker selamat datang
 	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - selamat datang new.webp")
 
-	// 2. Send single-bubble interactive message
-	items := getRootMenuItems()
+	// 2. Format personalized greeting with time & name (PRD §6.1 F-01 & §14)
 	userName := strings.TrimSpace(p.Name)
-	var greeting string
+	timeGreeting := getTimeGreeting()
+	var greetingLine string
 	if userName != "" {
-		greeting = fmt.Sprintf("Halo Sahabat Data *%s* ", userName)
+		greetingLine = fmt.Sprintf("%s, *%s*! 👋", timeGreeting, userName)
 	} else {
-		greeting = "Halo Sahabat Data "
+		greetingLine = fmt.Sprintf("%s, Sahabat Data! 👋", timeGreeting)
 	}
-	introText := fmt.Sprintf("*Selamat datang di ISTIMEWA* \nBPS Kabupaten Bangka Barat\n\n%s\nPerkenalkan saya *Ak Isti* , bot pintar yang siap memandu Sahabat menjelajahi dunia data.\n\n*Pilih nomor layanan* di bawah ini:", greeting)
-	body := whatsapp.BuildBodyText(introText, items, "\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
+
+	body := buildWelcomeMenuBody(greetingLine, "Saya *Ak Isti*, asisten virtual statistik.")
+	items := getRootMenuItems()
 
 	msg := whatsapp.BuildInteractiveList(
-		"BOT ISTIMEWA — BPS Bangka Barat",
+		"",
 		body,
-		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Nomor Layanan ",
+		"",
+		"Pilih Nomor Layanan",
 		[]whatsapp.ListSection{
 			{Title: "Menu Layanan Utama", Rows: items},
 		},
@@ -84,22 +130,22 @@ func (r *BotRouter) HandleWelcomeShort(ctx context.Context, s *UserSession, p *w
 	// Send sticker siap
 	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - siap new.webp")
 
-	items := getRootMenuItems()
 	userName := strings.TrimSpace(p.Name)
-	var greeting string
+	var greetingLine string
 	if userName != "" {
-		greeting = fmt.Sprintf("Hai Sahabat Data *%s*!", userName)
+		greetingLine = fmt.Sprintf("Hai kembali, *%s*! 👋", userName)
 	} else {
-		greeting = "Hai Sahabat Data!"
+		greetingLine = "Hai kembali, Sahabat Data! 👋"
 	}
-	introText := fmt.Sprintf("%s\nYuk kita lanjut berselancar menjelajahi dunia data \n\n*Pilih nomor layanan* di bawah ini:", greeting)
-	body := whatsapp.BuildBodyText(introText, items, "\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
+
+	body := buildWelcomeMenuBody(greetingLine, "Yuk lanjut berselancar menjelajahi data Bangka Barat.")
+	items := getRootMenuItems()
 
 	msg := whatsapp.BuildInteractiveList(
-		"BOT ISTIMEWA — BPS Bangka Barat",
+		"",
 		body,
-		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Nomor Layanan ",
+		"",
+		"Pilih Nomor Layanan",
 		[]whatsapp.ListSection{
 			{Title: "Menu Layanan Utama", Rows: items},
 		},

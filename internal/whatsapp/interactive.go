@@ -173,6 +173,34 @@ func UnpackInteractiveMessage(msg *waE2E.Message) *waE2E.InteractiveMessage {
 	return nil
 }
 
+// NumberToEmoji converts numeric IDs 1-10 to emoji numbers per PRD design guidelines
+func NumberToEmoji(id string) string {
+	switch id {
+	case "1":
+		return "1️⃣ "
+	case "2":
+		return "2️⃣ "
+	case "3":
+		return "3️⃣ "
+	case "4":
+		return "4️⃣ "
+	case "5":
+		return "5️⃣ "
+	case "6":
+		return "6️⃣ "
+	case "7":
+		return "7️⃣ "
+	case "8":
+		return "8️⃣ "
+	case "9":
+		return "9️⃣ "
+	case "10":
+		return "🔟 "
+	default:
+		return fmt.Sprintf("*%s.*", id)
+	}
+}
+
 // BuildBodyText formats text body with clean numbered list
 func BuildBodyText(intro string, rows []ListRow, footer string) string {
 	var sb strings.Builder
@@ -183,7 +211,7 @@ func BuildBodyText(intro string, rows []ListRow, footer string) string {
 	}
 
 	for _, r := range rows {
-		sb.WriteString(fmt.Sprintf("*%s.* %s\n", r.ID, r.Title))
+		sb.WriteString(fmt.Sprintf("%s %s\n", NumberToEmoji(r.ID), r.Title))
 		if r.Description != "" {
 			sb.WriteString(fmt.Sprintf("   _%s_\n", r.Description))
 		}

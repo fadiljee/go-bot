@@ -18,19 +18,20 @@ func (r *BotRouter) HandleMenu3_Produk(ctx context.Context, s *UserSession, p *w
 	s.PushState(StateMenu3)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: "Berita Rilis Statistik (BRS)", Description: "Rilis data terbaru BPS Bangka Barat"},
-		{ID: "2", Title: "Publikasi", Description: "Buku & laporan statistik resmi BPS"},
-		{ID: "3", Title: "Data Mikro", Description: "Akses data unit level via SILASTIK"},
+		{ID: "1", Title: "Berita Resmi Statistik (BRS)", Description: "Rilis data terbaru BPS Bangka Barat"},
+		{ID: "2", Title: "Publikasi Daerah", Description: "Buku & laporan statistik resmi BPS"},
+		{ID: "3", Title: "Data Mikro (SILASTIK)", Description: "Akses data unit level via SILASTIK"},
 	}
 
-	introText := "*Produk Statistik BPS*\nSilakan pilih jenis produk statistik yang Sahabat butuhkan \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih nomor produk:*"
-	body := whatsapp.BuildBodyText(introText, items, "\n*0.* Menu Awal\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
+	introText := "📚 *BRS & PUBLIKASI RESMI*\n_BPS Kabupaten Bangka Barat_\n\nSilakan pilih jenis produk statistik yang Sahabat butuhkan:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
+	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
 		"Produk Statistik",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Produk Statistik ",
+		"Pilih Produk Statistik",
 		[]whatsapp.ListSection{
 			{Title: "Jenis Produk Statistik", Rows: items},
 		},
@@ -45,7 +46,7 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 	case 1:
 		title = "Berita Resmi Statistik (BRS)"
 		var sb strings.Builder
-		sb.WriteString("*Berita Resmi Statistik (BRS) — BPS Kabupaten Bangka Barat*\n\n")
+		sb.WriteString("📚 *BERITA RESMI STATISTIK (BRS)*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n")
 		sb.WriteString("Rilis resmi indikator strategis dan sosial-ekonomi terkini:\n\n")
 
 		// 1. Coba ambil dari database Scraper lokal SQLite (Priority 1)
@@ -65,12 +66,12 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					sb.WriteString("\n")
 				}
 				if fresh.UpdatedAt.Year() > 2000 {
-					sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+					sb.WriteString(fmt.Sprintf("ℹ _Pembaruan: %s WIB_\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 				}
 
 				// Kirim gambar rilis teratas jika tersedia
 				if len(scrapedItems) > 0 && scrapedItems[0].ImageURL != "" {
-					_ = r.sender.SendTextMessage(ctx, p.JID, "Menyiapkan infografik rilis terbaru ... ")
+					_ = r.sender.SendTextMessage(ctx, p.JID, "Menyiapkan infografis rilis terbaru...")
 					_ = r.sender.SendImageFromURL(ctx, p.JID, scrapedItems[0].ImageURL, fmt.Sprintf("*%s*", scrapedItems[0].Title))
 				}
 			}
@@ -99,13 +100,14 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 			}
 		}
 
-		sb.WriteString("ℹ _Untuk mendapatkan salinan lengkap berkas PDF Berita Resmi Statistik, Sahabat Data dapat mengajukan permohonan melalui Pelayanan Statistik Terpadu (PST) di Menu 6._")
+		sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
+		sb.WriteString("💡 _Untuk salinan digital lengkap PDF Berita Resmi Statistik, Sahabat dapat mengajukan di Menu *6* (Layanan Konsultasi PST)._")
 		content = sb.String()
 
 	case 2:
 		title = "Publikasi BPS"
 		var sb strings.Builder
-		sb.WriteString("*Publikasi Resmi BPS Kabupaten Bangka Barat*\n\n")
+		sb.WriteString("📚 *PUBLIKASI RESMI DAERAH*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n")
 		sb.WriteString("Koleksi buku dan laporan statistik komprehensif daerah:\n\n")
 
 		// 1. Coba ambil dari database Scraper lokal SQLite (Priority 1)
@@ -125,7 +127,7 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					sb.WriteString("\n")
 				}
 				if fresh.UpdatedAt.Year() > 2000 {
-					sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+					sb.WriteString(fmt.Sprintf("ℹ _Pembaruan: %s WIB_\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 				}
 
 				// Kirim gambar cover publikasi teratas jika tersedia
@@ -134,7 +136,7 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					if coverURL == "" {
 						coverURL = scrapedPubs[0].ThumbnailURL
 					}
-					_ = r.sender.SendTextMessage(ctx, p.JID, "Menyiapkan sampul buku publikasi terbaru ... ")
+					_ = r.sender.SendTextMessage(ctx, p.JID, "Menyiapkan sampul publikasi terbaru...")
 					_ = r.sender.SendImageFromURL(ctx, p.JID, coverURL, fmt.Sprintf("*%s*", scrapedPubs[0].Title))
 				}
 			}
@@ -163,24 +165,26 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 			}
 		}
 
-		sb.WriteString("ℹ _Untuk mendapatkan salinan digital buku publikasi lengkap (PDF), Sahabat Data dapat menghubungi petugas melalui Pelayanan Statistik Terpadu (PST) di Menu 6._")
+		sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
+		sb.WriteString("💡 _Untuk salinan digital buku publikasi lengkap (PDF), Sahabat dapat menghubungi petugas di Menu *6* (Layanan Konsultasi PST)._")
 		content = sb.String()
 
 	case 3:
 		title = "Layanan Data Mikro (SILASTIK)"
-		content = "*Layanan Data Mikro BPS (SILASTIK)*\n\n" +
-			"Data mikro adalah data mentah tingkat individu atau rumah tangga hasil sensus dan survei yang telah di-anonymize (dihilangkan identitas personalnya) untuk keperluan riset ilmiah dan kajian kebijakan.\n\n" +
-			"📋 *Koleksi Data Mikro BPS*:\n" +
-			"• *Susenas*: Sosial ekonomi, pengeluaran, konsumsi, pendidikan, dan kesehatan\n" +
-			"• *Sakernas*: Ketenagakerjaan, upah, jam kerja, dan pengangguran\n" +
+		content = "📋 *LAYANAN DATA MIKRO (SILASTIK)*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			"Data mikro adalah data mentah tingkat individu atau rumah tangga hasil sensus dan survei yang telah di-anonymize untuk keperluan riset ilmiah dan kajian kebijakan.\n\n" +
+			"📂 *Koleksi Data Mikro BPS*:\n" +
+			"• *Susenas*: Sosial ekonomi, pengeluaran, konsumsi, pendidikan & kesehatan\n" +
+			"• *Sakernas*: Ketenagakerjaan, upah, jam kerja & pengangguran\n" +
 			"• *Sensus Pertanian (ST)*: Profil petani dan struktur usaha tani\n" +
-			"• *Sensus Penduduk (SP)*: Parameter demografi dan mobilitas penduduk\n\n" +
-			"📝 *Persyaratan Permohonan Data Mikro*:\n" +
-			"1. Surat Pengantar Resmi dari Perguruan Tinggi / Lembaga Penelitian / Instansi\n" +
-			"2. Proposal Riset / Penelitian yang jelas\n" +
-			"3. Identitas Pemohon (KTP / Kartu Mahasiswa)\n" +
-			"4. Menandatangani Komitmen Kerahasiaan Data (UU No. 16 Tahun 1997)\n\n" +
-			"💬 Sahabat dapat berkonsultasi mengenai prosedur permohonan data mikro dengan petugas kami di *Menu 6* (Layanan Konsultasi PST)."
+			"• *Sensus Penduduk (SP)*: Parameter demografi dan mobilitas\n\n" +
+			"📝 *Persyaratan Permohonan*:\n" +
+			"1. Surat Pengantar Resmi Perguruan Tinggi / Lembaga\n" +
+			"2. Proposal Riset / Penelitian\n" +
+			"3. Identitas Pemohon (KTP / KTM)\n" +
+			"4. Komitmen Kerahasiaan Data (UU No. 16/1997)\n\n" +
+			"━━━━━━━━━━━━━━━━━━\n" +
+			"💡 _Sahabat dapat berkonsultasi permohonan data mikro dengan petugas di Menu *6* (Layanan Konsultasi PST)._"
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -204,21 +208,22 @@ func (r *BotRouter) HandleMenu4_Video(ctx context.Context, s *UserSession, p *wh
 		{ID: "1", Title: "Statistik Sosial Kependudukan", Description: "Video edukasi data sosial & kependudukan"},
 		{ID: "2", Title: "Statistik Pertanian", Description: "Video edukasi data sektor pertanian"},
 		{ID: "3", Title: "Statistik Ekonomi", Description: "Video edukasi PDRB, inflasi & ekonomi"},
-		{ID: "4", Title: "Sensus", Description: "Video Sensus Penduduk & Sensus Pertanian"},
-		{ID: "5", Title: "Statistik Sektoral", Description: "Video data lintas sektor OPD"},
+		{ID: "4", Title: "Sensus BPS", Description: "Video Sensus Penduduk & Sensus Pertanian"},
+		{ID: "5", Title: "Statistik Sektoral", Description: "Video data lintas sektor OPD & Romantik"},
 		{ID: "6", Title: "Statistik Khusus", Description: "Video topik statistik khusus & tematik"},
 		{ID: "7", Title: "Metodologi Statistik", Description: "Video konsep & metodologi pengumpulan data"},
 		{ID: "8", Title: "Tips & Trik Statistik", Description: "Video cara baca & manfaatkan data"},
 	}
 
-	introText := "*Video Literasi Statistik*\nNonton video edukasi BPS untuk memahami data lebih mudah \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih topik video:*"
-	body := whatsapp.BuildBodyText(introText, items, "\n*0.* Menu Awal\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
+	introText := "🎬 *VIDEO EDUKASI LITERASI*\n_BPS Kabupaten Bangka Barat_\n\nYuk tonton video animasi edukasi BPS untuk memahami data statistik lebih mudah:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
+	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
 		"Video Literasi Statistik",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Topik Video ",
+		"Pilih Topik Video",
 		[]whatsapp.ListSection{
 			{Title: "Topik Video", Rows: items},
 		},
@@ -234,14 +239,14 @@ func (r *BotRouter) HandleVideoDetail(ctx context.Context, s *UserSession, p *wh
 		return r.HandleVideoSub_Sosduk(ctx, s, p)
 	case 2:
 		// Pertanian - Belum ada video lokal
-		text := "*Video Literasi: Statistik Pertanian*\n\nVideo edukasi sektor pertanian sedang dalam tahap penyusunan oleh tim Diseminasi BPS Bangka Barat.\n\nTonton video rilis lainnya di kanal resmi YouTube:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		text := "🎬 *VIDEO LITERASI: PERTANIAN*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\nVideo edukasi sektor pertanian sedang dalam tahap produksi oleh tim Diseminasi BPS Bangka Barat.\n\n🌐 *Kanal Resmi YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n━━━━━━━━━━━━━━━━━━"
 		return r.sendVideoPlaceholder(ctx, p.JID, "Statistik Pertanian", text)
 	case 3:
 		// Sub-menu for Ekonomi (5 videos)
 		return r.HandleVideoSub_Ekonomi(ctx, s, p)
 	case 4:
 		// Sensus - Belum ada video lokal
-		text := "*Video Literasi: Sensus BPS*\n\nVideo edukasi Sensus Penduduk dan Sensus Pertanian sedang dipersiapkan.\n\nTonton video resmi BPS di kanal YouTube:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		text := "🎬 *VIDEO LITERASI: SENSUS BPS*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\nVideo edukasi Sensus Penduduk dan Sensus Pertanian sedang dipersiapkan.\n\n🌐 *Kanal Resmi YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n━━━━━━━━━━━━━━━━━━"
 		return r.sendVideoPlaceholder(ctx, p.JID, "Sensus BPS", text)
 	case 5:
 		// Statistik Sektoral (1 video)
@@ -259,11 +264,11 @@ func (r *BotRouter) HandleVideoDetail(ctx context.Context, s *UserSession, p *wh
 		)
 	case 7:
 		// Metodologi - Belum ada video lokal
-		text := "*Video Literasi: Metodologi Statistik*\n\nVideo konsep & metodologi pengumpulan data sedang dipersiapkan.\n\nKunjungi kanal YouTube BPS Bangka Barat:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		text := "🎬 *VIDEO LITERASI: METODOLOGI*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\nVideo konsep & metodologi pengumpulan data sedang dipersiapkan.\n\n🌐 *Kanal Resmi YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n━━━━━━━━━━━━━━━━━━"
 		return r.sendVideoPlaceholder(ctx, p.JID, "Metodologi Statistik", text)
 	case 8:
 		// Tips & Trik - Belum ada video lokal
-		text := "*Video Literasi: Tips & Trik Statistik*\n\nVideo panduan tips & trik membaca data statistik segera hadir.\n\nKunjungi kanal YouTube BPS Bangka Barat:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg"
+		text := "🎬 *VIDEO LITERASI: TIPS & TRIK*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\nVideo panduan tips & trik membaca data statistik segera hadir.\n\n🌐 *Kanal Resmi YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n━━━━━━━━━━━━━━━━━━"
 		return r.sendVideoPlaceholder(ctx, p.JID, "Tips & Trik Statistik", text)
 	default:
 		return r.HandleMenu4_Video(ctx, s, p)
@@ -282,14 +287,15 @@ func (r *BotRouter) HandleVideoSub_Sosduk(ctx context.Context, s *UserSession, p
 		{ID: "5", Title: "Hitung Angka Kemiskinan", Description: "Metode penghitungan angka kemiskinan"},
 	}
 
-	introText := "*Video Literasi: Statistik Sosial Kependudukan*\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp :\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●"
-	body := whatsapp.BuildBodyText(introText, items, "\n*99.* Menu Sebelumnya\n*0.* Menu Awal")
+	introText := "📍 *Menu Utama* ❯ *[4] Video Edukasi* ❯ *Sosial Kependudukan*\n\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *99* untuk Kembali\n• Ketik *0* untuk Menu Utama"
+	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
 		"Video Sosial Kependudukan",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Judul Video ",
+		"Pilih Judul Video",
 		[]whatsapp.ListSection{
 			{Title: "Daftar Video Sosduk", Rows: items},
 		},
@@ -340,14 +346,15 @@ func (r *BotRouter) HandleVideoSub_Ekonomi(ctx context.Context, s *UserSession, 
 		{ID: "5", Title: "Pertumbuhan Ekonomi", Description: "Konsep laju pertumbuhan ekonomi daerah"},
 	}
 
-	introText := "*Video Literasi: Statistik Ekonomi*\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp :\n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●"
-	body := whatsapp.BuildBodyText(introText, items, "\n*99.* Menu Sebelumnya\n*0.* Menu Awal")
+	introText := "📍 *Menu Utama* ❯ *[4] Video Edukasi* ❯ *Statistik Ekonomi*\n\nPilih video edukasi yang ingin Sahabat tonton langsung di WhatsApp:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *99* untuk Kembali\n• Ketik *0* untuk Menu Utama"
+	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
 		"Video Statistik Ekonomi",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Judul Video ",
+		"Pilih Judul Video",
 		[]whatsapp.ListSection{
 			{Title: "Daftar Video Ekonomi", Rows: items},
 		},
@@ -387,11 +394,11 @@ func (r *BotRouter) HandleVideoDetail_Ekonomi(ctx context.Context, s *UserSessio
 }
 
 func (r *BotRouter) sendVideoResponse(ctx context.Context, jid types.JID, filePath, title, desc string) error {
-	caption := fmt.Sprintf("*Video Literasi: %s*\n\n%s\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Badan Pusat Statistik Kabupaten Bangka Barat```", title, desc)
+	caption := fmt.Sprintf("🎬 *Video Edukasi: %s*\n_BPS Kabupaten Bangka Barat_\n\n%s\n\n━━━━━━━━━━━━━━━━━━\n```Statistik Bermakna, Statistik Berdampak```", title, desc)
 
 	// Check if local compressed video exists
 	if _, err := os.Stat(filePath); err == nil {
-		_ = r.sender.SendTextMessage(ctx, jid, fmt.Sprintf("*Menyiapkan video '%s'...*\nMohon tunggu beberapa detik, video akan otomatis terkirim dan dapat diputar langsung di WhatsApp ", title))
+		_ = r.sender.SendTextMessage(ctx, jid, fmt.Sprintf("*Menyiapkan video '%s'...*\nMohon tunggu beberapa detik, video akan otomatis terkirim dan dapat diputar langsung di WhatsApp.", title))
 
 		if err := r.sender.SendVideoFromFile(ctx, jid, filePath, caption); err != nil {
 			log.Printf("[VIDEO] Gagal kirim file video: %v, fallback ke teks info", err)
@@ -437,17 +444,18 @@ func (r *BotRouter) HandleMenu5_Infografik(ctx context.Context, s *UserSession, 
 		{ID: "1", Title: "Infografik Sosial Kependudukan", Description: "Visualisasi data kependudukan, kemiskinan, pendidikan"},
 		{ID: "2", Title: "Infografik Pertanian", Description: "Visualisasi produksi & lahan pertanian"},
 		{ID: "3", Title: "Infografik Ekonomi", Description: "Visualisasi PDRB, inflasi & ekonomi"},
-		{ID: "4", Title: "Infografik Sensus", Description: "Visualisasi data hasil sensus BPS"},
+		{ID: "4", Title: "Infografik Sensus BPS", Description: "Visualisasi data hasil sensus BPS"},
 	}
 
-	introText := "*Infografik Statistik*\nNikmati visualisasi ringkas data BPS Bangka Barat \n\n●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●◌●\n\n*Pilih kategori infografik:*"
-	body := whatsapp.BuildBodyText(introText, items, "\n*0.* Menu Awal\n\n◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇◈◇\n```Statistik Bermakna, Statistik Berdampak```")
+	introText := "🎨 *GALERI INFOGRAFIS DAERAH*\n_BPS Kabupaten Bangka Barat_\n\nNikmati visualisasi ringkas dan menarik data statistik Bangka Barat:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
+	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
 		"Infografik Statistik",
 		body,
 		"PST BPS Kabupaten Bangka Barat",
-		"Pilih Kategori Infografik ",
+		"Pilih Kategori Infografik",
 		[]whatsapp.ListSection{
 			{Title: "Kategori Infografik", Rows: items},
 		},
@@ -549,14 +557,28 @@ func (r *BotRouter) HandleMenu11_TentangBPS(ctx context.Context, s *UserSession,
 
 	videoPath := "storage/videos/menu11_TentangBPS.mp4"
 	if _, err := os.Stat(videoPath); err == nil {
-		_ = r.sender.SendTextMessage(ctx, p.JID, "*Menyiapkan video profil resmi BPS Kabupaten Bangka Barat...* \nMohon tunggu beberapa detik, video akan terkirim dan bisa langsung diputar di WhatsApp.")
-		caption := "*Mengenal BPS Lebih Dekat*\n\nProfil Resmi Badan Pusat Statistik Kabupaten Bangka Barat.\n\nKomplek Perkantoran Pemda Terpadu Bangka Barat"
+		_ = r.sender.SendTextMessage(ctx, p.JID, "*Menyiapkan video profil resmi BPS Bangka Barat...*\nMohon tunggu beberapa detik, video akan terkirim dan bisa langsung diputar di WhatsApp.")
+		caption := "🏛️ *Mengenal BPS Lebih Dekat*\n_Badan Pusat Statistik Kabupaten Bangka Barat_\n\nKomplek Perkantoran Pemerintah Daerah Terpadu Bangka Barat"
 		if err := r.sender.SendVideoFromFile(ctx, p.JID, videoPath, caption); err != nil {
 			log.Printf("[VIDEO] Gagal kirim video profil: %v", err)
 		}
 	}
 
-	text := fmt.Sprintf("*Mengenal BPS Lebih Dekat*\n\nSetelah menjelajahi banyak data di menu sebelumnya, apakah Sahabat Data sudah mengenal lebih dekat Badan Pusat Statistik (BPS)? \n\nSeperti kata pepatah _'Tak Kenal Maka Tak Sayang'_. Yuk kita mengenal BPS kita tercinta lebih dalam.\n\n*Tonton Video Profil BPS*:\n%s\n\n*Alamat Kantor*:\nKomplek Perkantoran Pemerintah Daerah Terpadu\nKabupaten Bangka Barat, Kepulauan Bangka Belitung", r.cfg.TentangBPSVideoURL)
+	text := fmt.Sprintf("🏛️ *TENTANG BPS BANGKA BARAT*\n_Badan Pusat Statistik Kabupaten Bangka Barat_\n\n"+
+		"Kenal lebih dekat dengan Badan Pusat Statistik (BPS) Kabupaten Bangka Barat! Kami hadir sebagai penyedia data statistik berkualitas untuk kemajuan daerah.\n\n"+
+		"━━━━━━━━━━━━━━━━━━\n"+
+		"📍 *Alamat Kantor*:\n"+
+		"Komplek Perkantoran Pemerintah Daerah Terpadu\n"+
+		"Kabupaten Bangka Barat, Kepulauan Bangka Belitung\n\n"+
+		"🕒 *Jam Layanan PST*:\n"+
+		"• Senin – Kamis: 08.00 – 15.30 WIB\n"+
+		"• Jumat: 08.00 – 15.00 WIB\n\n"+
+		"🌐 *Portal Resmi*:\n"+
+		"https://bangkabaratkab.bps.go.id\n\n"+
+		"🎬 *Video Profil*:\n"+
+		"%s\n"+
+		"━━━━━━━━━━━━━━━━━━\n\n"+
+		"```Statistik Bermakna, Statistik Berdampak```", r.cfg.TentangBPSVideoURL)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Profil BPS Bangka Barat",

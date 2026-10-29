@@ -11,6 +11,7 @@ import (
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
+
 	"go.mau.fi/whatsmeow/types"
 )
 
@@ -32,7 +33,7 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 
 	cfg := &config.Config{
 		InternalPSTGroupJID:   "120363999999999999@g.us",
-		AdminWhitelistNumbers: []string{"6281234567890"},
+		AdminWhitelistNumbers: []string{"6283843607098"},
 		IdleTimeoutMinutes:    30,
 	}
 
@@ -40,7 +41,7 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 	router := NewBotRouter(cfg, sender, nil)
 	router.SetScraper(provider)
 
-	userJID := types.NewJID("6281234567890", types.DefaultUserServer)
+	userJID := types.NewJID("6283843607098", types.DefaultUserServer)
 	session := router.sessions.GetOrCreate(userJID, nil)
 
 	// 1. User opens Menu 6
@@ -66,7 +67,7 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 	// 3. User submits consultation booking format
 	bookingInput := "Nama: Budi Santoso\n" +
 		"Instansi: Dinas Pertanian Bangka Barat\n" +
-		"No. WhatsApp: 081234567890\n" +
+		"No. WhatsApp: 083843607098\n" +
 		"Topik: Data Produksi Kelapa Sawit 2024\n" +
 		"Rencana Hari / Jam: Kamis, 29 Okt jam 10.00 WIB"
 
@@ -254,4 +255,3 @@ Kamis 10.00 WIB`
 		t.Errorf("expected Topic 'Data PDRB', got '%s'", detailsMulti.Topic)
 	}
 }
-
