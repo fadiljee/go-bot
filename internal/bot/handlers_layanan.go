@@ -8,6 +8,7 @@ import (
 
 	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/locale"
+	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -23,8 +24,8 @@ func (r *BotRouter) HandleMenu1_LayananData(ctx context.Context, s *UserSession,
 		{ID: "5", Title: "Cari Data Kata Kunci", Description: "Pencarian cepat topik data spesifik"},
 	}
 
-	introText := "📊 *LAYANAN DATA STATISTIK*\n_BPS Kabupaten Bangka Barat_\n\nSilakan pilih kategori statistik yang ingin Sahabat telusuri:\n━━━━━━━━━━━━━━━━━━"
-	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
+	introText := "📊 *LAYANAN DATA STATISTIK*\nBPS Kabupaten Bangka Barat\n\nSilakan pilih kategori statistik yang ingin Sahabat telusuri:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -45,18 +46,18 @@ func (r *BotRouter) HandleLayananSub_Sosduk(ctx context.Context, s *UserSession,
 	s.PushState(StateMenu1_Sosduk)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: locale.T("menu111Sosduk"), Description: "Kependudukan & Migrasi"},
-		{ID: "2", Title: locale.T("menu112Sosduk"), Description: "Kemiskinan & Sosial Lintas Sektor"},
-		{ID: "3", Title: locale.T("menu113Sosduk"), Description: "Tenaga Kerja"},
-		{ID: "4", Title: locale.T("menu114Sosduk"), Description: "Pendidikan"},
-		{ID: "5", Title: locale.T("menu115Sosduk"), Description: "Kesehatan"},
-		{ID: "6", Title: locale.T("menu116Sosduk"), Description: "Konsumsi dan Pendapatan"},
-		{ID: "7", Title: locale.T("menu117Sosduk"), Description: "Pemukiman & Perumahan"},
-		{ID: "8", Title: locale.T("menu118Sosduk"), Description: "Budaya"},
-		{ID: "9", Title: locale.T("menu119Sosduk"), Description: "Aktivitas Politik & Komunitas"},
-		{ID: "10", Title: locale.T("menu1110Sosduk"), Description: "Regional & Area Kecil"},
-		{ID: "11", Title: locale.T("menu1111Sosduk"), Description: "Gender & Kelompok Khusus"},
-		{ID: "12", Title: locale.T("menu1112Sosduk"), Description: "Masyarakat Informasi"},
+		{ID: "1", Title: locale.T("menu111Sosduk")},
+		{ID: "2", Title: locale.T("menu112Sosduk")},
+		{ID: "3", Title: locale.T("menu113Sosduk")},
+		{ID: "4", Title: locale.T("menu114Sosduk")},
+		{ID: "5", Title: locale.T("menu115Sosduk")},
+		{ID: "6", Title: locale.T("menu116Sosduk")},
+		{ID: "7", Title: locale.T("menu117Sosduk")},
+		{ID: "8", Title: locale.T("menu118Sosduk")},
+		{ID: "9", Title: locale.T("menu119Sosduk")},
+		{ID: "10", Title: locale.T("menu1110Sosduk")},
+		{ID: "11", Title: locale.T("menu1111Sosduk")},
+		{ID: "12", Title: locale.T("menu1112Sosduk")},
 	}
 
 	introText := "📍 *Menu Utama* ❯ *[1] Layanan Data* ❯ *Sosial Kependudukan*\n\nSilakan pilih topik statistik sosial yang ingin Sahabat telusuri:\n━━━━━━━━━━━━━━━━━━"
@@ -81,16 +82,16 @@ func (r *BotRouter) HandleLayananSub_Ekonomi(ctx context.Context, s *UserSession
 	s.PushState(StateMenu1_Ekonomi)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: locale.T("menu121Ekonomi"), Description: "Neraca Ekonomi"},
-		{ID: "2", Title: locale.T("menu122Ekonomi"), Description: "Statistik Bisnis"},
-		{ID: "3", Title: locale.T("menu123Ekonomi"), Description: "Keuangan Pemerintah & Sektor Publik"},
-		{ID: "4", Title: locale.T("menu124Ekonomi"), Description: "Harga-Harga"},
-		{ID: "5", Title: locale.T("menu125Ekonomi"), Description: "Biaya Tenaga Kerja"},
-		{ID: "6", Title: locale.T("menu126Ekonomi"), Description: "Energi"},
-		{ID: "7", Title: locale.T("menu127Ekonomi"), Description: "Pertambangan, Manufaktur & Konstruksi"},
-		{ID: "8", Title: locale.T("menu128Ekonomi"), Description: "Transportasi"},
-		{ID: "9", Title: locale.T("menu129Ekonomi"), Description: "Pariwisata"},
-		{ID: "10", Title: locale.T("menu1210Ekonomi"), Description: "Perbankan, Asuransi & Finansial"},
+		{ID: "1", Title: locale.T("menu121Ekonomi")},
+		{ID: "2", Title: locale.T("menu122Ekonomi")},
+		{ID: "3", Title: locale.T("menu123Ekonomi")},
+		{ID: "4", Title: locale.T("menu124Ekonomi")},
+		{ID: "5", Title: locale.T("menu125Ekonomi")},
+		{ID: "6", Title: locale.T("menu126Ekonomi")},
+		{ID: "7", Title: locale.T("menu127Ekonomi")},
+		{ID: "8", Title: locale.T("menu128Ekonomi")},
+		{ID: "9", Title: locale.T("menu129Ekonomi")},
+		{ID: "10", Title: locale.T("menu1210Ekonomi")},
 	}
 
 	introText := "📍 *Menu Utama* ❯ *[1] Layanan Data* ❯ *Statistik Ekonomi*\n\nSilakan pilih topik statistik ekonomi yang ingin Sahabat telusuri:\n━━━━━━━━━━━━━━━━━━"
@@ -115,8 +116,8 @@ func (r *BotRouter) HandleLayananSub_Pertanian(ctx context.Context, s *UserSessi
 	s.PushState(StateMenu1_Pertanian)
 
 	items := []whatsapp.ListRow{
-		{ID: "1", Title: locale.T("menu131Pertanian"), Description: "Pertanian, Kehutanan & Perikanan"},
-		{ID: "2", Title: locale.T("menu132Pertanian"), Description: "Statistik Lingkungan"},
+		{ID: "1", Title: locale.T("menu131Pertanian")},
+		{ID: "2", Title: locale.T("menu132Pertanian")},
 	}
 
 	introText := "📍 *Menu Utama* ❯ *[1] Layanan Data* ❯ *Statistik Pertanian*\n\nSilakan pilih topik statistik pertanian yang ingin Sahabat telusuri:\n━━━━━━━━━━━━━━━━━━"
@@ -138,7 +139,7 @@ func (r *BotRouter) HandleLayananSub_Pertanian(ctx context.Context, s *UserSessi
 
 // Submenu 1.4: Sektoral (Resolves Stub U-01)
 func (r *BotRouter) HandleLayananSub_Sektoral(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "🏛️ *STATISTIK SEKTORAL BANGKA BARAT*\n_BPS Kabupaten Bangka Barat_\n\n" +
+	text := "🏛️ *STATISTIK SEKTORAL BANGKA BARAT*\nBPS Kabupaten Bangka Barat\n\n" +
 		"Data statistik sektoral dikumpulkan dan dikelola oleh Organisasi Perangkat Daerah (OPD) di lingkungan Pemerintah Kabupaten Bangka Barat bekerja sama dengan BPS sebagai Pembina Data.\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
 		"🌐 *Portal Satu Data Bangka Barat*:\n" +
@@ -146,7 +147,7 @@ func (r *BotRouter) HandleLayananSub_Sektoral(ctx context.Context, s *UserSessio
 		"🌐 *Portal Satu Data Indonesia*:\n" +
 		"https://data.go.id/\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"💡 _Untuk permohonan data sektoral OPD lebih lanjut, silakan manfaatkan layanan konsultasi di Menu *6*._"
+		"💡 Untuk permohonan data sektoral OPD lebih lanjut, silakan manfaatkan layanan konsultasi di Menu *6*."
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Statistik Sektoral",
@@ -165,15 +166,15 @@ func (r *BotRouter) HandleLayananSub_Sektoral(ctx context.Context, s *UserSessio
 func (r *BotRouter) HandleLayananSub_SearchPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu1_Search)
 
-	text := "🔍 *PENCARIAN DATA STATISTIK*\n_BPS Kabupaten Bangka Barat_\n\n" +
+	text := "🔍 *PENCARIAN DATA STATISTIK*\nBPS Kabupaten Bangka Barat\n\n" +
 		"Silakan ketik kata kunci data yang ingin Sahabat cari:\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
 		"💡 *Contoh Kata Kunci*:\n" +
-		"• *kemiskinan*\n" +
-		"• *inflasi*\n" +
-		"• *penduduk*\n" +
-		"• *sawit*\n" +
-		"• *pdrb*\n" +
+		"• kemiskinan\n" +
+		"• inflasi\n" +
+		"• penduduk\n" +
+		"• sawit\n" +
+		"• pdrb\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
 		"⌨️ Ketik kata kunci langsung di chat ini\n" +
 		"• Ketik *99* untuk Kembali\n" +
@@ -204,7 +205,8 @@ func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) 
 			}
 			for i := 0; i < limit; i++ {
 				table := res.Items[i]
-				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, table.Title))
+				cleanTitle := scraper.CleanHTML(table.Title)
+				sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
 			}
 			sb.WriteString("\n")
 			return sb.String()
@@ -218,10 +220,11 @@ func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) 
 			var sb strings.Builder
 			sb.WriteString("*Tabel Statistik Terkait (Database BPS)*:\n")
 			for i, table := range tables {
-				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, table.Title))
+				cleanTitle := scraper.CleanHTML(table.Title)
+				sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
 			}
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("ℹPembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				sb.WriteString(fmt.Sprintf("ℹ Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 			}
 			return sb.String()
 		}
@@ -242,7 +245,8 @@ func (r *BotRouter) fetchScraperItemsForTopic(ctx context.Context, keyword strin
 	var sb strings.Builder
 	sb.WriteString("*Publikasi & Dokumen Rujukan Resmi*:\n")
 	for i, it := range items {
-		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
+		cleanTitle := scraper.CleanHTML(it.Title)
+		sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
 	}
 	sb.WriteString("\n")
 	return sb.String()
@@ -253,7 +257,7 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 	query := strings.TrimSpace(p.Text)
 
 	var sb strings.Builder
-	sb.WriteString("🔍 *HASIL PENCARIAN DATA*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n")
+	sb.WriteString("🔍 *HASIL PENCARIAN DATA*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n")
 	liveFound := false
 
 	// 1. Live search from BPS Bangka Barat Web API (domain: 1903)
@@ -272,7 +276,8 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 			}
 			for i := 0; i < limit; i++ {
 				t := liveTables.Items[i]
-				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, t.Title))
+				cleanTitle := scraper.CleanHTML(t.Title)
+				sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
 			}
 			sb.WriteString("\n")
 		}
@@ -285,15 +290,16 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 			liveFound = true
 			sb.WriteString("📚 *Dokumen & Publikasi Rujukan*:\n")
 			for i, it := range items {
-				sb.WriteString(fmt.Sprintf("%d. %s", i+1, it.Title))
+				cleanTitle := scraper.CleanHTML(it.Title)
+				dateStr := ""
 				if it.ReleaseDate != nil {
-					sb.WriteString(fmt.Sprintf(" _(%s)_", it.ReleaseDate.Format("02 Jan 2006")))
+					dateStr = fmt.Sprintf(" (%s)", it.ReleaseDate.Format("02 Jan 2006"))
 				}
-				sb.WriteString("\n")
+				sb.WriteString(fmt.Sprintf("%s  %s%s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle, dateStr))
 			}
 			sb.WriteString("\n")
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("ℹ _Pembaruan: %s WIB_\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				sb.WriteString(fmt.Sprintf("ℹ Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 			}
 		}
 	}
@@ -301,7 +307,7 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 	if !liveFound {
 		sb.WriteString(fmt.Sprintf("Kata kunci *\"%s\"* belum ditemukan di database BPS Bangka Barat.\n\n💡 *Saran Pencarian*:\nCoba gunakan kata kunci umum seperti *inflasi*, *kemiskinan*, *penduduk*, *sawit*, atau *pdrb*.\n", query))
 	} else {
-		sb.WriteString("ℹ _Untuk unduh berkas lengkap (Excel/PDF), Sahabat dapat berkonsultasi di *Menu 6* (Layanan Konsultasi PST)._\n")
+		sb.WriteString("ℹ Untuk unduh berkas lengkap (Excel/PDF), Sahabat dapat berkonsultasi di *Menu 6* (Layanan Konsultasi PST).\n")
 	}
 
 	sb.WriteString("━━━━━━━━━━━━━━━━━━")
@@ -312,7 +318,7 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
 			{ID: "99", DisplayText: "Cari Kata Kunci Lain"},
-			{ID: "0", DisplayText: "Menu Utama (0)"},
+			{ID: "0", DisplayText: "Menu Utama"},
 		},
 	)
 
@@ -392,7 +398,7 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 	if r.scraper != nil {
 		topic, fresh, err := r.scraper.GetLayananDataTopic(ctx, categorySlug, strconv.Itoa(topicIdx))
 		if err == nil && topic != nil {
-			sb.WriteString(fmt.Sprintf("📊 *%s*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n", topic.Title))
+			sb.WriteString(fmt.Sprintf("📊 *%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", topic.Title))
 
 			if topic.Description != "" {
 				sb.WriteString(fmt.Sprintf("📋 *Cakupan Data*:\n%s\n\n", topic.Description))
@@ -417,7 +423,8 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 					if t.ReleaseDate != nil {
 						yearStr = fmt.Sprintf(" (%s)", t.ReleaseDate.Format("2006"))
 					}
-					sb.WriteString(fmt.Sprintf("%d. %s%s\n", i+1, t.Title, yearStr))
+					cleanTitle := scraper.CleanHTML(t.Title)
+					sb.WriteString(fmt.Sprintf("%s  %s%s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle, yearStr))
 				}
 				sb.WriteString("\n")
 			}
@@ -431,23 +438,24 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 				}
 				for i := 0; i < limit; i++ {
 					it := topic.Items[i]
-					sb.WriteString(fmt.Sprintf("• %s\n", it.Title))
+					cleanTitle := scraper.CleanHTML(it.Title)
+					sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
 				}
 				sb.WriteString("\n")
 			}
 
 			sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
-			sb.WriteString("💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Layanan Konsultasi di Menu *6*._\n\n")
+			sb.WriteString("💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Layanan Konsultasi di Menu *6*.\n\n")
 
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("ℹ _Sumber: Database BPS Bangka Barat · diperbarui %s WIB_", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				sb.WriteString(fmt.Sprintf("ℹ Sumber: Database BPS Bangka Barat · diperbarui %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 			}
 			return sb.String()
 		}
 	}
 
 	// 2. Fallback
-	sb.WriteString(fmt.Sprintf("📊 *%s*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n", defaultTitle))
+	sb.WriteString(fmt.Sprintf("📊 *%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", defaultTitle))
 	if defaultCakupan != "" && !strings.HasPrefix(defaultCakupan, "Cakupmenu") {
 		sb.WriteString(fmt.Sprintf("📋 *Cakupan Data*:\n%s\n\n", defaultCakupan))
 	}
@@ -467,7 +475,7 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 	}
 
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
-	sb.WriteString("💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Layanan Konsultasi di Menu *6*._")
+	sb.WriteString("💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Layanan Konsultasi di Menu *6*.")
 	return sb.String()
 }
 

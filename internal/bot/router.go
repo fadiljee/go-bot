@@ -263,14 +263,9 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				}
 			}
 
-			sb.WriteString("───────────────────────────\n")
-			sb.WriteString("*Cara Mengubah Kontak Pakar:*\n")
-			sb.WriteString("Ketik pesan dengan format:\n")
-			sb.WriteString("`<nomor_bidang> <no_wa> <nama_pakar>`\n\n")
-			sb.WriteString("Contoh:\n")
-			sb.WriteString("`1 08123456789 Bpk. Rahmat, S.Tr.Stat.`\n\n")
-			sb.WriteString("_Ketik *99* untuk kembali ke Dashboard Admin._\n")
-			sb.WriteString("_Ketik *0* untuk keluar dari Mode Admin._")
+			sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
+			sb.WriteString("• Ketik *99* untuk kembali ke Dashboard Admin\n")
+			sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
 			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
 			return
 		}
@@ -357,7 +352,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				key := fmt.Sprintf("menuAdmin%d", i)
 				sb.WriteString(fmt.Sprintf("*%d.* %s\n\n", i, locale.T(key)))
 			}
-			sb.WriteString("───────────────────────────\n_Ketik *99* untuk Menu Admin, *0* untuk Keluar._")
+			sb.WriteString("━━━━━━━━━━━━━━━━━━\n• Ketik *99* untuk Menu Admin\n• Ketik *0* untuk Keluar")
 			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
 			return
 		}

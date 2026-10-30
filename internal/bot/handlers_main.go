@@ -47,7 +47,7 @@ func getTimeGreeting() string {
 func buildWelcomeMenuBody(greetingLine, introSubtitle string) string {
 	var sb strings.Builder
 	sb.WriteString("🟢 *BOT ISTIMEWA*\n")
-	sb.WriteString("_BPS Kabupaten Bangka Barat_\n\n")
+	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
 	sb.WriteString(greetingLine + "\n")
 	sb.WriteString(introSubtitle + "\n\n")
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
@@ -65,7 +65,7 @@ func buildWelcomeMenuBody(greetingLine, introSubtitle string) string {
 	sb.WriteString("⚙️ *INFORMASI*\n")
 	sb.WriteString("9️⃣  Kontak Developer\n")
 	sb.WriteString("🔟  Bantuan & FAQ\n")
-	sb.WriteString("🏛️  Ketik *11* untuk Tentang BPS\n")
+	sb.WriteString("1️⃣1️⃣  Tentang BPS\n")
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
 	sb.WriteString("⌨️ Balas dengan *angka menu*\n")
 	sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
@@ -259,19 +259,20 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 // SendAdminDashboard displays the full admin panel options
 func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.CurrentState = StateAdminLoggedIn
-	adminText := "*PANEL KENDALI ADMIN — BOT ISTIMEWA BPS*\n\n" +
+	adminText := "*PANEL KENDALI ADMIN — BOT ISTIMEWA BPS*\n" +
+		"BPS Kabupaten Bangka Barat\n\n" +
 		"Halo Admin BPS Kabupaten Bangka Barat. Silakan pilih menu pengelolaan:\n\n" +
 		"*1.* 👥 *Kelola Narahubung Para Pakar (SQLite)*\n" +
-		"     _Lihat & ubah nomor WhatsApp / nama penanggung jawab 8 bidang pakar._\n\n" +
+		"   • Lihat & ubah nomor WhatsApp / nama penanggung jawab 8 bidang pakar\n\n" +
 		"*2.* ⚙ *Status Scraper & Usia Data*\n" +
-		"     _Cek jumlah data di database, usia data scraper, dan circuit breaker._\n\n" +
+		"   • Cek jumlah data di database, usia data scraper, dan circuit breaker\n\n" +
 		"*3.* 🔄 *Jalankan Scraping Manual BPS Sekarang*\n" +
-		"     _Memicu scraping on-demand pembaruan data publikasi, rilis & tabel._\n\n" +
+		"   • Memicu scraping on-demand pembaruan data publikasi, rilis & tabel\n\n" +
 		"*4.* 📊 *Tautan Database Google Sheets Legacy*\n" +
-		"     _Akses link spreadsheet internal (1-8)._\n\n" +
-		"───────────────────────────\n" +
-		"*Ketik angka (1-4)* untuk memilih menu.\n" +
-		"*Ketik 0* untuk keluar dari Mode Admin dan kembali ke Menu Utama."
+		"   • Akses link spreadsheet internal (1-8)\n\n" +
+		"━━━━━━━━━━━━━━━━━━\n" +
+		"⌨️ *Ketik angka (1-4)* untuk memilih menu\n" +
+		"• Ketik *0* untuk keluar dari Mode Admin"
 	return r.sender.SendTextMessage(ctx, p.JID, adminText)
 }
 

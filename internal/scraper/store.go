@@ -153,7 +153,38 @@ func (s *Store) migrate() error {
 		return err
 	}
 
+	_ = s.sanitizeExistingItems()
+
 	return s.seedDefaultExpertContacts()
+}
+
+func (s *Store) sanitizeExistingItems() error {
+	rows, err := s.db.Query("SELECT id, title, abstract FROM scraped_items WHERE abstract LIKE '%<%' OR title LIKE '%<%'")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type itemClean struct {
+		id       int64
+		title    string
+		abstract string
+	}
+	var items []itemClean
+	for rows.Next() {
+		var it itemClean
+		if err := rows.Scan(&it.id, &it.title, &it.abstract); err == nil {
+			items = append(items, it)
+		}
+	}
+	rows.Close()
+
+	for _, it := range items {
+		cleanT := CleanHTML(it.title)
+		cleanA := CleanHTML(it.abstract)
+		_, _ = s.db.Exec("UPDATE scraped_items SET title = ?, abstract = ? WHERE id = ?", cleanT, cleanA, it.id)
+	}
+	return nil
 }
 
 func (s *Store) seedDefaultExpertContacts() error {

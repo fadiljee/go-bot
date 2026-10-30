@@ -143,7 +143,7 @@ func TestExtractTextFromMessage(t *testing.T) {
 	}
 	listMsg := BuildInteractiveList("Judul Header", "Isi pesan body...", "Footer info", "Buka", []ListSection{{Title: "Sec", Rows: rows}})
 	extractedList := ExtractTextFromMessage(listMsg)
-	if !strings.Contains(extractedList, "*Judul Header*") || !strings.Contains(extractedList, "Isi pesan body...") || !strings.Contains(extractedList, "_Footer info_") {
+	if !strings.Contains(extractedList, "*Judul Header*") || !strings.Contains(extractedList, "Isi pesan body...") || !strings.Contains(extractedList, "Footer info") {
 		t.Errorf("ExtractTextFromMessage list failed: %s", extractedList)
 	}
 

@@ -173,32 +173,45 @@ func UnpackInteractiveMessage(msg *waE2E.Message) *waE2E.InteractiveMessage {
 	return nil
 }
 
-// NumberToEmoji converts numeric IDs 1-10 to emoji numbers per PRD design guidelines
+// NumberToEmoji converts numeric IDs 1-12 to emoji numbers per PRD design guidelines
 func NumberToEmoji(id string) string {
 	switch id {
 	case "1":
-		return "1️⃣ "
+		return "1️⃣"
 	case "2":
-		return "2️⃣ "
+		return "2️⃣"
 	case "3":
-		return "3️⃣ "
+		return "3️⃣"
 	case "4":
-		return "4️⃣ "
+		return "4️⃣"
 	case "5":
-		return "5️⃣ "
+		return "5️⃣"
 	case "6":
-		return "6️⃣ "
+		return "6️⃣"
 	case "7":
-		return "7️⃣ "
+		return "7️⃣"
 	case "8":
-		return "8️⃣ "
+		return "8️⃣"
 	case "9":
-		return "9️⃣ "
+		return "9️⃣"
 	case "10":
-		return "🔟 "
+		return "🔟"
+	case "11":
+		return "1️⃣1️⃣"
+	case "12":
+		return "1️⃣2️⃣"
 	default:
 		return fmt.Sprintf("*%s.*", id)
 	}
+}
+
+func isRedundantDesc(title, desc string) bool {
+	t := strings.ToLower(strings.TrimSpace(title))
+	d := strings.ToLower(strings.TrimSpace(desc))
+	if t == d || strings.Contains(t, d) || strings.Contains(d, t) {
+		return true
+	}
+	return false
 }
 
 // BuildBodyText formats text body with clean numbered list
@@ -211,9 +224,10 @@ func BuildBodyText(intro string, rows []ListRow, footer string) string {
 	}
 
 	for _, r := range rows {
-		sb.WriteString(fmt.Sprintf("%s %s\n", NumberToEmoji(r.ID), r.Title))
-		if r.Description != "" {
-			sb.WriteString(fmt.Sprintf("   _%s_\n", r.Description))
+		sb.WriteString(fmt.Sprintf("%s  %s\n", NumberToEmoji(r.ID), strings.TrimSpace(r.Title)))
+		desc := strings.TrimSpace(r.Description)
+		if desc != "" && !isRedundantDesc(r.Title, desc) {
+			sb.WriteString(fmt.Sprintf("   • %s\n", desc))
 		}
 	}
 
@@ -241,62 +255,92 @@ func ExtractTextFromMessage(msg *waE2E.Message) string {
 
 	if inter := unwrapped.GetInteractiveMessage(); inter != nil {
 		var parts []string
-		if header := inter.GetHeader(); header != nil && header.GetTitle() != "" {
-			parts = append(parts, fmt.Sprintf("*%s*", strings.TrimSpace(header.GetTitle())))
+		bodyText := ""
+		if inter.GetBody() != nil {
+			bodyText = strings.TrimSpace(inter.GetBody().GetText())
 		}
-		if body := inter.GetBody(); body != nil && body.GetText() != "" {
-			parts = append(parts, strings.TrimSpace(body.GetText()))
+
+		if header := inter.GetHeader(); header != nil && header.GetTitle() != "" {
+			hTitle := strings.TrimSpace(header.GetTitle())
+			if !strings.Contains(strings.ToLower(bodyText), strings.ToLower(hTitle)) {
+				parts = append(parts, fmt.Sprintf("*%s*", hTitle))
+			}
+		}
+
+		if bodyText != "" {
+			parts = append(parts, bodyText)
 		}
 
 		// If there are quick reply buttons, extract options if not already listed in body
 		if nativeFlow := inter.GetNativeFlowMessage(); nativeFlow != nil {
 			var buttonTexts []string
-			bodyText := ""
-			if inter.GetBody() != nil {
-				bodyText = inter.GetBody().GetText()
-			}
 			for _, b := range nativeFlow.GetButtons() {
 				if b.GetName() == "quick_reply" {
 					var p quickReplyParams
 					if err := json.Unmarshal([]byte(b.GetButtonParamsJSON()), &p); err == nil && p.DisplayText != "" {
 						if !strings.Contains(bodyText, fmt.Sprintf("*%s*", p.ID)) && !strings.Contains(bodyText, fmt.Sprintf("(%s)", p.ID)) {
-							buttonTexts = append(buttonTexts, fmt.Sprintf("• Ketik *%s* untuk %s", p.ID, p.DisplayText))
+							dText := strings.TrimSpace(p.DisplayText)
+							dText = strings.TrimSuffix(dText, fmt.Sprintf("(%s)", p.ID))
+							dText = strings.TrimSpace(dText)
+							buttonTexts = append(buttonTexts, fmt.Sprintf("• Ketik *%s* untuk %s", p.ID, dText))
 						}
 					}
 				}
 			}
 			if len(buttonTexts) > 0 {
-				parts = append(parts, "*Pilihan Navigasi:*\n"+strings.Join(buttonTexts, "\n"))
+				parts = append(parts, "⌨️ *Pilihan Navigasi:*\n"+strings.Join(buttonTexts, "\n"))
 			}
 		}
 
 		if footer := inter.GetFooter(); footer != nil && footer.GetText() != "" {
-			parts = append(parts, fmt.Sprintf("_%s_", strings.TrimSpace(footer.GetText())))
+			fText := strings.TrimSpace(footer.GetText())
+			if !strings.Contains(bodyText, fText) && !strings.Contains(bodyText, "Statistik Bermakna") {
+				if fText == "PST BPS Kabupaten Bangka Barat" {
+					parts = append(parts, "```Statistik Bermakna, Statistik Berdampak```")
+				} else {
+					parts = append(parts, fText)
+				}
+			}
 		}
 		return strings.Join(parts, "\n\n")
 	}
 
 	if list := unwrapped.GetListMessage(); list != nil {
 		var parts []string
-		if list.GetTitle() != "" {
-			parts = append(parts, fmt.Sprintf("*%s*", strings.TrimSpace(list.GetTitle())))
-		}
+		bodyText := ""
 		if list.GetDescription() != "" {
-			parts = append(parts, strings.TrimSpace(list.GetDescription()))
+			bodyText = strings.TrimSpace(list.GetDescription())
+		}
+		if list.GetTitle() != "" {
+			tTitle := strings.TrimSpace(list.GetTitle())
+			if !strings.Contains(strings.ToLower(bodyText), strings.ToLower(tTitle)) {
+				parts = append(parts, fmt.Sprintf("*%s*", tTitle))
+			}
+		}
+		if bodyText != "" {
+			parts = append(parts, bodyText)
 		}
 		if list.GetFooterText() != "" {
-			parts = append(parts, fmt.Sprintf("_%s_", strings.TrimSpace(list.GetFooterText())))
+			fText := strings.TrimSpace(list.GetFooterText())
+			if !strings.Contains(bodyText, fText) {
+				parts = append(parts, fText)
+			}
 		}
 		return strings.Join(parts, "\n\n")
 	}
 
 	if btn := unwrapped.GetButtonsMessage(); btn != nil {
 		var parts []string
+		bodyText := ""
 		if btn.GetContentText() != "" {
-			parts = append(parts, strings.TrimSpace(btn.GetContentText()))
+			bodyText = strings.TrimSpace(btn.GetContentText())
+			parts = append(parts, bodyText)
 		}
 		if btn.GetFooterText() != "" {
-			parts = append(parts, fmt.Sprintf("_%s_", strings.TrimSpace(btn.GetFooterText())))
+			fText := strings.TrimSpace(btn.GetFooterText())
+			if !strings.Contains(bodyText, fText) {
+				parts = append(parts, fText)
+			}
 		}
 		return strings.Join(parts, "\n\n")
 	}

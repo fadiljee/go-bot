@@ -27,8 +27,8 @@ func (r *BotRouter) HandleMenu6_Konsultasi(ctx context.Context, s *UserSession, 
 		{ID: "3", Title: "Informasi PST & Jam Layanan", Description: "Jadwal operasional & kontak petugas PST"},
 	}
 
-	introText := "💬 *TANYA PAKAR & KONSULTASI ONLINE*\n_PST BPS Kabupaten Bangka Barat_\n\nAda yang ingin Sahabat tanyakan seputar data & statistik? Pilih jenis layanan:\n━━━━━━━━━━━━━━━━━━"
-	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
+	introText := "💬 *TANYA PAKAR & KONSULTASI ONLINE*\nPST BPS Kabupaten Bangka Barat\n\nAda yang ingin Sahabat tanyakan seputar data & statistik? Pilih jenis layanan:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -66,7 +66,7 @@ func normalizePhone(raw string) string {
 func (r *BotRouter) HandleMenu6_BookingPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu6_Booking)
 
-	prompt := "📝 *PENGAJUAN JADWAL KONSULTASI*\n_PST BPS Kabupaten Bangka Barat_\n\n" +
+	prompt := "📝 *PENGAJUAN JADWAL KONSULTASI*\nPST BPS Kabupaten Bangka Barat\n\n" +
 		"Silakan kirimkan data permohonan konsultasi Sahabat dengan format berikut:\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
 		"Nama: \n" +
@@ -75,7 +75,7 @@ func (r *BotRouter) HandleMenu6_BookingPrompt(ctx context.Context, s *UserSessio
 		"Topik / Kebutuhan Data: \n" +
 		"Rencana Hari / Jam: \n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"💡 _(Atau ketik informasi kebutuhan data Sahabat secara bebas)_\n\n" +
+		"💡 (Atau ketik informasi kebutuhan data Sahabat secara bebas)\n\n" +
 		"• Ketik *0* untuk Batal & Kembali ke Menu Utama"
 
 	return r.sender.SendTextMessage(ctx, p.JID, prompt)
@@ -325,7 +325,7 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 	}
 
 	// 2. Reply confirmation to user
-	userReply := fmt.Sprintf("✅ *PENGAJUAN JADWAL KONSULTASI DITERIMA*\n_PST BPS Kabupaten Bangka Barat_\n\n"+
+	userReply := fmt.Sprintf("✅ *PENGAJUAN JADWAL KONSULTASI DITERIMA*\nPST BPS Kabupaten Bangka Barat\n\n"+
 		"Terima kasih *%s*, permohonan konsultasi statistik Sahabat telah dicatat dan diteruskan ke Tim Pelayanan Statistik Terpadu (PST) BPS Bangka Barat.\n\n"+
 		"━━━━━━━━━━━━━━━━━━\n"+
 		"🎫 *No. Tiket*: `%s`\n"+
@@ -353,8 +353,8 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 				"*Bidang / Topik*: %s\n"+
 				" *Rencana Jadwal*: %s\n"+
 				"*Waktu Masuk*: %s WIB\n\n"+
-				"*Pesan Lengkap*:\n_%s_\n\n"+
-				"*Dimohon petugas piket PST dan pakar terkait untuk menindaklanjuti dan mempersiapkan bahan data. Terima kasih!* ",
+				"*Pesan Lengkap*:\n%s\n\n"+
+				"*Dimohon petugas piket PST dan pakar terkait untuk menindaklanjuti dan mempersiapkan bahan data. Terima kasih!*",
 				ticketNo, name, instansi, waContact, topic, preferredTime, time.Now().Format("02 Jan 2006 15:04"), notes)
 
 			if sendErr := r.sender.SendTextMessage(ctx, groupJID, groupMsg); sendErr != nil {
@@ -375,7 +375,7 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 }
 
 func (r *BotRouter) HandleKonsultasiUmum(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	piketText := "🕒 *JAM LAYANAN PST BPS BANGKA BARAT*\n_Pelayanan Statistik Terpadu_\n\n" +
+	piketText := "🕒 *JAM LAYANAN PST BPS BANGKA BARAT*\nPelayanan Statistik Terpadu\n\n" +
 		"Petugas PST kami siap melayani pertanyaan Sahabat seputar data, publikasi, dan rujukan statistik:\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
 		"🕒 *Jadwal Layanan*:\n" +
@@ -384,7 +384,7 @@ func (r *BotRouter) HandleKonsultasiUmum(ctx context.Context, s *UserSession, p 
 		"💬 *WhatsApp Petugas PST*:\n" +
 		"https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"_Silakan hubungi kami pada jam operasional kerja kedinasan._"
+		"Silakan hubungi kami pada jam operasional kerja kedinasan."
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Petugas Konsultasi Umum",
@@ -465,7 +465,7 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 
 	waLink := fmt.Sprintf("https://wa.me/%s?text=Halo%%20%s,%%20saya%%20ingin%%20konsultasi%%20seputar%%20data%%20statistik%%20Bangka%%20Barat.", cleanPhone, strings.ReplaceAll(pakarName, " ", "%20"))
 
-	pakarText := fmt.Sprintf("👤 *PROFIL PAKAR STATISTIK*\n_BPS Kabupaten Bangka Barat_\n\n"+
+	pakarText := fmt.Sprintf("👤 *PROFIL PAKAR STATISTIK*\nBPS Kabupaten Bangka Barat\n\n"+
 		"━━━━━━━━━━━━━━━━━━\n"+
 		"📌 *Bidang*: %s\n"+
 		"👤 *Pakar*: %s\n"+
@@ -473,7 +473,7 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 		"📝 *Cakupan*: %s\n"+
 		"━━━━━━━━━━━━━━━━━━\n\n"+
 		"💬 *Hubungi via WhatsApp*:\n%s\n\n"+
-		"ℹ _Mohon menghubungi beliau pada hari dan jam kerja dinas (Senin - Jumat, 08.00 - 15.30 WIB). Terima kasih!_",
+		"ℹ Mohon menghubungi beliau pada hari dan jam kerja dinas (Senin - Jumat, 08.00 - 15.30 WIB). Terima kasih!",
 		bidangTitle, pakarName, cleanPhone, desc, waLink)
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -491,13 +491,13 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 
 // HandleMenu7_Berlangganan renders subscription menu
 func (r *BotRouter) HandleMenu7_Berlangganan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "📬 *LANGGANAN PUBLIKASI GRATIS*\n_BPS Kabupaten Bangka Barat_\n\n" +
+	text := "📬 *LANGGANAN PUBLIKASI GRATIS*\nBPS Kabupaten Bangka Barat\n\n" +
 		"Dapatkan pemberitahuan rilis publikasi terbaru, Berita Resmi Statistik (BRS), dan ringkasan data strategis Kabupaten Bangka Barat langsung ke nomor WhatsApp Sahabat!\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
 		"🔗 *Formulir Berlangganan*:\n" +
 		"https://s.bps.go.id/LanggananDataBabar\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"🔒 _Kerahasiaan nomor Sahabat dijamin oleh Undang-Undang No. 16 Tahun 1997 tentang Statistik._"
+		"🔒 Kerahasiaan nomor Sahabat dijamin oleh Undang-Undang No. 16 Tahun 1997 tentang Statistik."
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Layanan Berlangganan",
@@ -513,7 +513,7 @@ func (r *BotRouter) HandleMenu7_Berlangganan(ctx context.Context, s *UserSession
 
 // HandleMenu8_Pengaduan renders complaint & aspiration channels
 func (r *BotRouter) HandleMenu8_Pengaduan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "📢 *PENGADUAN & KOTAK SARAN*\n_BPS Kabupaten Bangka Barat_\n\n" +
+	text := "📢 *PENGADUAN & KOTAK SARAN*\nBPS Kabupaten Bangka Barat\n\n" +
 		"BPS Kabupaten Bangka Barat berkomitmen memberikan pelayanan prima yang bersih, transparan, dan bebas dari pungutan liar (Zona Integritas WBK/WBBM).\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
 		"1️⃣ *Portal SP4N-LAPOR!*:\n" +
@@ -523,7 +523,7 @@ func (r *BotRouter) HandleMenu8_Pengaduan(ctx context.Context, s *UserSession, p
 		"3️⃣ *Kotak Pengaduan Fisik*:\n" +
 		"Ruang PST BPS Kabupaten Bangka Barat\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"🔒 _Setiap aspirasi & laporan yang masuk akan ditindaklanjuti secara profesional dan rahasia._"
+		"🔒 Setiap aspirasi & laporan yang masuk akan ditindaklanjuti secara profesional dan rahasia."
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Layanan Pengaduan",
@@ -546,7 +546,7 @@ func (r *BotRouter) HandleMenu9_HubDev(ctx context.Context, s *UserSession, p *w
 
 	var text string
 	if devPhone != "" {
-		text = fmt.Sprintf("👨‍💻 *KONTAK PENGEMBANG BOT*\n_Tim TI BPS Kabupaten Bangka Barat_\n\n"+
+		text = fmt.Sprintf("👨‍💻 *KONTAK PENGEMBANG BOT*\nTim TI BPS Kabupaten Bangka Barat\n\n"+
 			"Jika Sahabat Data mengalami kendala teknis, bot tidak merespons, atau memiliki ide peningkatan fitur untuk BOT ISTIMEWA, silakan hubungi tim IT BPS Kabupaten Bangka Barat:\n\n"+
 			"━━━━━━━━━━━━━━━━━━\n"+
 			"💬 *WhatsApp Tim IT*:\n"+
@@ -554,11 +554,11 @@ func (r *BotRouter) HandleMenu9_HubDev(ctx context.Context, s *UserSession, p *w
 			"✉️ *Email Resmi*:\n"+
 			"bps1903@bps.go.id\n"+
 			"━━━━━━━━━━━━━━━━━━\n\n"+
-			"_Kami senang menerima masukan Sahabat demi kenyamanan layanan bot ini._", devPhone)
+			"Kami senang menerima masukan Sahabat demi kenyamanan layanan bot ini.", devPhone)
 	} else if intro := locale.T("introMenu9"); intro != "" {
 		text = intro
 	} else {
-		text = "👨‍💻 *KONTAK PENGEMBANG BOT*\n_Tim TI BPS Kabupaten Bangka Barat_\n\n" +
+		text = "👨‍💻 *KONTAK PENGEMBANG BOT*\nTim TI BPS Kabupaten Bangka Barat\n\n" +
 			"Jika Sahabat Data mengalami kendala teknis, bot tidak merespons, atau memiliki ide peningkatan fitur untuk BOT ISTIMEWA, silakan hubungi tim IT BPS Kabupaten Bangka Barat:\n\n" +
 			"━━━━━━━━━━━━━━━━━━\n" +
 			"💬 *WhatsApp Tim IT*:\n" +
@@ -566,7 +566,7 @@ func (r *BotRouter) HandleMenu9_HubDev(ctx context.Context, s *UserSession, p *w
 			"✉️ *Email Resmi*:\n" +
 			"bps1903@bps.go.id\n" +
 			"━━━━━━━━━━━━━━━━━━\n\n" +
-			"_Kami senang menerima masukan Sahabat demi kenyamanan layanan bot ini._"
+			"Kami senang menerima masukan Sahabat demi kenyamanan layanan bot ini."
 	}
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -593,8 +593,8 @@ func (r *BotRouter) HandleMenu10_FAQ(ctx context.Context, s *UserSession, p *wha
 		{ID: "5", Title: "Jadwal Rilis Data", Description: "Kalender rilis publikasi BPS"},
 	}
 
-	introText := "💡 *BANTUAN & FAQ*\n_BPS Kabupaten Bangka Barat_\n\nBerikut beberapa pertanyaan yang sering diajukan seputar layanan BPS Bangka Barat:\n━━━━━━━━━━━━━━━━━━"
-	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
+	introText := "💡 *BANTUAN & FAQ*\nBPS Kabupaten Bangka Barat\n\nBerikut beberapa pertanyaan yang sering diajukan seputar layanan BPS Bangka Barat:\n━━━━━━━━━━━━━━━━━━"
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -640,7 +640,7 @@ func (r *BotRouter) HandleFAQDetail(ctx context.Context, s *UserSession, p *what
 	var faqText string
 	if idx >= 1 && idx <= len(faqs) {
 		item := faqs[idx-1]
-		faqText = fmt.Sprintf("💡 *BANTUAN & FAQ #%d*\n_BPS Kabupaten Bangka Barat_\n\n"+
+		faqText = fmt.Sprintf("💡 *BANTUAN & FAQ #%d*\nBPS Kabupaten Bangka Barat\n\n"+
 			"❓ *%s*\n\n"+
 			"━━━━━━━━━━━━━━━━━━\n"+
 			"💡 *Penjelasan*:\n"+

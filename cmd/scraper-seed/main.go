@@ -293,11 +293,5 @@ func scrapeNews(ctx context.Context, client *http.Client, store *scraper.Store) 
 }
 
 func cleanHTML(s string) string {
-	s = strings.ReplaceAll(s, "<p>", "")
-	s = strings.ReplaceAll(s, "</p>", "\n")
-	s = strings.ReplaceAll(s, "<br>", "\n")
-	s = strings.ReplaceAll(s, "<br/>", "\n")
-	s = strings.ReplaceAll(s, "&nbsp;", " ")
-	s = strings.ReplaceAll(s, "\r", "")
-	return strings.TrimSpace(s)
+	return scraper.CleanHTML(s)
 }

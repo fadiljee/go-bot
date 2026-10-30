@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"html"
 	"net/url"
 	"regexp"
 	"strings"
@@ -19,17 +20,61 @@ var (
 	ErrAnomalyMarkerMissing  = errors.New("validate: required marker halaman BPS tidak ditemukan")
 )
 
-var spaceCleanRe = regexp.MustCompile(`[\s\x{00a0}]+`)
+var (
+	spaceCleanRe = regexp.MustCompile(`[\s\x{00a0}]+`)
+	htmlTagRe    = regexp.MustCompile(`(?i)<[^>]+>`)
+	breakTagRe   = regexp.MustCompile(`(?i)<(br|p|div|tr|li)[^>]*>`)
+)
 
-// CleanText strips control characters, collapses multiple spaces and NBSP, and trims string (§8.2, Lampiran C).
-func CleanText(s string) string {
+// CleanHTML strips all HTML tags (such as <i>, </i>, <i/>, <p>, etc.),
+// unescapes HTML entities, and collapses excessive whitespace.
+func CleanHTML(s string) string {
+	if s == "" {
+		return ""
+	}
+	s = html.UnescapeString(s)
+	s = breakTagRe.ReplaceAllString(s, " ")
+	s = htmlTagRe.ReplaceAllString(s, "")
+	s = strings.ReplaceAll(s, "<i/>", "")
+	s = strings.ReplaceAll(s, "<i / >", "")
 	s = strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) && r != '\n' && r != '\t' {
-			return -1
+		if unicode.IsControl(r) {
+			return ' '
 		}
 		return r
 	}, s)
 	return strings.TrimSpace(spaceCleanRe.ReplaceAllString(s, " "))
+}
+
+// SummarizeText returns a clean summary truncated at sentence or word boundary up to maxLen characters.
+func SummarizeText(s string, maxLen int) string {
+	s = CleanHTML(s)
+	if s == "" {
+		return ""
+	}
+	if maxLen <= 0 {
+		maxLen = 220
+	}
+	if len(s) <= maxLen {
+		return s
+	}
+
+	firstDot := strings.Index(s, ". ")
+	if firstDot != -1 && firstDot >= 50 && firstDot <= maxLen+30 {
+		return s[:firstDot+1]
+	}
+
+	cut := s[:maxLen]
+	lastSpace := strings.LastIndex(cut, " ")
+	if lastSpace > maxLen/2 {
+		cut = cut[:lastSpace]
+	}
+	return strings.TrimRight(cut, ",.;:") + "..."
+}
+
+// CleanText strips control characters, collapses multiple spaces and NBSP, and trims string (§8.2, Lampiran C).
+func CleanText(s string) string {
+	return CleanHTML(s)
 }
 
 // CalculateContentHash computes sha256 hash across canonical fields (§5.2).

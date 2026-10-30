@@ -85,3 +85,23 @@ func TestAnomalyGuard(t *testing.T) {
 		t.Errorf("expected ErrAnomalyMarkerMissing, got: %v", err)
 	}
 }
+
+func TestCleanHTML(t *testing.T) {
+	input := "Pada Bulan Agustus Tahun 2026 terjadi inflasi <i>year on year (y-on-y)</i> Kabupaten Bangka Barat sebesar 4,43 persen dengan Indeks Harga Konsumen (IHK) sebesar 107,44. <i/>\nInflasi <i>y-on-y</i> terjadi karena kenaikan indeks &amp; harga &nbsp; makanan."
+	expected := "Pada Bulan Agustus Tahun 2026 terjadi inflasi year on year (y-on-y) Kabupaten Bangka Barat sebesar 4,43 persen dengan Indeks Harga Konsumen (IHK) sebesar 107,44. Inflasi y-on-y terjadi karena kenaikan indeks & harga makanan."
+
+	res := CleanHTML(input)
+	if res != expected {
+		t.Errorf("CleanHTML mismatch.\nGot:      %q\nExpected: %q", res, expected)
+	}
+}
+
+func TestSummarizeText(t *testing.T) {
+	input := "Pada Bulan Agustus Tahun 2026 terjadi inflasi <i>year on year (y-on-y)</i> Kabupaten Bangka Barat sebesar 4,43 persen dengan Indeks Harga Konsumen (IHK) sebesar 107,44. \nInflasi y-on-y terjadi karena kenaikan indeks di seluruh kelompok pengeluaran, yaitu makanan 6,80 persen."
+	res := SummarizeText(input, 220)
+
+	expected := "Pada Bulan Agustus Tahun 2026 terjadi inflasi year on year (y-on-y) Kabupaten Bangka Barat sebesar 4,43 persen dengan Indeks Harga Konsumen (IHK) sebesar 107,44."
+	if res != expected {
+		t.Errorf("SummarizeText mismatch.\nGot:      %q\nExpected: %q", res, expected)
+	}
+}

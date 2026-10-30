@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 )
 
@@ -23,8 +24,8 @@ func (r *BotRouter) HandleMenu2_Indikator(ctx context.Context, s *UserSession, p
 		{ID: "7", Title: "Indikator Kesejahteraan & IPM", Description: "IPM, Harapan Hidup, Pengeluaran"},
 	}
 
-	introText := fmt.Sprintf("📈 *INDIKATOR STRATEGIS DAERAH (%s)*\n_BPS Kabupaten Bangka Barat_\n\nSilakan pilih indikator strategis yang ingin Sahabat telusuri:\n━━━━━━━━━━━━━━━━━━", r.cfg.ActiveIndicatorYear)
-	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
+	introText := fmt.Sprintf("📈 *INDIKATOR STRATEGIS DAERAH (%s)*\nBPS Kabupaten Bangka Barat\n\nSilakan pilih indikator strategis yang ingin Sahabat telusuri:\n━━━━━━━━━━━━━━━━━━", r.cfg.ActiveIndicatorYear)
+	footerText := "━━━━━━━━━━━━━━━━━━\n⌨️ Balas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -52,7 +53,7 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 		ind, fresh, err := r.scraper.GetStrategicIndicator(ctx, strconv.Itoa(indicatorIdx))
 		if err == nil && ind != nil {
 			var sb strings.Builder
-			sb.WriteString(fmt.Sprintf("📈 *%s*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n", ind.Title))
+			sb.WriteString(fmt.Sprintf("📈 *%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", ind.Title))
 
 			sb.WriteString("📊 *Capaian Angka & Metrik Resmi*:\n")
 			for _, m := range ind.Metrics {
@@ -76,17 +77,18 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				}
 				for i := 0; i < limit; i++ {
 					it := ind.Items[i]
-					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
+					cleanTitle := scraper.CleanHTML(it.Title)
+					sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(fmt.Sprintf("%d", i+1)), cleanTitle))
 				}
 				sb.WriteString("\n")
 			}
 
 			sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
 			sb.WriteString(fmt.Sprintf("🏛️ *Sumber*: %s\n", ind.Source))
-			sb.WriteString("💡 _Untuk konsultasi lebih mendalam, manfaatkan Layanan Konsultasi di Menu *6*._\n\n")
+			sb.WriteString("💡 Untuk konsultasi lebih mendalam, manfaatkan Layanan Konsultasi di Menu *6*.\n\n")
 
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("ℹ _Pembaruan: %s WIB_", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				sb.WriteString(fmt.Sprintf("ℹ Pembaruan: %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 			}
 			textData = sb.String()
 			imgURL = ind.ImageURL
@@ -97,7 +99,7 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 	if textData == "" {
 		switch indicatorIdx {
 		case 1: // Kependudukan
-			textData = "📈 *INDIKATOR KEPENDUDUKAN*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			textData = "📈 *INDIKATOR KEPENDUDUKAN*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"📊 *Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Jumlah Penduduk*: ± 214.453 Jiwa 🔺\n" +
 				"> • *Laju Pertumbuhan*: 1,48% per tahun\n" +
@@ -106,9 +108,9 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				"> • *Wilayah Terpadat*: Kecamatan Mentok (54.218 Jiwa)\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +
 				"🏛️ *Sumber*: BPS Kabupaten Bangka Barat (Bangka Barat Dalam Angka)\n" +
-				"💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*._"
+				"💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*."
 		case 2: // Pertanian
-			textData = "📈 *INDIKATOR PERTANIAN & PERKEBUNAN*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			textData = "📈 *INDIKATOR PERTANIAN & PERKEBUNAN*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"📊 *Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Kelapa Sawit*: Luas > 60.000 Ha, Produksi > 350.000 Ton 🔺\n" +
 				"> • *Lada Muntok White Pepper*: Luas > 4.500 Ha (Indikasi Geografis)\n" +
@@ -116,9 +118,9 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				"> • *Perikanan Laut*: Produksi tangkap > 28.000 Ton/tahun 🔺\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +
 				"🏛️ *Sumber*: BPS Kabupaten Bangka Barat (Data Sensus Pertanian)\n" +
-				"💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*._"
+				"💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*."
 		case 3: // Kemiskinan
-			textData = "📈 *INDIKATOR KEMISKINAN DAERAH*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			textData = "📈 *INDIKATOR KEMISKINAN DAERAH*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"📊 *Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Tingkat Kemiskinan (P0)*: 2,75% 🔻 (Salah satu terendah di Babel)\n" +
 				"> • *Garis Kemiskinan*: Rp 612.430 /kapita/bulan 🔺\n" +
@@ -127,9 +129,9 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				"> • *Gini Rasio*: 0,268 (Ketimpangan Rendah)\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +
 				"🏛️ *Sumber*: BPS Kabupaten Bangka Barat (Data Susenas)\n" +
-				"💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*._"
+				"💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*."
 		case 4: // Ketenagakerjaan
-			textData = "📈 *INDIKATOR KETENAGAKERJAAN*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			textData = "📈 *INDIKATOR KETENAGAKERJAAN*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"📊 *Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Pengangguran Terbuka (TPT)*: 3,92% 🔻 (Turun)\n" +
 				"> • *Partisipasi Angkatan Kerja (TPAK)*: 68,45% 🔺\n" +
@@ -137,9 +139,9 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				"> • *Upah Minimum Kabupaten (UMK)*: Rp 3.640.000 /bulan 🔺\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +
 				"🏛️ *Sumber*: BPS Kabupaten Bangka Barat (Data Sakernas)\n" +
-				"💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*._"
+				"💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*."
 		case 5: // Ekonomi & PDRB
-			textData = "📈 *INDIKATOR PERTUMBUHAN EKONOMI & PDRB*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			textData = "📈 *INDIKATOR PERTUMBUHAN EKONOMI & PDRB*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"📊 *Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Laju Pertumbuhan Ekonomi (LPE)*: 4,55% - 4,82% 🔺\n" +
 				"> • *PDRB ADHB*: ± Rp 14,8 Triliun 🔺\n" +
@@ -148,9 +150,9 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				"> • *Sektor Terbesar*: Industri Pengolahan (33,4%), Pertanian (21,8%)\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +
 				"🏛️ *Sumber*: BPS Kabupaten Bangka Barat (Publikasi PDRB)\n" +
-				"💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*._"
+				"💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*."
 		case 6: // Harga & Inflasi
-			textData = "📈 *INDIKATOR HARGA & INFLASI*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			textData = "📈 *INDIKATOR HARGA & INFLASI*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"📊 *Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Inflasi Year-on-Year*: 4,49% (September 2026)\n" +
 				"> • *IHK (Indeks Harga Konsumen)*: 106,30\n" +
@@ -158,9 +160,9 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				"> • *Nilai Tukar Petani (NTP)*: 112,45 🔺 (Petani surplus)\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +
 				"🏛️ *Sumber*: BRS BPS Kabupaten Bangka Barat\n" +
-				"💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*._"
+				"💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*."
 		case 7: // Kesejahteraan & IPM
-			textData = "📈 *INDIKATOR PEMBANGUNAN MANUSIA (IPM)*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\n" +
+			textData = "📈 *INDIKATOR PEMBANGUNAN MANUSIA (IPM)*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"📊 *Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Indeks Pembangunan Manusia*: 71,58 🔺 (Kategori Tinggi)\n" +
 				"> • *Umur Harapan Hidup (UHH)*: 73,42 Tahun 🔺\n" +
@@ -169,9 +171,9 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				"> • *Pengeluaran Riil Per Kapita*: Rp 11.850.000 /tahun 🔺\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +
 				"🏛️ *Sumber*: Publikasi IPM BPS Kabupaten Bangka Barat\n" +
-				"💡 _Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*._"
+				"💡 Untuk permohonan data mentah (Excel/CSV), silakan hubungi Menu *6*."
 		default:
-			textData = fmt.Sprintf("📈 *INDIKATOR STRATEGIS DAERAH*\n_BPS Kabupaten Bangka Barat_\n━━━━━━━━━━━━━━━━━━\n\nData indikator strategis resmi BPS Kabupaten Bangka Barat Tahun %s.\n\n━━━━━━━━━━━━━━━━━━\n🏛️ *Sumber*: BPS Kabupaten Bangka Barat", r.cfg.ActiveIndicatorYear)
+			textData = fmt.Sprintf("📈 *INDIKATOR STRATEGIS DAERAH*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\nData indikator strategis resmi BPS Kabupaten Bangka Barat Tahun %s.\n\n━━━━━━━━━━━━━━━━━━\n🏛️ *Sumber*: BPS Kabupaten Bangka Barat", r.cfg.ActiveIndicatorYear)
 		}
 	}
 
