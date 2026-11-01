@@ -201,9 +201,24 @@ func (r *BotRouter) HandleBack(ctx context.Context, s *UserSession, p *whatsapp.
 	}
 }
 
+func getAdminMenuItems() []whatsapp.ListRow {
+	return []whatsapp.ListRow{
+		{ID: "1", Title: "Kelola Kontak Pakar", Description: "Lihat & ubah nomor WA pakar"},
+		{ID: "2", Title: "Status Scraper & Data", Description: "Cek statistik data & circuit breaker"},
+		{ID: "3", Title: "Scraping Manual BPS", Description: "Pemicu pembaruan on-demand portal"},
+		{ID: "4", Title: "Tautan Google Sheets", Description: "Akses daftar spreadsheet legacy"},
+	}
+}
+
 // HandleAdminPrompt asks admin password
 func (r *BotRouter) HandleAdminPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	return r.sender.SendTextMessage(ctx, p.JID, "Silakan masukkan *Password Admin* untuk melanjutkan:")
+	msg := "🔐 *LOGIN PANEL ADMIN*\n" +
+		"BPS Kabupaten Bangka Barat\n" +
+		"━━━━━━━━━━━━━━━━━━\n\n" +
+		"Silakan masukkan *Password Admin* untuk melanjutkan verifikasi akses:\n\n" +
+		"━━━━━━━━━━━━━━━━━━\n" +
+		"• Ketik *0* untuk membatalkan dan kembali ke Menu Utama"
+	return r.sender.SendTextMessage(ctx, p.JID, msg)
 }
 
 // HandleAdminAuth verifies admin password from .env, applies brute-force lockout, and auto-expires admin session
@@ -213,7 +228,13 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	// Check lockout
 	if locked, until := r.isAdminLockedOut(phone); locked {
 		s.ResetToRoot()
-		msg := fmt.Sprintf("Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
+		msg := fmt.Sprintf("⛔ *AKSES DIKUNCI*\n"+
+			"BPS Kabupaten Bangka Barat\n"+
+			"━━━━━━━━━━━━━━━━━━\n\n"+
+			"Nomor Anda sedang dikunci dari percobaan login admin hingga *%s WIB*.\n"+
+			"Silakan coba lagi nanti.\n\n"+
+			"━━━━━━━━━━━━━━━━━━\n"+
+			"• Ketik *0* untuk kembali ke Menu Utama", until.Format("15:04:05"))
 		return r.sender.SendTextMessage(ctx, p.JID, msg)
 	}
 
@@ -248,32 +269,63 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 
 		log.Printf("[ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", phone, lockoutDuration, attempts)
 		s.ResetToRoot()
-		return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("Akses ditolak! Anda telah gagal %d kali berturut-turut.\nNomor Anda dikunci selama %d menit dari percobaan login admin.\nKetik *0* untuk kembali ke menu utama.", attempts, r.cfg.AdminLockoutMinutes))
+		msg := fmt.Sprintf("⛔ *AKSES DITOLAK*\n"+
+			"BPS Kabupaten Bangka Barat\n"+
+			"━━━━━━━━━━━━━━━━━━\n\n"+
+			"Anda telah gagal memasukkan password sebanyak *%d kali* berturut-turut.\n"+
+			"Nomor Anda dikunci selama *%d menit* demi keamanan sistem.\n\n"+
+			"━━━━━━━━━━━━━━━━━━\n"+
+			"• Ketik *0* untuk kembali ke Menu Utama", attempts, r.cfg.AdminLockoutMinutes)
+		return r.sender.SendTextMessage(ctx, p.JID, msg)
 	}
 	r.adminMu.Unlock()
 
 	log.Printf("[ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", phone, attempts, maxRetry)
-	return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("Password admin salah! Percobaan %d/%d.\nKetik *0* untuk membatalkan dan kembali ke menu utama.", attempts, maxRetry))
+	msg := fmt.Sprintf("⚠️ *PASSWORD ADMIN SALAH*\n"+
+		"BPS Kabupaten Bangka Barat\n"+
+		"━━━━━━━━━━━━━━━━━━\n\n"+
+		"Password yang Anda masukkan tidak sesuai.\n"+
+		"Sisa percobaan: *%d/%d*.\n\n"+
+		"━━━━━━━━━━━━━━━━━━\n"+
+		"• Masukkan kembali password yang benar\n"+
+		"• Ketik *0* untuk membatalkan dan kembali ke Menu Utama", attempts, maxRetry)
+	return r.sender.SendTextMessage(ctx, p.JID, msg)
 }
 
 // SendAdminDashboard displays the full admin panel options
 func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.CurrentState = StateAdminLoggedIn
-	adminText := "*PANEL KENDALI ADMIN — BOT ISTIMEWA BPS*\n" +
-		"BPS Kabupaten Bangka Barat\n\n" +
-		"Halo Admin BPS Kabupaten Bangka Barat. Silakan pilih menu pengelolaan:\n\n" +
-		"*1.* 👥 *Kelola Narahubung Para Pakar (SQLite)*\n" +
-		"   • Lihat & ubah nomor WhatsApp / nama penanggung jawab 8 bidang pakar\n\n" +
-		"*2.* ⚙ *Status Scraper & Usia Data*\n" +
-		"   • Cek jumlah data di database, usia data scraper, dan circuit breaker\n\n" +
-		"*3.* 🔄 *Jalankan Scraping Manual BPS Sekarang*\n" +
-		"   • Memicu scraping on-demand pembaruan data publikasi, rilis & tabel\n\n" +
-		"*4.* 📊 *Tautan Database Google Sheets Legacy*\n" +
-		"   • Akses link spreadsheet internal (1-8)\n\n" +
-		"━━━━━━━━━━━━━━━━━━\n" +
-		"⌨️ *Ketik angka (1-4)* untuk memilih menu\n" +
-		"• Ketik *0* untuk keluar dari Mode Admin"
-	return r.sender.SendTextMessage(ctx, p.JID, adminText)
+
+	var sb strings.Builder
+	sb.WriteString("🛡️ *PANEL KENDALI ADMIN*\n")
+	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
+	sb.WriteString("Halo Admin BPS Kabupaten Bangka Barat.\n")
+	sb.WriteString("Silakan pilih menu pengelolaan sistem bot:\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+	sb.WriteString("1️⃣  *Kelola Narahubung Para Pakar (SQLite)*\n")
+	sb.WriteString("   • Lihat & ubah kontak WhatsApp 8 bidang pakar\n\n")
+	sb.WriteString("2️⃣  *Status Scraper & Usia Data*\n")
+	sb.WriteString("   • Cek volume data tersimpan, jadwal & circuit breaker\n\n")
+	sb.WriteString("3️⃣  *Jalankan Scraping Manual BPS*\n")
+	sb.WriteString("   • Memicu scraping on-demand portal Bangka Barat\n\n")
+	sb.WriteString("4️⃣  *Tautan Database Google Sheets Legacy*\n")
+	sb.WriteString("   • Akses daftar link spreadsheet internal (1-8)\n\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+	sb.WriteString("⌨️ Balas dengan *angka menu (1 - 4)*\n")
+	sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
+
+	items := getAdminMenuItems()
+	msg := whatsapp.BuildInteractiveList(
+		"",
+		sb.String(),
+		"",
+		"Pilih Menu Admin",
+		[]whatsapp.ListSection{
+			{Title: "Menu Pengelolaan Admin", Rows: items},
+		},
+	)
+
+	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
 // HandleUnavailable sends fallback text with Quick Reply buttons
