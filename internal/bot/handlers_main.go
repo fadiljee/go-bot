@@ -198,7 +198,6 @@ func getAdminMenuItems() []whatsapp.ListRow {
 		{ID: "1", Title: "Kelola Kontak Pakar", Description: "Lihat & ubah nomor WA pakar"},
 		{ID: "2", Title: "Status Scraper & Data", Description: "Cek statistik data & circuit breaker"},
 		{ID: "3", Title: "Scraping Manual BPS", Description: "Pemicu pembaruan on-demand portal"},
-		{ID: "4", Title: "Tautan Google Sheets", Description: "Akses daftar spreadsheet legacy"},
 	}
 }
 
@@ -300,10 +299,8 @@ func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *w
 	sb.WriteString("   • Cek volume data tersimpan, jadwal & circuit breaker\n\n")
 	sb.WriteString("3. *Jalankan Scraping Manual BPS*\n")
 	sb.WriteString("   • Memicu scraping on-demand portal Bangka Barat\n\n")
-	sb.WriteString("4. *Tautan Database Google Sheets Legacy*\n")
-	sb.WriteString("   • Akses daftar link spreadsheet internal (1-8)\n\n")
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-	sb.WriteString("Balas dengan *angka menu (1 - 4)*\n")
+	sb.WriteString("Balas dengan *angka menu (1 - 3)*\n")
 	sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
 
 	items := getAdminMenuItems()

@@ -391,8 +391,6 @@ Bot dilengkapi dashboard khusus administrator yang dapat diakses langsung melalu
 * **Menu 3: Manual Scraping On-Demand**:
   - Memicu mesin scraper secara instan di background untuk menyedot rilis data terbaru dari portal BPS Bangka Barat.
   - Setelah tuntas (~1 menit), bot otomatis mengirimkan pesan konfirmasi laporan rekap ke WhatsApp admin.
-* **Menu 4: Tautan Google Sheets (Legacy)**:
-  - Menyajikan tautan cadangan spreadsheet pengelolaan data historis.
 * **Menu 0: Keluar dari Mode Admin**.
 
 ---

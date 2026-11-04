@@ -11,7 +11,6 @@ import (
 
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
-	"bot-istimewa/internal/locale"
 	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 )
@@ -224,7 +223,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
-	// Mode Admin Aktif: Admin dapat memilih opsi 1 (Kelola Pakar), 2 (Status), 3 (Manual Scrape), 4 (Legacy Sheets), 0 (Keluar)
+	// Mode Admin Aktif: Admin dapat memilih opsi 1 (Kelola Pakar), 2 (Status), 3 (Manual Scrape), 0 (Keluar)
 	if session.CurrentState == StateAdminLoggedIn {
 		if input == "0" {
 			session.ResetToRoot()
@@ -385,29 +384,6 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				)
 				_ = r.sender.SendTextMessage(context.Background(), adminJID, doneMsg)
 			}()
-			return
-		}
-
-		if input == "4" || strings.Contains(inputLower, "sheet") {
-			var sb strings.Builder
-			sb.WriteString("*DATABASE GOOGLE SHEETS (LEGACY)*\n")
-			sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
-			sb.WriteString("Berikut daftar tautan spreadsheet internal pengelolaan data:\n")
-			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-			for i := 1; i <= 8; i++ {
-				title := locale.T(fmt.Sprintf("menuAdmin%d", i))
-				link := locale.T(fmt.Sprintf("menuAdmin%dLink", i))
-				sb.WriteString(fmt.Sprintf("%d. *%s*\n", i, title))
-				if link != "" {
-					sb.WriteString(fmt.Sprintf("   • Tautan: %s\n\n", link))
-				} else {
-					sb.WriteString("\n")
-				}
-			}
-			sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
-			sb.WriteString("• Ketik *99* untuk kembali ke Dashboard Admin\n")
-			sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
-			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
 			return
 		}
 
