@@ -178,3 +178,66 @@ func TestStore_ExpertContacts(t *testing.T) {
 	}
 }
 
+func TestStore_InfographicsBySubject(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "store_info_subj_*")
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	store, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	seed := []Item{
+		{
+			Kind:        KindInfographic,
+			Lang:        "id",
+			SourceKey:   "cat1_101",
+			Title:       "Infografis Demografi Sosial 1",
+			URL:         "https://bangkabaratkab.bps.go.id/id/infographic?id=101",
+			Subject:     "Statistik Demografi dan Sosial",
+			ContentHash: "h101",
+		},
+		{
+			Kind:        KindInfographic,
+			Lang:        "id",
+			SourceKey:   "cat2_102",
+			Title:       "Infografis Ekonomi Inflasi 1",
+			URL:         "https://bangkabaratkab.bps.go.id/id/infographic?id=102",
+			Subject:     "Statistik Ekonomi",
+			ContentHash: "h102",
+		},
+		{
+			Kind:        KindInfographic,
+			Lang:        "id",
+			SourceKey:   "cat3_103",
+			Title:       "Infografis Lingkungan Pertanian 1",
+			URL:         "https://bangkabaratkab.bps.go.id/id/infographic?id=103",
+			Subject:     "Statistik Lingkungan Hidup dan Multidomain",
+			ContentHash: "h103",
+		},
+	}
+
+	n, _, err := store.ApplyItems(ctx, KindInfographic, "id", seed, true)
+	if err != nil || n != 3 {
+		t.Fatalf("expected 3 inserted items, got %d (err=%v)", n, err)
+	}
+
+	sosial, err := store.GetLatestItemsBySubject(ctx, KindInfographic, "id", "Sosial", 5)
+	if err != nil || len(sosial) != 1 || sosial[0].SourceKey != "cat1_101" {
+		t.Errorf("expected 1 sosial infographic (cat1_101), got %+v (err=%v)", sosial, err)
+	}
+
+	ekonomi, err := store.GetLatestItemsBySubject(ctx, KindInfographic, "id", "Ekonomi", 5)
+	if err != nil || len(ekonomi) != 1 || ekonomi[0].SourceKey != "cat2_102" {
+		t.Errorf("expected 1 ekonomi infographic (cat2_102), got %+v (err=%v)", ekonomi, err)
+	}
+
+	lingkungan, err := store.GetLatestItemsBySubject(ctx, KindInfographic, "id", "Lingkungan Hidup dan Multidomain", 5)
+	if err != nil || len(lingkungan) != 1 || lingkungan[0].SourceKey != "cat3_103" {
+		t.Errorf("expected 1 lingkungan infographic (cat3_103), got %+v (err=%v)", lingkungan, err)
+	}
+}
+

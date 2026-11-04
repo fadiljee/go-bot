@@ -123,12 +123,16 @@ func (p *Provider) LatestPublications(ctx context.Context, lang string, limit in
 }
 
 func (p *Provider) LatestInfographics(ctx context.Context, limit int) ([]Item, Freshness, error) {
-	cacheKey := fmt.Sprintf("infographic:%d", limit)
+	return p.LatestInfographicsBySubject(ctx, "", limit)
+}
+
+func (p *Provider) LatestInfographicsBySubject(ctx context.Context, subjectKeyword string, limit int) ([]Item, Freshness, error) {
+	cacheKey := fmt.Sprintf("infographic:%s:%d", subjectKeyword, limit)
 	if items, f, ok := p.getCached(cacheKey); ok {
 		return items, f, nil
 	}
 
-	items, err := p.store.GetLatestItems(ctx, KindInfographic, "id", limit)
+	items, err := p.store.GetLatestItemsBySubject(ctx, KindInfographic, "id", subjectKeyword, limit)
 	if err != nil {
 		return nil, Freshness{}, err
 	}

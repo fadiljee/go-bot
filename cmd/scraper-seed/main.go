@@ -73,6 +73,9 @@ func main() {
 	// 3. Scrape News
 	scrapeNews(ctx, client, store)
 
+	// 4. Scrape Infographics (3 Subjek)
+	scrapeInfographics(ctx, client, store)
+
 	// Print summary
 	counts, _ := store.GetCountsByKind(ctx)
 	fmt.Println("\n[DATABASE HASIL SCRAPING LIVE BPS]:")
@@ -82,10 +85,14 @@ func main() {
 
 	// Print some sample items from DB
 	fmt.Println("\n[CONTOH DATA TERSIMPAN DI STORAGE/SCRAPER.DB]:")
-	for _, kind := range []scraper.Kind{scraper.KindPressRelease, scraper.KindPublication, scraper.KindNews} {
+	for _, kind := range []scraper.Kind{scraper.KindPressRelease, scraper.KindPublication, scraper.KindNews, scraper.KindInfographic} {
 		items, _ := store.GetLatestItems(ctx, kind, "id", 2)
 		for _, it := range items {
-			fmt.Printf(" [%s] %s (%s)\n  -> File: %s\n", it.Kind, it.Title, it.ReleaseDate.Format("2006-01-02"), it.FileURL)
+			dateStr := "no date"
+			if it.ReleaseDate != nil {
+				dateStr = it.ReleaseDate.Format("2006-01-02")
+			}
+			fmt.Printf(" [%s] %s (%s)\n  -> File: %s\n", it.Kind, it.Title, dateStr, it.FileURL)
 		}
 	}
 }
@@ -290,6 +297,94 @@ func scrapeNews(ctx context.Context, client *http.Client, store *scraper.Store) 
 
 	n, u, err := store.ApplyItems(ctx, scraper.KindNews, "id", scrapedItems, true)
 	fmt.Printf("   Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
+}
+
+type InfoItem struct {
+	ID       int     `json:"inf_id"`
+	Title    string  `json:"title"`
+	Desc     string  `json:"desc"`
+	Category int     `json:"category"`
+	Date     *string `json:"date"`
+	Img      string  `json:"img"`
+	DL       string  `json:"dl"`
+}
+
+func scrapeInfographics(ctx context.Context, client *http.Client, store *scraper.Store) {
+	fmt.Println("\n4. Mengambil Infografis BPS (3 Subjek)...")
+	req, _ := http.NewRequestWithContext(ctx, "GET", "https://bangkabaratkab.bps.go.id/id/infographic", nil)
+	req.Header.Set("User-Agent", browserUA)
+	if resp, err := client.Do(req); err == nil && resp != nil {
+		resp.Body.Close()
+	}
+
+	categories := []struct {
+		id   int
+		name string
+	}{
+		{id: 1, name: "Statistik Demografi dan Sosial"},
+		{id: 2, name: "Statistik Ekonomi"},
+		{id: 3, name: "Statistik Lingkungan Hidup dan Multidomain"},
+	}
+
+	var allScraped []scraper.Item
+
+	for _, cat := range categories {
+		postReq, _ := http.NewRequestWithContext(ctx, "POST", "https://bangkabaratkab.bps.go.id/id/infographic", strings.NewReader(fmt.Sprintf(`["id",1,%d]`, cat.id)))
+		postReq.Header.Set("User-Agent", browserUA)
+		postReq.Header.Set("Next-Action", "70c3f2a8f6c0d8df36f160469c19147a0bdfa54ebf")
+		postReq.Header.Set("Content-Type", "text/plain;charset=UTF-8")
+
+		pResp, err := client.Do(postReq)
+		if err != nil {
+			log.Printf("POST infographic cat %d error: %v", cat.id, err)
+			continue
+		}
+
+		body, _ := io.ReadAll(pResp.Body)
+		pResp.Body.Close()
+
+		jsonBlock := extractJSONBlock(string(body), `[{"inf_id":`)
+		if jsonBlock == nil {
+			log.Printf("Infographic cat %d array block not found", cat.id)
+			continue
+		}
+
+		var items []InfoItem
+		if err := json.Unmarshal(jsonBlock, &items); err != nil {
+			log.Printf("Unmarshal Infographic cat %d error: %v", cat.id, err)
+			continue
+		}
+
+		fmt.Printf("   Subjek %s: ditemukan %d infografik.\n", cat.name, len(items))
+		for _, it := range items {
+			var relDate *time.Time
+			if it.Date != nil && strings.TrimSpace(*it.Date) != "" {
+				if t, err := time.Parse("2006-01-02", strings.TrimSpace(*it.Date)); err == nil {
+					relDate = &t
+				}
+			}
+			itemURL := fmt.Sprintf("https://bangkabaratkab.bps.go.id/id/infographic?id=%d", it.ID)
+			scraped := scraper.Item{
+				Kind:         scraper.KindInfographic,
+				Lang:         "id",
+				SourceKey:    fmt.Sprintf("cat%d_%d", cat.id, it.ID),
+				URL:          itemURL,
+				Title:        it.Title,
+				Abstract:     cleanHTML(it.Desc),
+				ReleaseDate:  relDate,
+				FileURL:      it.DL,
+				ThumbnailURL: it.Img,
+				ImageURL:     it.Img,
+				Subject:      cat.name,
+				IsActive:     true,
+			}
+			scraped.ContentHash = scraper.CalculateContentHash(&scraped)
+			allScraped = append(allScraped, scraped)
+		}
+	}
+
+	n, u, err := store.ApplyItems(ctx, scraper.KindInfographic, "id", allScraped, true)
+	fmt.Printf("   Total Infografik Berhasil disimpan: %d baru, %d diperbarui (err=%v)\n", n, u, err)
 }
 
 func cleanHTML(s string) string {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -382,6 +383,11 @@ func (s *Store) LogSkipped(ctx context.Context, trigger, status string) {
 
 // GetLatestItems retrieves active items for a given kind and language (§6.3, §11.2).
 func (s *Store) GetLatestItems(ctx context.Context, kind Kind, lang string, limit int) ([]Item, error) {
+	return s.GetLatestItemsBySubject(ctx, kind, lang, "", limit)
+}
+
+// GetLatestItemsBySubject retrieves active items filtered by subject keyword (§6.3, §11.2).
+func (s *Store) GetLatestItemsBySubject(ctx context.Context, kind Kind, lang string, subjectKeyword string, limit int) ([]Item, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -389,17 +395,37 @@ func (s *Store) GetLatestItems(ctx context.Context, kind Kind, lang string, limi
 		lang = "id"
 	}
 
-	query := `
-		SELECT id, kind, lang, source_key, title, url, release_date, abstract,
-		       file_url, file_type, file_size_text, thumbnail_url, image_url,
-		       subject, content_hash, is_active, missed_runs,
-		       first_seen_at, last_seen_at, last_changed_at
-		FROM scraped_items
-		WHERE kind = ? AND lang = ? AND is_active = 1
-		ORDER BY release_date DESC, id DESC
-		LIMIT ?
-	`
-	rows, err := s.db.QueryContext(ctx, query, string(kind), lang, limit)
+	var query string
+	var args []any
+
+	if strings.TrimSpace(subjectKeyword) != "" {
+		query = `
+			SELECT id, kind, lang, source_key, title, url, release_date, abstract,
+			       file_url, file_type, file_size_text, thumbnail_url, image_url,
+			       subject, content_hash, is_active, missed_runs,
+			       first_seen_at, last_seen_at, last_changed_at
+			FROM scraped_items
+			WHERE kind = ? AND lang = ? AND is_active = 1 AND (subject LIKE ? OR source_key LIKE ?)
+			ORDER BY release_date DESC, CAST(SUBSTR(source_key, INSTR(source_key, '_') + 1) AS INTEGER) DESC, id DESC
+			LIMIT ?
+		`
+		param := "%" + strings.TrimSpace(subjectKeyword) + "%"
+		args = []any{string(kind), lang, param, param, limit}
+	} else {
+		query = `
+			SELECT id, kind, lang, source_key, title, url, release_date, abstract,
+			       file_url, file_type, file_size_text, thumbnail_url, image_url,
+			       subject, content_hash, is_active, missed_runs,
+			       first_seen_at, last_seen_at, last_changed_at
+			FROM scraped_items
+			WHERE kind = ? AND lang = ? AND is_active = 1
+			ORDER BY release_date DESC, CAST(SUBSTR(source_key, INSTR(source_key, '_') + 1) AS INTEGER) DESC, id DESC
+			LIMIT ?
+		`
+		args = []any{string(kind), lang, limit}
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

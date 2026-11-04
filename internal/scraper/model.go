@@ -101,6 +101,7 @@ type DataProvider interface {
 	LatestPressReleases(ctx context.Context, lang string, limit int) ([]Item, Freshness, error)
 	LatestPublications(ctx context.Context, lang string, limit int) ([]Item, Freshness, error)
 	LatestInfographics(ctx context.Context, limit int) ([]Item, Freshness, error)
+	LatestInfographicsBySubject(ctx context.Context, subjectKeyword string, limit int) ([]Item, Freshness, error)
 	SearchStaticTables(ctx context.Context, keyword string, limit int) ([]Item, Freshness, error)
 	SearchItems(ctx context.Context, keyword string, lang string, limit int) ([]Item, Freshness, error)
 	CreateConsultationBooking(ctx context.Context, b *ConsultationBooking) error

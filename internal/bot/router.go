@@ -34,11 +34,10 @@ const (
 	StateMenu6           = "menu6"
 	StateMenu6_Booking   = "menu6_booking"
 	StateMenu6_Pakar     = "menu62"
-	StateMenu7           = "menu7"
-	StateMenu8           = "menu8"
-	StateMenu9           = "menu9"
-	StateMenu10          = "menu10"
-	StateMenu11_About    = "menu11_about" // Resolves TD-01 (Isolated from menu11 Sosduk)
+	StateMenu7            = "menu7"
+	StateMenu8            = "menu8"
+	StateMenu10           = "menu10"
+	StateMenu11_About     = "menu11_about" // Resolves TD-01 (Isolated from menu11 Sosduk)
 	StateAdminWaitPass   = "menuAdmin"
 	StateAdminLoggedIn   = "menuAdminActive"
 	StateAdminManagePakar = "menuAdminPakar"
@@ -239,7 +238,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	if session.CurrentState == StateAdminLoggedIn {
 		if input == "0" {
 			session.ResetToRoot()
-			msg := "🔒 *KELUAR MODE ADMIN*\n" +
+			msg := "*KELUAR MODE ADMIN*\n" +
 				"BPS Kabupaten Bangka Barat\n" +
 				"━━━━━━━━━━━━━━━━━━\n\n" +
 				"Sesi admin telah ditutup demi keamanan sistem.\n\n" +
@@ -257,7 +256,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		if input == "1" || strings.Contains(inputLower, "pakar") {
 			session.PushState(StateAdminManagePakar)
 			var sb strings.Builder
-			sb.WriteString("👥 *KELOLA NARAHUBUNG PARA PAKAR*\n")
+			sb.WriteString("*KELOLA NARAHUBUNG PARA PAKAR*\n")
 			sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
 			sb.WriteString("Berikut daftar kontak penanggung jawab 8 bidang pakar di database SQLite:\n")
 			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
@@ -275,7 +274,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 			}
 
 			sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
-			sb.WriteString("📝 *Cara Mengubah Kontak Pakar:*\n")
+			sb.WriteString("*Cara Mengubah Kontak Pakar:*\n")
 			sb.WriteString("Ketik format: `<nomor_bidang> <no_whatsapp> <nama_pakar>`\n")
 			sb.WriteString("Contoh: `1 081234567890 Bpk. Rahmat, S.Tr.Stat.`\n\n")
 			sb.WriteString("• Ketik *99* untuk kembali ke Dashboard Admin\n")
@@ -286,10 +285,10 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 		if input == "2" || strings.Contains(inputLower, "status") {
 			var sb strings.Builder
-			sb.WriteString("⚙️ *STATUS SCRAPER & DATABASE*\n")
+			sb.WriteString("*STATUS SCRAPER & DATABASE*\n")
 			sb.WriteString("BPS Kabupaten Bangka Barat\n")
 			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-			sb.WriteString("📁 *Konfigurasi Sistem:*\n")
+			sb.WriteString("*Konfigurasi Sistem:*\n")
 			sb.WriteString("• Database: SQLite (`storage/scraper.db`)\n")
 			sb.WriteString("• Jadwal Cron: Setiap 4 Jam (`0 */4 * * *`)\n")
 			sb.WriteString("• Satker Target: BPS Bangka Barat (1903)\n")
@@ -298,7 +297,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				st := r.scraperRunner.Store()
 				counts, err := st.GetCountsByKind(ctx)
 				if err == nil && len(counts) > 0 {
-					sb.WriteString("\n📊 *Volume Data Tersimpan:*\n")
+					sb.WriteString("\n*Volume Data Tersimpan:*\n")
 					sb.WriteString(fmt.Sprintf("• Tabel Statis: %d item\n", counts[string(scraper.KindStaticTable)]))
 					sb.WriteString(fmt.Sprintf("• Publikasi BPS: %d item\n", counts[string(scraper.KindPublication)]))
 					sb.WriteString(fmt.Sprintf("• Berita Resmi (BRS): %d item\n", counts[string(scraper.KindPressRelease)]))
@@ -312,7 +311,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 					if lastRun.FinishedAt != nil {
 						dur = lastRun.FinishedAt.Sub(lastRun.StartedAt).Round(time.Second).String()
 					}
-					sb.WriteString("\n⏱ *Riwayat Scraping Terakhir:*\n")
+					sb.WriteString("\n*Riwayat Scraping Terakhir:*\n")
 					sb.WriteString(fmt.Sprintf("• Status: *%s*\n", strings.ToUpper(lastRun.Status)))
 					sb.WriteString(fmt.Sprintf("• Waktu: %s WIB\n", lastRun.StartedAt.Format("02 Jan 2006, 15:04")))
 					sb.WriteString(fmt.Sprintf("• Pemicu: %s | Durasi: %s\n", lastRun.Trigger, dur))
@@ -334,7 +333,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 		if input == "3" || strings.Contains(inputLower, "scrape") {
 			if r.scraperRunner == nil {
-				msg := "⚠️ *SCRAPER TIDAK AKTIF*\n" +
+				msg := "*SCRAPER TIDAK AKTIF*\n" +
 					"BPS Kabupaten Bangka Barat\n" +
 					"━━━━━━━━━━━━━━━━━━\n\n" +
 					"Mesin scraper belum terhubung atau dinonaktifkan di konfigurasi.\n\n" +
@@ -345,7 +344,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				return
 			}
 
-			msg := "🔄 *SCRAPING MANUAL DIMULAI*\n" +
+			msg := "*SCRAPING MANUAL DIMULAI*\n" +
 				"BPS Kabupaten Bangka Barat\n" +
 				"━━━━━━━━━━━━━━━━━━\n\n" +
 				"Proses scraping pembaruan data publikasi, rilis BRS, berita, dan tabel statis sedang berjalan di latar belakang.\n\n" +
@@ -359,7 +358,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				bgCtx := context.Background()
 				res, err := r.scraperRunner.RunAll(bgCtx, scraper.TriggerManual)
 				if err != nil {
-					errMsg := fmt.Sprintf("❌ *SCRAPING MANUAL GAGAL*\n"+
+					errMsg := fmt.Sprintf("*SCRAPING MANUAL GAGAL*\n"+
 						"BPS Kabupaten Bangka Barat\n"+
 						"━━━━━━━━━━━━━━━━━━\n\n"+
 						"Proses scraping mengalami kendala:\n%v\n\n"+
@@ -374,7 +373,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 					durStr = res.FinishedAt.Sub(res.StartedAt).Round(time.Second).String()
 					timeStr = res.FinishedAt.Format("15:04:05 WIB")
 				}
-				doneMsg := fmt.Sprintf("✅ *SCRAPING MANUAL SELESAI*\n"+
+				doneMsg := fmt.Sprintf("*SCRAPING MANUAL SELESAI*\n"+
 					"BPS Kabupaten Bangka Barat\n"+
 					"━━━━━━━━━━━━━━━━━━\n\n"+
 					"Pembaruan data portal BPS Bangka Barat telah berhasil disimpan ke database.\n\n"+
@@ -402,7 +401,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 		if input == "4" || strings.Contains(inputLower, "sheet") {
 			var sb strings.Builder
-			sb.WriteString("📊 *DATABASE GOOGLE SHEETS (LEGACY)*\n")
+			sb.WriteString("*DATABASE GOOGLE SHEETS (LEGACY)*\n")
 			sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
 			sb.WriteString("Berikut daftar tautan spreadsheet internal pengelolaan data:\n")
 			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
@@ -437,7 +436,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		}
 		if input == "0" {
 			session.ResetToRoot()
-			msg := "🔒 *KELUAR MODE ADMIN*\n" +
+			msg := "*KELUAR MODE ADMIN*\n" +
 				"BPS Kabupaten Bangka Barat\n" +
 				"━━━━━━━━━━━━━━━━━━\n\n" +
 				"Sesi admin telah ditutup demi keamanan sistem.\n\n" +
@@ -476,7 +475,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 							bidangTitle = updated.BidangTitle
 						}
 
-						reply := fmt.Sprintf("✅ *KONTAK PAKAR BERHASIL DIPERBARUI*\n"+
+						reply := fmt.Sprintf("*KONTAK PAKAR BERHASIL DIPERBARUI*\n"+
 							"BPS Kabupaten Bangka Barat\n"+
 							"━━━━━━━━━━━━━━━━━━\n\n"+
 							"• *Bidang*: %s\n"+
@@ -497,7 +496,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 			}
 		}
 
-		reply := "⚠️ *FORMAT INPUT TIDAK SESUAI*\n" +
+		reply := "*FORMAT INPUT TIDAK SESUAI*\n" +
 			"BPS Kabupaten Bangka Barat\n" +
 			"━━━━━━━━━━━━━━━━━━\n\n" +
 			"Gunakan format penulisan:\n" +
@@ -559,7 +558,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 }
 
 func (r *BotRouter) registerRoutes() {
-	// Level 1: Root Menu (1 - 11)
+	// Level 1: Root Menu (1 - 10)
 	r.handlerMap[StateRoot+":1"] = r.HandleMenu1_LayananData
 	r.handlerMap[StateRoot+":2"] = r.HandleMenu2_Indikator
 	r.handlerMap[StateRoot+":3"] = r.HandleMenu3_Produk
@@ -568,9 +567,9 @@ func (r *BotRouter) registerRoutes() {
 	r.handlerMap[StateRoot+":6"] = r.HandleMenu6_Konsultasi
 	r.handlerMap[StateRoot+":7"] = r.HandleMenu7_Berlangganan
 	r.handlerMap[StateRoot+":8"] = r.HandleMenu8_Pengaduan
-	r.handlerMap[StateRoot+":9"] = r.HandleMenu9_HubDev
-	r.handlerMap[StateRoot+":10"] = r.HandleMenu10_FAQ
-	r.handlerMap[StateRoot+":11"] = r.HandleMenu11_TentangBPS
+	r.handlerMap[StateRoot+":9"] = r.HandleMenu10_FAQ
+	r.handlerMap[StateRoot+":10"] = r.HandleMenu11_TentangBPS
+	r.handlerMap[StateRoot+":11"] = r.HandleMenu11_TentangBPS // kompatibilitas bila user mengetik 11
 
 	// Level 2: Layanan Data Submenus (1 - 5)
 	r.handlerMap[StateMenu1+":1"] = r.HandleLayananSub_Sosduk
@@ -643,8 +642,8 @@ func (r *BotRouter) registerRoutes() {
 		}
 	}
 
-	// Level 2: Infografik (1 - 4)
-	for i := 1; i <= 4; i++ {
+	// Level 2: Infografik (1 - 3)
+	for i := 1; i <= 3; i++ {
 		idx := i
 		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu5, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 			return r.HandleInfografikDetail(ctx, s, p, idx)

@@ -329,7 +329,7 @@ func (s *Sender) SendVideoFromFile(ctx context.Context, jid types.JID, filePath,
 
 	// In test environments where client & queue are nil, safely mock success
 	if s.client == nil && s.queue == nil {
-		log.Printf("ℹ[SENDER MOCK] Melewati upload video ke %s (client & queue nil)", jid.String())
+		log.Printf("[SENDER MOCK] Melewati upload video ke %s (client & queue nil)", jid.String())
 		return nil
 	}
 

@@ -138,7 +138,7 @@ func main() {
 	if cfg.InternalPSTGroupJID != "" {
 		log.Printf("[CONFIG] Target Grup PST Internal aktif: %s", cfg.InternalPSTGroupJID)
 	} else {
-		log.Printf("ℹ[CONFIG] INTERNAL_PST_GROUP_JID kosong di .env")
+		log.Printf("[CONFIG] INTERNAL_PST_GROUP_JID kosong di .env")
 	}
 
 	msgDedup := whatsapp.NewMessageDeduplicator(60 * time.Second)
@@ -227,7 +227,7 @@ func main() {
 		log.Printf("Server Web Dashboard aktif di http://%s", addr)
 		log.Printf("Akses http://%s/qr untuk memindai QR code via browser.", addr)
 		if err := apiServer.Listen(addr); err != nil {
-			log.Printf("ℹWeb server berhenti: %v", err)
+			log.Printf("Web server berhenti: %v", err)
 		}
 	}()
 

@@ -173,36 +173,9 @@ func UnpackInteractiveMessage(msg *waE2E.Message) *waE2E.InteractiveMessage {
 	return nil
 }
 
-// NumberToEmoji converts numeric IDs 1-12 to emoji numbers per PRD design guidelines
+// NumberToEmoji formats numeric IDs to clean numbered format without emojis
 func NumberToEmoji(id string) string {
-	switch id {
-	case "1":
-		return "1️⃣"
-	case "2":
-		return "2️⃣"
-	case "3":
-		return "3️⃣"
-	case "4":
-		return "4️⃣"
-	case "5":
-		return "5️⃣"
-	case "6":
-		return "6️⃣"
-	case "7":
-		return "7️⃣"
-	case "8":
-		return "8️⃣"
-	case "9":
-		return "9️⃣"
-	case "10":
-		return "🔟"
-	case "11":
-		return "1️⃣1️⃣"
-	case "12":
-		return "1️⃣2️⃣"
-	default:
-		return fmt.Sprintf("*%s.*", id)
-	}
+	return fmt.Sprintf("%s.", id)
 }
 
 func isRedundantDesc(title, desc string) bool {
@@ -288,7 +261,7 @@ func ExtractTextFromMessage(msg *waE2E.Message) string {
 				}
 			}
 			if len(buttonTexts) > 0 {
-				parts = append(parts, "⌨️ *Pilihan Navigasi:*\n"+strings.Join(buttonTexts, "\n"))
+				parts = append(parts, "*Pilihan Navigasi:*\n"+strings.Join(buttonTexts, "\n"))
 			}
 		}
 

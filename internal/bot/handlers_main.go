@@ -21,9 +21,8 @@ func getRootMenuItems() []whatsapp.ListRow {
 		{ID: "6", Title: "Tanya Pakar", Description: "Konsultasi online dengan pakar BPS"},
 		{ID: "7", Title: "Langganan Publikasi", Description: "Langganan rilis berkala gratis"},
 		{ID: "8", Title: "Pengaduan & Saran", Description: "Sampaikan kritik dan saran layanan"},
-		{ID: "9", Title: "Kontak Developer", Description: "Kontak pengembang bot"},
-		{ID: "10", Title: "Bantuan & FAQ", Description: "Pertanyaan yang sering diajukan"},
-		{ID: "11", Title: "Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
+		{ID: "9", Title: "Bantuan & FAQ", Description: "Pertanyaan yang sering diajukan"},
+		{ID: "10", Title: "Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
 	}
 }
 
@@ -46,28 +45,27 @@ func getTimeGreeting() string {
 
 func buildWelcomeMenuBody(greetingLine, introSubtitle string) string {
 	var sb strings.Builder
-	sb.WriteString("🟢 *BOT ISTIMEWA*\n")
+	sb.WriteString("*BOT ISTIMEWA*\n")
 	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
 	sb.WriteString(greetingLine + "\n")
 	sb.WriteString(introSubtitle + "\n\n")
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
-	sb.WriteString("📊 *DATA & INDIKATOR*\n")
-	sb.WriteString("1️⃣  Layanan Data\n")
-	sb.WriteString("2️⃣  Indikator Strategis\n")
-	sb.WriteString("3️⃣  BRS & Publikasi Rilis\n\n")
-	sb.WriteString("🎨 *KONTEN & VISUAL*\n")
-	sb.WriteString("4️⃣  Video Edukasi Literasi\n")
-	sb.WriteString("5️⃣  Galeri Infografis Daerah\n\n")
-	sb.WriteString("💬 *KONSULTASI & LAYANAN*\n")
-	sb.WriteString("6️⃣  Tanya Pakar\n")
-	sb.WriteString("7️⃣  Langganan Publikasi\n")
-	sb.WriteString("8️⃣  Pengaduan & Saran\n\n")
-	sb.WriteString("⚙️ *INFORMASI*\n")
-	sb.WriteString("9️⃣  Kontak Developer\n")
-	sb.WriteString("🔟  Bantuan & FAQ\n")
-	sb.WriteString("1️⃣1️⃣  Tentang BPS\n")
+	sb.WriteString("*DATA DAN INDIKATOR*\n")
+	sb.WriteString("1. Layanan Data\n")
+	sb.WriteString("2. Indikator Strategis\n")
+	sb.WriteString("3. BRS & Publikasi Rilis\n\n")
+	sb.WriteString("*KONTEN DAN VISUAL*\n")
+	sb.WriteString("4. Video Edukasi Literasi\n")
+	sb.WriteString("5. Galeri Infografis Daerah\n\n")
+	sb.WriteString("*KONSULTASI DAN LAYANAN*\n")
+	sb.WriteString("6. Tanya Pakar\n")
+	sb.WriteString("7. Langganan Publikasi\n")
+	sb.WriteString("8. Pengaduan & Saran\n\n")
+	sb.WriteString("*INFORMASI*\n")
+	sb.WriteString("9. Bantuan & FAQ\n")
+	sb.WriteString("10. Tentang BPS\n")
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-	sb.WriteString("⌨️ Balas dengan *angka menu*\n")
+	sb.WriteString("Balas dengan *angka menu (1 - 10)*\n")
 	sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
 	return sb.String()
 }
@@ -85,17 +83,14 @@ func (r *BotRouter) HandleWelcomeFull(ctx context.Context, s *UserSession, p *wh
 	s.HistoryStack = nil
 	s.mu.Unlock()
 
-	// 1. Send sticker selamat datang
-	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - selamat datang new.webp")
-
-	// 2. Format personalized greeting with time & name (PRD §6.1 F-01 & §14)
+	// Format personalized greeting with time & name (PRD §6.1 F-01 & §14)
 	userName := strings.TrimSpace(p.Name)
 	timeGreeting := getTimeGreeting()
 	var greetingLine string
 	if userName != "" {
-		greetingLine = fmt.Sprintf("%s, *%s*! 👋", timeGreeting, userName)
+		greetingLine = fmt.Sprintf("%s, *%s*!", timeGreeting, userName)
 	} else {
-		greetingLine = fmt.Sprintf("%s, Sahabat Data! 👋", timeGreeting)
+		greetingLine = fmt.Sprintf("%s, Sahabat Data!", timeGreeting)
 	}
 
 	body := buildWelcomeMenuBody(greetingLine, "Saya *Ak Isti*, asisten virtual statistik.")
@@ -127,15 +122,12 @@ func (r *BotRouter) HandleWelcomeShort(ctx context.Context, s *UserSession, p *w
 	s.HistoryStack = nil
 	s.mu.Unlock()
 
-	// Send sticker siap
-	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - siap new.webp")
-
 	userName := strings.TrimSpace(p.Name)
 	var greetingLine string
 	if userName != "" {
-		greetingLine = fmt.Sprintf("Hai kembali, *%s*! 👋", userName)
+		greetingLine = fmt.Sprintf("Hai kembali, *%s*!", userName)
 	} else {
-		greetingLine = "Hai kembali, Sahabat Data! 👋"
+		greetingLine = "Hai kembali, Sahabat Data!"
 	}
 
 	body := buildWelcomeMenuBody(greetingLine, "Yuk lanjut berselancar menjelajahi data Bangka Barat.")
@@ -212,7 +204,7 @@ func getAdminMenuItems() []whatsapp.ListRow {
 
 // HandleAdminPrompt asks admin password
 func (r *BotRouter) HandleAdminPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	msg := "🔐 *LOGIN PANEL ADMIN*\n" +
+	msg := "*LOGIN PANEL ADMIN*\n" +
 		"BPS Kabupaten Bangka Barat\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
 		"Silakan masukkan *Password Admin* untuk melanjutkan verifikasi akses:\n\n" +
@@ -228,7 +220,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	// Check lockout
 	if locked, until := r.isAdminLockedOut(phone); locked {
 		s.ResetToRoot()
-		msg := fmt.Sprintf("⛔ *AKSES DIKUNCI*\n"+
+		msg := fmt.Sprintf("*AKSES DIKUNCI*\n"+
 			"BPS Kabupaten Bangka Barat\n"+
 			"━━━━━━━━━━━━━━━━━━\n\n"+
 			"Nomor Anda sedang dikunci dari percobaan login admin hingga *%s WIB*.\n"+
@@ -269,7 +261,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 
 		log.Printf("[ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", phone, lockoutDuration, attempts)
 		s.ResetToRoot()
-		msg := fmt.Sprintf("⛔ *AKSES DITOLAK*\n"+
+		msg := fmt.Sprintf("*AKSES DITOLAK*\n"+
 			"BPS Kabupaten Bangka Barat\n"+
 			"━━━━━━━━━━━━━━━━━━\n\n"+
 			"Anda telah gagal memasukkan password sebanyak *%d kali* berturut-turut.\n"+
@@ -281,7 +273,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	r.adminMu.Unlock()
 
 	log.Printf("[ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", phone, attempts, maxRetry)
-	msg := fmt.Sprintf("⚠️ *PASSWORD ADMIN SALAH*\n"+
+	msg := fmt.Sprintf("*PASSWORD ADMIN SALAH*\n"+
 		"BPS Kabupaten Bangka Barat\n"+
 		"━━━━━━━━━━━━━━━━━━\n\n"+
 		"Password yang Anda masukkan tidak sesuai.\n"+
@@ -297,21 +289,21 @@ func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *w
 	s.CurrentState = StateAdminLoggedIn
 
 	var sb strings.Builder
-	sb.WriteString("🛡️ *PANEL KENDALI ADMIN*\n")
+	sb.WriteString("*PANEL KENDALI ADMIN*\n")
 	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
 	sb.WriteString("Halo Admin BPS Kabupaten Bangka Barat.\n")
 	sb.WriteString("Silakan pilih menu pengelolaan sistem bot:\n")
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-	sb.WriteString("1️⃣  *Kelola Narahubung Para Pakar (SQLite)*\n")
+	sb.WriteString("1. *Kelola Narahubung Para Pakar (SQLite)*\n")
 	sb.WriteString("   • Lihat & ubah kontak WhatsApp 8 bidang pakar\n\n")
-	sb.WriteString("2️⃣  *Status Scraper & Usia Data*\n")
+	sb.WriteString("2. *Status Scraper & Usia Data*\n")
 	sb.WriteString("   • Cek volume data tersimpan, jadwal & circuit breaker\n\n")
-	sb.WriteString("3️⃣  *Jalankan Scraping Manual BPS*\n")
+	sb.WriteString("3. *Jalankan Scraping Manual BPS*\n")
 	sb.WriteString("   • Memicu scraping on-demand portal Bangka Barat\n\n")
-	sb.WriteString("4️⃣  *Tautan Database Google Sheets Legacy*\n")
+	sb.WriteString("4. *Tautan Database Google Sheets Legacy*\n")
 	sb.WriteString("   • Akses daftar link spreadsheet internal (1-8)\n\n")
 	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-	sb.WriteString("⌨️ Balas dengan *angka menu (1 - 4)*\n")
+	sb.WriteString("Balas dengan *angka menu (1 - 4)*\n")
 	sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
 
 	items := getAdminMenuItems()
@@ -345,7 +337,7 @@ func (r *BotRouter) HandleUnavailable(ctx context.Context, s *UserSession, p *wh
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleIdleTimeout sends SKD survey outro and closing stickers after 15 min idle
+// HandleIdleTimeout sends SKD survey outro after 15 min idle
 func (r *BotRouter) HandleIdleTimeout(ctx context.Context, s *UserSession) {
 	log.Printf("[TIMEOUT] Sesi idle %d menit berakhir untuk %s. Mengirim Survei SKD dan penutup.", r.cfg.IdleTimeoutMinutes, s.JID.User)
 
@@ -354,14 +346,10 @@ func (r *BotRouter) HandleIdleTimeout(ctx context.Context, s *UserSession) {
 		_ = r.sender.SendTextMessage(ctx, s.JID, outro)
 	}
 
-	_ = r.sender.SendSticker(ctx, s.JID, "StikerChatbot/IKON ISTIMEWA - terimakasih.webp")
-
 	outro2 := locale.T("outro2")
 	if outro2 != "" {
 		_ = r.sender.SendTextMessage(ctx, s.JID, outro2)
 	}
-
-	_ = r.sender.SendSticker(ctx, s.JID, "StikerChatbot/IKON ISTIMEWA-love data.webp")
 
 	r.sessions.Delete(s.JID)
 }
