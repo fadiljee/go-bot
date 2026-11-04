@@ -78,7 +78,7 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				for i := 0; i < limit; i++ {
 					it := ind.Items[i]
 					cleanTitle := scraper.CleanHTML(it.Title)
-					sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(fmt.Sprintf("%d", i+1)), cleanTitle))
+					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
 				}
 				sb.WriteString("\n")
 			}

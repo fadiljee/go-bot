@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"bot-istimewa/internal/api"
-	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/bot"
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
@@ -55,13 +54,8 @@ func main() {
 		log.Fatalf("Gagal membuat WhatsApp Client Manager: %v", err)
 	}
 
-	// 4b. Initialize BPS Web API Client (Domain: 1903 Bangka Barat)
-	bpsClient := bpsapi.NewClient(cfg)
-	log.Printf("BPS Web API Client aktif | Domain: %s (%s) | Base: %s",
-		cfg.BPSDefaultDomain, "BPS Kabupaten Bangka Barat", cfg.BPSAPIBaseURL)
-
 	// 5. Initialize Bot Message Router
-	botRouter := bot.NewBotRouter(cfg, clientMgr.Sender, gsheetClient, bpsClient)
+	botRouter := bot.NewBotRouter(cfg, clientMgr.Sender, gsheetClient)
 
 	// 5b. Initialize Scraper Components (§6, §10)
 	var scraperStore *scraper.Store
@@ -218,7 +212,7 @@ func main() {
 	}
 
 	// 8. Start Fiber REST API Server
-	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient, bpsClient)
+	apiServer := api.NewAPIServer(cfg, clientMgr, gsheetClient)
 	if scraperRunner != nil && scraperStore != nil {
 		apiServer.SetScraper(scraperRunner, scraperStore, scraperSched, scraperBreaker, scraperProvider)
 	}

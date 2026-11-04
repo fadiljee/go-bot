@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/config"
 	"bot-istimewa/internal/gsheet"
 	"bot-istimewa/internal/locale"
@@ -47,7 +46,6 @@ type BotRouter struct {
 	cfg                 *config.Config
 	sender              *whatsapp.Sender
 	gsheet              *gsheet.Client
-	bps                 *bpsapi.Client
 	scraper             scraper.DataProvider
 	scraperRunner       *scraper.Runner
 	sessions            *SessionManager
@@ -66,19 +64,11 @@ func (r *BotRouter) SetScraperRunner(runner *scraper.Runner) {
 	r.scraperRunner = runner
 }
 
-func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client, bpsClient ...*bpsapi.Client) *BotRouter {
-	var bps *bpsapi.Client
-	if len(bpsClient) > 0 && bpsClient[0] != nil {
-		bps = bpsClient[0]
-	} else {
-		bps = bpsapi.NewClient(cfg)
-	}
-
+func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client) *BotRouter {
 	r := &BotRouter{
 		cfg:                 cfg,
 		sender:              sender,
 		gsheet:              gsheetClient,
-		bps:                 bps,
 		sessions:            NewSessionManager(cfg.IdleTimeoutMinutes),
 		handlerMap:          make(map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error),
 		rateLimiter:         NewRateLimiter(cfg.UserRateLimitPer10s, cfg.UserCooldownSeconds),
@@ -265,8 +255,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				contacts, err := r.scraper.GetExpertContacts(ctx)
 				if err == nil && len(contacts) > 0 {
 					for _, c := range contacts {
-						emoji := whatsapp.NumberToEmoji(fmt.Sprintf("%d", c.BidangID))
-						sb.WriteString(fmt.Sprintf("%s  *%s*\n", emoji, c.BidangTitle))
+						sb.WriteString(fmt.Sprintf("%d. *%s*\n", c.BidangID, c.BidangTitle))
 						sb.WriteString(fmt.Sprintf("   • Pakar: %s\n", c.PakarName))
 						sb.WriteString(fmt.Sprintf("   • No. WhatsApp: +%s\n\n", c.Phone))
 					}
@@ -408,8 +397,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 			for i := 1; i <= 8; i++ {
 				title := locale.T(fmt.Sprintf("menuAdmin%d", i))
 				link := locale.T(fmt.Sprintf("menuAdmin%dLink", i))
-				emoji := whatsapp.NumberToEmoji(fmt.Sprintf("%d", i))
-				sb.WriteString(fmt.Sprintf("%s  *%s*\n", emoji, title))
+				sb.WriteString(fmt.Sprintf("%d. *%s*\n", i, title))
 				if link != "" {
 					sb.WriteString(fmt.Sprintf("   • Tautan: %s\n\n", link))
 				} else {

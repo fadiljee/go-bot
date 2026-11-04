@@ -67,7 +67,7 @@ func DefaultConfig() *Config {
 		MaxRequestsPerRun:   60,
 		RespectRobots:       true,
 		MaxStaleHours:       48,
-		DataSourceOrder:     []string{"bpsapi", "scraper", "gsheet"},
+		DataSourceOrder:     []string{"scraper", "gsheet"},
 		NotifyAdmin:         true,
 		NotifyAfterFailures: 2,
 		AppEnv:              "production",

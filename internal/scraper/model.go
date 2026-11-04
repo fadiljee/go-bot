@@ -50,7 +50,7 @@ type Pagination struct {
 type Freshness struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Stale     bool      `json:"stale"`  // true if older than SCRAPER_MAX_STALE_HOURS
-	Source    string    `json:"source"` // "scraper" | "bpsapi" | "gsheet"
+	Source    string    `json:"source"` // "scraper" | "gsheet"
 }
 
 // IndicatorMetric represents an individual metric within a strategic indicator.

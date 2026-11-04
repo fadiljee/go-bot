@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
 	"go.mau.fi/whatsmeow/types"
@@ -51,16 +50,14 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 		sb.WriteString("Rilis resmi indikator strategis dan sosial-ekonomi terkini:\n")
 		sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
 
-		// 1. Coba ambil dari database Scraper lokal SQLite (Priority 1)
-		itemsFound := false
+		// Ambil dari database Scraper lokal SQLite
 		if r.scraper != nil {
 			scrapedItems, fresh, err := r.scraper.LatestPressReleases(ctx, "id", 4)
 			if err == nil && len(scrapedItems) > 0 {
-				itemsFound = true
 				for i, item := range scrapedItems {
 					cleanTitle := scraper.CleanHTML(item.Title)
 					cleanTitle = strings.TrimSuffix(cleanTitle, ".")
-					sb.WriteString(fmt.Sprintf("%s  *%s*\n", whatsapp.NumberToEmoji(fmt.Sprintf("%d", i+1)), cleanTitle))
+					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, cleanTitle))
 					if item.ReleaseDate != nil {
 						sb.WriteString(fmt.Sprintf("   • Tanggal Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
 					}
@@ -84,31 +81,6 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 			}
 		}
 
-		// 2. Fallback ke Web API jika scraper belum siap
-		if !itemsFound && r.bps != nil {
-			brsRes, err := r.bps.GetPressReleases(ctx, bpsapi.ListParams{
-				Domain: "1903",
-				Page:   1,
-			})
-			if err == nil && len(brsRes.Items) > 0 {
-				itemsFound = true
-				limit := 4
-				if len(brsRes.Items) < limit {
-					limit = len(brsRes.Items)
-				}
-				for i := 0; i < limit; i++ {
-					item := brsRes.Items[i]
-					cleanTitle := scraper.CleanHTML(item.Title)
-					cleanTitle = strings.TrimSuffix(cleanTitle, ".")
-					sb.WriteString(fmt.Sprintf("%s  *%s*\n", whatsapp.NumberToEmoji(fmt.Sprintf("%d", i+1)), cleanTitle))
-					if item.RlDate != "" {
-						sb.WriteString(fmt.Sprintf("   • Tanggal Rilis: %s\n", item.RlDate))
-					}
-					sb.WriteString("\n")
-				}
-			}
-		}
-
 		sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
 		sb.WriteString("Untuk salinan digital lengkap PDF Berita Resmi Statistik, Sahabat dapat mengajukan di Menu *6* (Layanan Konsultasi PST).")
 		content = sb.String()
@@ -121,16 +93,14 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 		sb.WriteString("Koleksi buku dan laporan statistik komprehensif daerah:\n")
 		sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
 
-		// 1. Coba ambil dari database Scraper lokal SQLite (Priority 1)
-		pubFound := false
+		// Ambil dari database Scraper lokal SQLite
 		if r.scraper != nil {
 			scrapedPubs, fresh, err := r.scraper.LatestPublications(ctx, "id", 4)
 			if err == nil && len(scrapedPubs) > 0 {
-				pubFound = true
 				for i, item := range scrapedPubs {
 					cleanTitle := scraper.CleanHTML(item.Title)
 					cleanTitle = strings.TrimSuffix(cleanTitle, ".")
-					sb.WriteString(fmt.Sprintf("%s  *%s*\n", whatsapp.NumberToEmoji(fmt.Sprintf("%d", i+1)), cleanTitle))
+					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, cleanTitle))
 					if item.ReleaseDate != nil {
 						sb.WriteString(fmt.Sprintf("   • Tanggal Terbit: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
 					}
@@ -154,31 +124,6 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 					}
 					_ = r.sender.SendTextMessage(ctx, p.JID, "Menyiapkan sampul publikasi terbaru...")
 					_ = r.sender.SendImageFromURL(ctx, p.JID, coverURL, fmt.Sprintf("*%s*", scrapedPubs[0].Title))
-				}
-			}
-		}
-
-		// 2. Fallback ke Web API jika scraper belum siap
-		if !pubFound && r.bps != nil {
-			pubRes, err := r.bps.GetPublications(ctx, bpsapi.ListParams{
-				Domain: "1903",
-				Page:   1,
-			})
-			if err == nil && len(pubRes.Items) > 0 {
-				pubFound = true
-				limit := 4
-				if len(pubRes.Items) < limit {
-					limit = len(pubRes.Items)
-				}
-				for i := 0; i < limit; i++ {
-					item := pubRes.Items[i]
-					cleanTitle := scraper.CleanHTML(item.Title)
-					cleanTitle = strings.TrimSuffix(cleanTitle, ".")
-					sb.WriteString(fmt.Sprintf("%s  *%s*\n", whatsapp.NumberToEmoji(fmt.Sprintf("%d", i+1)), cleanTitle))
-					if item.RlDate != "" {
-						sb.WriteString(fmt.Sprintf("   • Tanggal Terbit: %s\n", item.RlDate))
-					}
-					sb.WriteString("\n")
 				}
 			}
 		}
