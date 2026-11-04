@@ -46,13 +46,6 @@ type Config struct {
 	TentangBPSVideoURL string
 	InternalPSTGroupJID string
 
-	// WebAPI BPS (https://webapi.bps.go.id/v1/api/list)
-	BPSAPIBaseURL      string
-	BPSAPIKey          string
-	BPSDefaultDomain   string
-	BPSDefaultLang     string
-	BPSCacheTTLMinutes int
-
 	// Scraper BPS (bangkabaratkab.bps.go.id)
 	AppEnv                     string
 	ScraperEnabled             bool
@@ -164,12 +157,6 @@ func LoadConfig() *Config {
 		TentangBPSVideoURL: getEnv("TENTANG_BPS_VIDEO_URL", "https://www.youtube.com/watch?v=BFj6yi8HLAg"),
 		InternalPSTGroupJID: strings.TrimSpace(getEnv("INTERNAL_PST_GROUP_JID", "")),
 
-		BPSAPIBaseURL:      getEnv("BPS_API_BASE_URL", "https://webapi.bps.go.id/v1/api/list"),
-		BPSAPIKey:          getEnv("BPS_API_KEY", ""),
-		BPSDefaultDomain:   getEnv("BPS_DEFAULT_DOMAIN", "1903"),
-		BPSDefaultLang:     getEnv("BPS_DEFAULT_LANG", "ind"),
-		BPSCacheTTLMinutes: getEnvInt("BPS_CACHE_TTL_MINUTES", 15),
-
 		AppEnv:                     getEnv("APP_ENV", "production"),
 		ScraperEnabled:             getEnvBool("SCRAPER_ENABLED", true),
 		ScraperBaseURL:             getEnv("SCRAPER_BASE_URL", "https://bangkabaratkab.bps.go.id"),
@@ -191,7 +178,7 @@ func LoadConfig() *Config {
 		ScraperMaxRequestsPerRun:   getEnvInt("SCRAPER_MAX_REQUESTS_PER_RUN", 60),
 		ScraperRespectRobots:       getEnvBool("SCRAPER_RESPECT_ROBOTS", true),
 		ScraperMaxStaleHours:       getEnvInt("SCRAPER_MAX_STALE_HOURS", 48),
-		DataSourceOrder:            getEnvSlice("DATA_SOURCE_ORDER", []string{"bpsapi", "scraper", "gsheet"}),
+		DataSourceOrder:            getEnvSlice("DATA_SOURCE_ORDER", []string{"scraper", "gsheet"}),
 		ScraperNotifyAdmin:         getEnvBool("SCRAPER_NOTIFY_ADMIN", true),
 		ScraperNotifyAfterFailures: getEnvInt("SCRAPER_NOTIFY_AFTER_FAILURES", 2),
 	}

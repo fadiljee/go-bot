@@ -3,10 +3,8 @@ package bot
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
-	"bot-istimewa/internal/bpsapi"
 	"bot-istimewa/internal/locale"
 	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
@@ -183,51 +181,24 @@ func (r *BotRouter) HandleLayananSub_SearchPrompt(ctx context.Context, s *UserSe
 	return r.sender.SendTextMessage(ctx, p.JID, text)
 }
 
-// fetchBPSTablesForTopic queries BPS Web API for Bangka Barat (domain: 1903) static tables, falling back to scraper
+// fetchBPSTablesForTopic queries internal scraper database for Bangka Barat static tables
 func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) string {
-	if keyword == "" {
+	if keyword == "" || r.scraper == nil {
 		return ""
 	}
 
-	// 1. Try BPS Web API
-	if r.bps != nil {
-		res, err := r.bps.GetStaticTables(ctx, bpsapi.ListParams{
-			Domain:  "1903",
-			Keyword: keyword,
-			Page:    1,
-		})
-		if err == nil && len(res.Items) > 0 {
-			var sb strings.Builder
-			sb.WriteString("*Tabel Statistik BPS Bangka Barat (Live Portal)*:\n")
-			limit := 3
-			if len(res.Items) < limit {
-				limit = len(res.Items)
-			}
-			for i := 0; i < limit; i++ {
-				table := res.Items[i]
-				cleanTitle := scraper.CleanHTML(table.Title)
-				sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
-			}
-			sb.WriteString("\n")
-			return sb.String()
+	tables, fresh, err := r.scraper.SearchStaticTables(ctx, keyword, 3)
+	if err == nil && len(tables) > 0 {
+		var sb strings.Builder
+		sb.WriteString("*Tabel Statistik Terkait (Database BPS)*:\n")
+		for i, table := range tables {
+			cleanTitle := scraper.CleanHTML(table.Title)
+			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
 		}
-	}
-
-	// 2. Fallback to Scraper DataProvider (Priority 2) (§4.2)
-	if r.scraper != nil {
-		tables, fresh, err := r.scraper.SearchStaticTables(ctx, keyword, 3)
-		if err == nil && len(tables) > 0 {
-			var sb strings.Builder
-			sb.WriteString("*Tabel Statistik Terkait (Database BPS)*:\n")
-			for i, table := range tables {
-				cleanTitle := scraper.CleanHTML(table.Title)
-				sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
-			}
-			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
-			}
-			return sb.String()
+		if fresh.UpdatedAt.Year() > 2000 {
+			sb.WriteString(fmt.Sprintf("Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
 		}
+		return sb.String()
 	}
 
 	return ""
@@ -246,7 +217,7 @@ func (r *BotRouter) fetchScraperItemsForTopic(ctx context.Context, keyword strin
 	sb.WriteString("*Publikasi & Dokumen Rujukan Resmi*:\n")
 	for i, it := range items {
 		cleanTitle := scraper.CleanHTML(it.Title)
-		sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
+		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
 	}
 	sb.WriteString("\n")
 	return sb.String()
@@ -260,31 +231,19 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 	sb.WriteString("*HASIL PENCARIAN DATA*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n")
 	liveFound := false
 
-	// 1. Live search from BPS Bangka Barat Web API (domain: 1903)
-	if r.bps != nil {
-		liveTables, err := r.bps.GetStaticTables(ctx, bpsapi.ListParams{
-			Domain:  "1903",
-			Keyword: query,
-			Page:    1,
-		})
-		if err == nil && len(liveTables.Items) > 0 {
+	// Search Scraper DataProvider (SQLite storage/scraper.db)
+	if r.scraper != nil {
+		tables, _, _ := r.scraper.SearchStaticTables(ctx, query, 3)
+		if len(tables) > 0 {
 			liveFound = true
 			sb.WriteString(fmt.Sprintf("*Tabel Statistik untuk \"%s\"*:\n", query))
-			limit := 4
-			if len(liveTables.Items) < limit {
-				limit = len(liveTables.Items)
-			}
-			for i := 0; i < limit; i++ {
-				t := liveTables.Items[i]
+			for i, t := range tables {
 				cleanTitle := scraper.CleanHTML(t.Title)
-				sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
+				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
 			}
 			sb.WriteString("\n")
 		}
-	}
 
-	// 2. Search Scraper DataProvider (SQLite storage/scraper.db)
-	if r.scraper != nil {
 		items, fresh, err := r.scraper.SearchItems(ctx, query, "id", 4)
 		if err == nil && len(items) > 0 {
 			liveFound = true
@@ -295,7 +254,7 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 				if it.ReleaseDate != nil {
 					dateStr = fmt.Sprintf(" (%s)", it.ReleaseDate.Format("02 Jan 2006"))
 				}
-				sb.WriteString(fmt.Sprintf("%s  %s%s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle, dateStr))
+				sb.WriteString(fmt.Sprintf("%d. %s%s\n", i+1, cleanTitle, dateStr))
 			}
 			sb.WriteString("\n")
 			if fresh.UpdatedAt.Year() > 2000 {
@@ -396,7 +355,7 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 
 	// 1. Cek Data Provider Scraper
 	if r.scraper != nil {
-		topic, fresh, err := r.scraper.GetLayananDataTopic(ctx, categorySlug, strconv.Itoa(topicIdx))
+		topic, fresh, err := r.scraper.GetLayananDataTopic(ctx, categorySlug, fmt.Sprintf("%d", topicIdx))
 		if err == nil && topic != nil {
 			sb.WriteString(fmt.Sprintf("*%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", topic.Title))
 
@@ -424,7 +383,7 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 						yearStr = fmt.Sprintf(" (%s)", t.ReleaseDate.Format("2006"))
 					}
 					cleanTitle := scraper.CleanHTML(t.Title)
-					sb.WriteString(fmt.Sprintf("%s  %s%s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle, yearStr))
+					sb.WriteString(fmt.Sprintf("%d. %s%s\n", i+1, cleanTitle, yearStr))
 				}
 				sb.WriteString("\n")
 			}
@@ -439,7 +398,7 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 				for i := 0; i < limit; i++ {
 					it := topic.Items[i]
 					cleanTitle := scraper.CleanHTML(it.Title)
-					sb.WriteString(fmt.Sprintf("%s  %s\n", whatsapp.NumberToEmoji(strconv.Itoa(i+1)), cleanTitle))
+					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
 				}
 				sb.WriteString("\n")
 			}
