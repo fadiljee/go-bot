@@ -15,8 +15,7 @@ type Config struct {
 	AdminTriggerKeyword string
 	AdminPassword       string
 	AdminWhitelistNumbers []string
-	DeveloperPhone      string
-	AdminMaxRetry       int
+	AdminMaxRetry         int
 	AdminLockoutMinutes int
 
 	UserRateLimitPer10s int
@@ -90,7 +89,6 @@ func LoadConfig() *Config {
 	apiSecret := getEnv("API_SECRET_KEY", "change_this_secret_in_production_32chars")
 	adminTrigger := getEnv("ADMIN_TRIGGER_KEYWORD", "login admin - 1903")
 	adminPass := getEnv("ADMIN_PASSWORD", "ganti_dengan_password_admin_yang_kuat")
-	devPhone := strings.TrimSpace(getEnv("DEVELOPER_PHONE", ""))
 	browserName := getEnv("WA_BROWSER_NAME", "BPS KABUPATEN BANGKA BARAT")
 	indicatorYear := getEnv("ACTIVE_INDICATOR_YEAR", "2025")
 
@@ -139,7 +137,6 @@ func LoadConfig() *Config {
 		AdminTriggerKeyword:        adminTrigger,
 		AdminPassword:              adminPass,
 		AdminWhitelistNumbers:      adminWhitelist,
-		DeveloperPhone:             devPhone,
 		AdminMaxRetry:              adminMaxRetry,
 		AdminLockoutMinutes:        adminLockoutMin,
 		UserRateLimitPer10s:        userRateLimit,

@@ -1040,7 +1040,7 @@ func (s *APIServer) handleGetLayananTopic(c *fiber.Ctx) error {
 			sb.WriteString("\n")
 		}
 		if freshness.UpdatedAt.Year() > 2000 {
-			sb.WriteString(fmt.Sprintf("ℹSumber: Database Scraper BPS · diperbarui %s WIB", freshness.UpdatedAt.Format("02 Jan 2006 15:04")))
+			sb.WriteString(fmt.Sprintf("Sumber: Database Scraper BPS · diperbarui %s WIB", freshness.UpdatedAt.Format("02 Jan 2006 15:04")))
 		}
 		return c.Type("text").SendString(sb.String())
 	}

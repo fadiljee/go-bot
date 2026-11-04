@@ -310,6 +310,11 @@ var serverActions = map[Kind]serverActionDef{
 		actionID:    "40043348a3c6d33ba8e1e4554e4e5c37b872433488",
 		arrayPrefix: `[{"id":`,
 	},
+	KindInfographic: {
+		path:        "/id/infographic",
+		actionID:    "70c3f2a8f6c0d8df36f160469c19147a0bdfa54ebf",
+		arrayPrefix: `[{"inf_id":`,
+	},
 }
 
 func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *url.URL) ([]Item, int, error) {
@@ -328,6 +333,48 @@ func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *
 	maxPages := r.cfg.MaxListPages
 	if maxPages <= 0 {
 		maxPages = 2
+	}
+
+	if kind == KindInfographic {
+		categories := []struct {
+			id   int
+			name string
+		}{
+			{id: 1, name: "Statistik Demografi dan Sosial"},
+			{id: 2, name: "Statistik Ekonomi"},
+			{id: 3, name: "Statistik Lingkungan Hidup dan Multidomain"},
+		}
+
+		for _, cat := range categories {
+			for page := 1; page <= maxPages; page++ {
+				payload := fmt.Sprintf(`["id",%d,%d]`, page, cat.id)
+				respBody, err := r.fetcher.PostAction(ctx, pageURL, def.actionID, payload)
+				if err != nil {
+					break
+				}
+
+				jsonBlock := extractJSONBlock(string(respBody), def.arrayPrefix)
+				if jsonBlock == nil {
+					break
+				}
+
+				pageItems, err := r.parseInfographicJSON(jsonBlock, baseParsed, cat.id, cat.name)
+				if err != nil || len(pageItems) == 0 {
+					break
+				}
+
+				for i := range pageItems {
+					it := &pageItems[i]
+					if valErr := ValidateItem(it, r.cfg.AllowedHosts, r.cfg.AppEnv); valErr != nil {
+						skippedCount++
+						continue
+					}
+					allItems = append(allItems, *it)
+				}
+			}
+		}
+
+		return allItems, skippedCount, nil
 	}
 
 	for page := 1; page <= maxPages; page++ {
@@ -528,6 +575,48 @@ func (r *Runner) parseServerActionJSON(kind Kind, block []byte, baseParsed *url.
 		return items, nil
 	}
 	return nil, errors.New("unsupported kind for server action")
+}
+
+func (r *Runner) parseInfographicJSON(block []byte, baseParsed *url.URL, catID int, catName string) ([]Item, error) {
+	var raw []struct {
+		ID       int     `json:"inf_id"`
+		Title    string  `json:"title"`
+		Desc     string  `json:"desc"`
+		Category int     `json:"category"`
+		Date     *string `json:"date"`
+		Img      string  `json:"img"`
+		DL       string  `json:"dl"`
+	}
+	if err := json.Unmarshal(block, &raw); err != nil {
+		return nil, err
+	}
+	var items []Item
+	for _, it := range raw {
+		var relDate *time.Time
+		if it.Date != nil && strings.TrimSpace(*it.Date) != "" {
+			if t, err := time.Parse("2006-01-02", strings.TrimSpace(*it.Date)); err == nil {
+				relDate = &t
+			}
+		}
+		itemURL := fmt.Sprintf("%s://%s/id/infographic?id=%d", baseParsed.Scheme, baseParsed.Host, it.ID)
+		item := Item{
+			Kind:         KindInfographic,
+			Lang:         "id",
+			SourceKey:    fmt.Sprintf("cat%d_%d", catID, it.ID),
+			URL:          itemURL,
+			Title:        it.Title,
+			Abstract:     cleanHTMLText(it.Desc),
+			ReleaseDate:  relDate,
+			FileURL:      it.DL,
+			ThumbnailURL: it.Img,
+			ImageURL:     it.Img,
+			Subject:      catName,
+			IsActive:     true,
+		}
+		item.ContentHash = CalculateContentHash(&item)
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 func extractJSONBlock(resp string, prefix string) []byte {
