@@ -198,3 +198,20 @@ go build -o bot-istimewa cmd/server/main.go
 2. **Penomoran Tebal Anti-Reset (`*1.*`, `*2.*`, dst.)**: Menggunakan format `*1.* Judul Menu` satu baris bersih di [`BuildBodyText`](file:///home/fadil/fadil/go-bot/internal/whatsapp/interactive.go#L183-L202) dan [`buildWelcomeMenuBody`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_main.go#L49-L74), serta menyederhanakan nama topik panjang di [`locales/id_ID.json`](file:///home/fadil/fadil/go-bot/locales/id_ID.json) agar setiap opsi menu muat tepat 1 baris.
 3. **Rata Kiri Lurus Tanpa Spasi Gantung**: Menghapus seluruh indentasi `   • ` dan `> • ` pada halaman detail (BRS, Publikasi, Indikator, Jadwal ARC, Pakar, Pengaduan, Admin) sehingga saat paragraf membungkus (*wrap*) di layar kecil maupun besar, tepi kirinya tetap lurus sejajar.
 4. **Pencegahan Judul Ganda & Footer Miring Proporsional**: Memperbarui [`ExtractTextFromMessage`](file:///home/fadil/fadil/go-bot/internal/whatsapp/interactive.go#L204-L270) agar tidak menduplikasi header apabila `body` sudah diawali `*...*`, dan mengganti blok kode 3-backtick menjadi teks miring `_Statistik Bermakna, Statistik Berdampak_`.
+
+---
+
+## 9. Pemulihan Fitur Stiker WhatsApp & Validasi Formulir Pengajuan Jadwal Konsultasi (5 November 2026)
+
+### A. Pemulihan Pengiriman Stiker `.webp`
+- Menambahkan kembali method [`SendSticker`](file:///home/fadil/fadil/go-bot/internal/whatsapp/sender.go#L121-L154) pada `internal/whatsapp/sender.go` yang membaca file `.webp`, mengunggahnya ke media server WhatsApp (`whatsmeow.MediaImage`), dan mengirimkannya sebagai `StickerMessage`.
+- Memasang pengiriman stiker otomatis pada [`HandleWelcomeFull`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_main.go#L88-L91), [`HandleWelcomeShort`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_main.go#L118-L120), dan [`HandleIdleTimeout`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_main.go#L140-L143).
+
+### B. Validasi Ketat & Perbaikan Format Rencana Jadwal pada Pengajuan Konsultasi (`StateMenu6Booking`)
+- **Akar Masalah**:
+  1. Sebelumnya `HandleProcessBooking` memiliki *fallback default* untuk semua field kosong, sehingga ketika pengguna di state `StateMenu6Booking` mengirim angka seperti `2` atau menyalin template formulir kosong beserta angka `2`, bot menganggapnya sebagai pengajuan valid dan langsung meneruskannya ke Grup Internal PST.
+  2. Saat baris formulir kosong diikuti baris berikutnya, parser lama mengambil garis pembatas (`────────────`) atau teks bebas di bawahnya sebagai nilai `PreferredTime`.
+- **Solusi yang Diterapkan ([`internal/bot/handlers_support.go`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_support.go#L79-L410))**:
+  1. **Validasi 5 Field Wajib (`validateBookingDetails`)**: Memastikan `Nama Lengkap`, `Instansi / Asal`, `No. WhatsApp / HP`, `Topik / Kebutuhan Data`, dan `Rencana Jadwal (Hari, Tanggal, Jam)` semuanya terisi secara valid sebelum disimpan ke SQLite atau dikirim ke grup PST.
+  2. **Respon Penolakan Ramah (`*FORMAT PENGAJUAN BELUM SESUAI*`)**: Jika input pengguna tidak sesuai format formulir (dan bukan aksi keluar `0` atau kembali `99`), bot menolak pengiriman ke grup PST, tetap berada di `StateMenu6Booking`, serta menampilkan daftar field yang belum lengkap beserta template formulir dan contoh pengisian jadwal.
+  3. **Standarisasi Format `Rencana Jadwal (Hari, Tanggal, Jam)` (`formatPreferredSchedule`)**: Memperbarui template prompt, contoh pengisian (`Kamis, 12 Nov 2026, Pukul 10.00 WIB`), jam layanan PST (`Senin - Kamis 08.00 - 15.30 WIB | Jumat 08.00 - 16.00 WIB`), dan normalisasi otomatis format jam (`10:00 WIB` -> `10.00 WIB`) maupun penggabungan baris `Tanggal:` dan `Jam:`.
