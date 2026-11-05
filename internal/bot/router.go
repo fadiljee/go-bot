@@ -132,6 +132,9 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	if len(runes) > 100 {
 		input = string(runes[:100])
 	}
+	if n, err := strconv.Atoi(strings.TrimSuffix(input, ".")); err == nil && n >= 0 {
+		input = strconv.Itoa(n)
+	}
 	inputLower := strings.ToLower(input)
 
 	// Get or create session (Unified by PhoneNumber if resolved to prevent LID/PN split)
@@ -227,11 +230,11 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		if input == "0" {
 			session.ResetToRoot()
 			msg := "*KELUAR MODE ADMIN*\n" +
-				"BPS Kabupaten Bangka Barat\n" +
-				"━━━━━━━━━━━━━━━━━━\n\n" +
+				"_BPS Kabupaten Bangka Barat_\n" +
+				"────────────\n\n" +
 				"Sesi admin telah ditutup demi keamanan sistem.\n\n" +
-				"━━━━━━━━━━━━━━━━━━\n" +
-				"• Ketik pesan apa saja atau *0* untuk kembali ke Menu Utama"
+				"────────────\n" +
+				"• Ketik *0* untuk kembali ke Menu Utama"
 			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 			return
 		}
@@ -244,27 +247,27 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		if input == "1" || strings.Contains(inputLower, "pakar") {
 			session.PushState(StateAdminManagePakar)
 			var sb strings.Builder
-			sb.WriteString("*KELOLA NARAHUBUNG PARA PAKAR*\n")
-			sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
-			sb.WriteString("Berikut daftar kontak penanggung jawab 8 bidang pakar di database SQLite:\n")
-			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+			sb.WriteString("*KELOLA NARAHUBUNG PAKAR*\n")
+			sb.WriteString("_BPS Kabupaten Bangka Barat_\n")
+			sb.WriteString("────────────\n\n")
+			sb.WriteString("Daftar kontak 8 bidang pakar di database SQLite:\n\n")
 
 			if r.scraper != nil {
 				contacts, err := r.scraper.GetExpertContacts(ctx)
 				if err == nil && len(contacts) > 0 {
 					for _, c := range contacts {
-						fmt.Fprintf(&sb, "%d. *%s*\n", c.BidangID, c.BidangTitle)
-						fmt.Fprintf(&sb, "   • Pakar: %s\n", c.PakarName)
-						fmt.Fprintf(&sb, "   • No. WhatsApp: +%s\n\n", c.Phone)
+						fmt.Fprintf(&sb, "*%d. %s*\n", c.BidangID, c.BidangTitle)
+						fmt.Fprintf(&sb, "Pakar: %s\n", c.PakarName)
+						fmt.Fprintf(&sb, "WhatsApp: %s\n\n", formatPhoneDisplay(c.Phone))
 					}
 				}
 			}
 
-			sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
+			sb.WriteString("────────────\n")
 			sb.WriteString("*Cara Mengubah Kontak Pakar:*\n")
-			sb.WriteString("Ketik format: `<nomor_bidang> <no_whatsapp> <nama_pakar>`\n")
-			sb.WriteString("Contoh: `1 081234567890 Bpk. Rahmat, S.Tr.Stat.`\n\n")
-			sb.WriteString("• Ketik *99* untuk kembali ke Dashboard Admin\n")
+			sb.WriteString("Ketik: `<no_bidang> <no_wa> <nama_pakar>`\n")
+			sb.WriteString("Contoh: `1 081234567890 Bpk. Rahmat`\n\n")
+			sb.WriteString("• Ketik *99* untuk Dashboard Admin\n")
 			sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
 			_ = r.sender.SendTextMessage(ctx, p.JID, sb.String())
 			return
@@ -273,11 +276,11 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		if input == "2" || strings.Contains(inputLower, "status") {
 			var sb strings.Builder
 			sb.WriteString("*STATUS SCRAPER & DATABASE*\n")
-			sb.WriteString("BPS Kabupaten Bangka Barat\n")
-			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+			sb.WriteString("_BPS Kabupaten Bangka Barat_\n")
+			sb.WriteString("────────────\n\n")
 			sb.WriteString("*Konfigurasi Sistem:*\n")
 			sb.WriteString("• Database: SQLite (`storage/scraper.db`)\n")
-			sb.WriteString("• Jadwal Cron: Setiap 4 Jam (`0 */4 * * *`)\n")
+			sb.WriteString("• Jadwal Cron: Setiap 4 Jam\n")
 			sb.WriteString("• Satker Target: BPS Bangka Barat (1903)\n")
 
 			if r.scraperRunner != nil && r.scraperRunner.Store() != nil {
@@ -303,15 +306,15 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 					fmt.Fprintf(&sb, "• Status: *%s*\n", strings.ToUpper(lastRun.Status))
 					fmt.Fprintf(&sb, "• Waktu: %s WIB\n", lastRun.StartedAt.Format("02 Jan 2006, 15:04"))
 					fmt.Fprintf(&sb, "• Pemicu: %s | Durasi: %s\n", lastRun.Trigger, dur)
-					fmt.Fprintf(&sb, "• Hasil: %d Ditemukan | %d Baru | %d Diperbarui\n", lastRun.ItemsFound, lastRun.ItemsNew, lastRun.ItemsUpdated)
+					fmt.Fprintf(&sb, "• Hasil: %d Ditemukan | %d Baru | %d Update\n", lastRun.ItemsFound, lastRun.ItemsNew, lastRun.ItemsUpdated)
 					if lastRun.ErrorMessage != "" {
-						fmt.Fprintf(&sb, "• Pesan Error: %s\n", lastRun.ErrorMessage)
+						fmt.Fprintf(&sb, "• Error: %s\n", lastRun.ErrorMessage)
 					}
 				}
 			}
 
-			sb.WriteString("\n━━━━━━━━━━━━━━━━━━\n")
-			sb.WriteString("• Ketik *3* untuk Jalankan Scraping Manual\n")
+			sb.WriteString("\n────────────\n")
+			sb.WriteString("• Ketik *3* untuk Scraping Manual\n")
 			sb.WriteString("• Ketik *1* untuk Kelola Kontak Pakar\n")
 			sb.WriteString("• Ketik *99* untuk Dashboard Admin\n")
 			sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
@@ -322,23 +325,23 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		if input == "3" || strings.Contains(inputLower, "scrape") {
 			if r.scraperRunner == nil {
 				msg := "*SCRAPER TIDAK AKTIF*\n" +
-					"BPS Kabupaten Bangka Barat\n" +
-					"━━━━━━━━━━━━━━━━━━\n\n" +
+					"_BPS Kabupaten Bangka Barat_\n" +
+					"────────────\n\n" +
 					"Mesin scraper belum terhubung atau dinonaktifkan di konfigurasi.\n\n" +
-					"━━━━━━━━━━━━━━━━━━\n" +
-					"• Ketik *99* untuk kembali ke Dashboard Admin\n" +
+					"────────────\n" +
+					"• Ketik *99* untuk Dashboard Admin\n" +
 					"• Ketik *0* untuk keluar dari Mode Admin"
 				_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 				return
 			}
 
 			msg := "*SCRAPING MANUAL DIMULAI*\n" +
-				"BPS Kabupaten Bangka Barat\n" +
-				"━━━━━━━━━━━━━━━━━━\n\n" +
-				"Proses scraping pembaruan data publikasi, rilis BRS, berita, dan tabel statis sedang berjalan di latar belakang.\n\n" +
-				"Database lokal (`storage/scraper.db`) akan otomatis diperbarui setelah selesai. Anda akan menerima notifikasi jika proses telah tuntas.\n\n" +
-				"━━━━━━━━━━━━━━━━━━\n" +
-				"• Ketik *99* untuk kembali ke Dashboard Admin"
+				"_BPS Kabupaten Bangka Barat_\n" +
+				"────────────\n\n" +
+				"Proses pembaruan data portal BPS Bangka Barat sedang berjalan di latar belakang.\n\n" +
+				"Anda akan menerima notifikasi otomatis setelah proses selesai.\n\n" +
+				"────────────\n" +
+				"• Ketik *99* untuk Dashboard Admin"
 			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 
 			adminJID := p.JID
@@ -347,10 +350,10 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				res, err := r.scraperRunner.RunAll(bgCtx, scraper.TriggerManual)
 				if err != nil {
 					errMsg := fmt.Sprintf("*SCRAPING MANUAL GAGAL*\n"+
-						"BPS Kabupaten Bangka Barat\n"+
-						"━━━━━━━━━━━━━━━━━━\n\n"+
+						"_BPS Kabupaten Bangka Barat_\n"+
+						"────────────\n\n"+
 						"Proses scraping mengalami kendala:\n%v\n\n"+
-						"━━━━━━━━━━━━━━━━━━\n"+
+						"────────────\n"+
 						"• Ketik *99* untuk Dashboard Admin", err)
 					_ = r.sender.SendTextMessage(bgCtx, adminJID, errMsg)
 					return
@@ -362,16 +365,16 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 					timeStr = res.FinishedAt.Format("15:04:05 WIB")
 				}
 				doneMsg := fmt.Sprintf("*SCRAPING MANUAL SELESAI*\n"+
-					"BPS Kabupaten Bangka Barat\n"+
-					"━━━━━━━━━━━━━━━━━━\n\n"+
-					"Pembaruan data portal BPS Bangka Barat telah berhasil disimpan ke database.\n\n"+
+					"_BPS Kabupaten Bangka Barat_\n"+
+					"────────────\n\n"+
+					"Pembaruan data portal BPS Bangka Barat berhasil disimpan ke database.\n\n"+
 					"• Status: *%s*\n"+
 					"• Waktu Selesai: %s\n"+
-					"• Durasi Proses: %s\n"+
-					"• Total Ditemukan: %d item\n"+
+					"• Durasi: %s\n"+
+					"• Ditemukan: %d item\n"+
 					"• Data Baru: %d item\n"+
-					"• Data Diperbarui: %d item\n\n"+
-					"━━━━━━━━━━━━━━━━━━\n"+
+					"• Diperbarui: %d item\n\n"+
+					"────────────\n"+
 					"• Ketik *2* untuk Cek Status Scraper\n"+
 					"• Ketik *99* untuk Dashboard Admin\n"+
 					"• Ketik *0* untuk keluar dari Mode Admin",
@@ -401,11 +404,11 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		if input == "0" {
 			session.ResetToRoot()
 			msg := "*KELUAR MODE ADMIN*\n" +
-				"BPS Kabupaten Bangka Barat\n" +
-				"━━━━━━━━━━━━━━━━━━\n\n" +
+				"_BPS Kabupaten Bangka Barat_\n" +
+				"────────────\n\n" +
 				"Sesi admin telah ditutup demi keamanan sistem.\n\n" +
-				"━━━━━━━━━━━━━━━━━━\n" +
-				"• Ketik pesan apa saja atau *0* untuk kembali ke Menu Utama"
+				"────────────\n" +
+				"• Ketik *0* untuk kembali ke Menu Utama"
 			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 			return
 		}
@@ -440,18 +443,17 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 							bidangTitle = updated.BidangTitle
 						}
 
-						reply := fmt.Sprintf("*KONTAK PAKAR BERHASIL DIPERBARUI*\n"+
-							"BPS Kabupaten Bangka Barat\n"+
-							"━━━━━━━━━━━━━━━━━━\n\n"+
+						reply := fmt.Sprintf("*KONTAK PAKAR DIPERBARUI*\n"+
+							"_BPS Kabupaten Bangka Barat_\n"+
+							"────────────\n\n"+
 							"• *Bidang*: %s\n"+
 							"• *Nama Pakar*: %s\n"+
-							"• *No. WhatsApp*: +%s\n\n"+
-							"Data telah tersimpan permanen di database lokal SQLite.\n\n"+
-							"━━━━━━━━━━━━━━━━━━\n"+
-							"• Ketik format baru untuk mengubah bidang lain\n"+
-							"• Ketik *99* untuk kembali ke Dashboard Admin\n"+
+							"• *WhatsApp*: %s\n\n"+
+							"Data telah tersimpan permanen di database SQLite.\n\n"+
+							"────────────\n"+
+							"• Ketik *99* untuk Dashboard Admin\n"+
 							"• Ketik *0* untuk keluar ke Menu Utama",
-							bidangTitle, name, phone)
+							bidangTitle, name, formatPhoneDisplay(phone))
 						_ = r.sender.SendTextMessage(ctx, p.JID, reply)
 						return
 					}
@@ -461,14 +463,14 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		}
 
 		reply := "*FORMAT INPUT TIDAK SESUAI*\n" +
-			"BPS Kabupaten Bangka Barat\n" +
-			"━━━━━━━━━━━━━━━━━━\n\n" +
+			"_BPS Kabupaten Bangka Barat_\n" +
+			"────────────\n\n" +
 			"Gunakan format penulisan:\n" +
-			"`<nomor_bidang> <no_wa> <nama_pakar>`\n\n" +
+			"`<no_bidang> <no_wa> <nama_pakar>`\n\n" +
 			"Contoh:\n" +
-			"`1 081234567890 Bpk. Rahmat, S.Tr.Stat.`\n\n" +
-			"━━━━━━━━━━━━━━━━━━\n" +
-			"• Ketik *99* untuk kembali ke Dashboard Admin\n" +
+			"`1 081234567890 Bpk. Rahmat`\n\n" +
+			"────────────\n" +
+			"• Ketik *99* untuk Dashboard Admin\n" +
 			"• Ketik *0* untuk keluar dari Mode Admin"
 		_ = r.sender.SendTextMessage(ctx, p.JID, reply)
 		return

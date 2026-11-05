@@ -49,27 +49,27 @@ func getTimeGreeting() string {
 func buildWelcomeMenuBody(greetingLine, introSubtitle string) string {
 	var sb strings.Builder
 	sb.WriteString("*BOT ISTIMEWA*\n")
-	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
+	sb.WriteString("_BPS Kabupaten Bangka Barat_\n")
+	sb.WriteString("────────────\n\n")
 	sb.WriteString(greetingLine + "\n")
 	sb.WriteString(introSubtitle + "\n\n")
-	sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
 	sb.WriteString("*DATA DAN INDIKATOR*\n")
-	sb.WriteString("1. Layanan Data\n")
-	sb.WriteString("2. Indikator Strategis\n")
-	sb.WriteString("3. BRS & Publikasi Rilis\n\n")
+	sb.WriteString("*1.* Layanan Data\n")
+	sb.WriteString("*2.* Indikator Strategis\n")
+	sb.WriteString("*3.* BRS & Publikasi Rilis\n\n")
 	sb.WriteString("*KONTEN DAN VISUAL*\n")
-	sb.WriteString("4. Video Edukasi Literasi\n")
-	sb.WriteString("5. Galeri Infografis Daerah\n\n")
+	sb.WriteString("*4.* Video Edukasi Literasi\n")
+	sb.WriteString("*5.* Galeri Infografis Daerah\n\n")
 	sb.WriteString("*KONSULTASI DAN LAYANAN*\n")
-	sb.WriteString("6. Tanya Pakar\n")
-	sb.WriteString("7. Channel WhatsApp BPS Bangka Barat\n")
-	sb.WriteString("8. Pengaduan & Saran\n\n")
+	sb.WriteString("*6.* Tanya Pakar\n")
+	sb.WriteString("*7.* Channel WhatsApp BPS Bangka Barat\n")
+	sb.WriteString("*8.* Pengaduan & Saran\n\n")
 	sb.WriteString("*INFORMASI*\n")
-	sb.WriteString("9. Bantuan & FAQ\n")
-	sb.WriteString("10. Tentang BPS\n")
-	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+	sb.WriteString("*9.* Bantuan & FAQ\n")
+	sb.WriteString("*10.* Tentang BPS\n\n")
+	sb.WriteString("────────────\n")
 	sb.WriteString("Balas dengan *angka menu (1 - 10)*\n")
-	sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
+	sb.WriteString("_Statistik Bermakna, Statistik Berdampak_")
 	return sb.String()
 }
 
@@ -209,11 +209,11 @@ func getAdminMenuItems() []whatsapp.ListRow {
 // HandleAdminPrompt asks admin password
 func (r *BotRouter) HandleAdminPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	msg := "*LOGIN PANEL ADMIN*\n" +
-		"BPS Kabupaten Bangka Barat\n" +
-		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"Silakan masukkan *Password Admin* untuk melanjutkan verifikasi akses:\n\n" +
-		"━━━━━━━━━━━━━━━━━━\n" +
-		"• Ketik *0* untuk membatalkan dan kembali ke Menu Utama"
+		"_BPS Kabupaten Bangka Barat_\n" +
+		"────────────\n\n" +
+		"Silakan masukkan *Password Admin* untuk melanjutkan verifikasi akses.\n\n" +
+		"────────────\n" +
+		"• Ketik *0* untuk Batal & Menu Utama"
 	return r.sender.SendTextMessage(ctx, p.JID, msg)
 }
 
@@ -225,11 +225,11 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	if locked, until := r.isAdminLockedOut(phone); locked {
 		s.ResetToRoot()
 		msg := fmt.Sprintf("*AKSES DIKUNCI*\n"+
-			"BPS Kabupaten Bangka Barat\n"+
-			"━━━━━━━━━━━━━━━━━━\n\n"+
+			"_BPS Kabupaten Bangka Barat_\n"+
+			"────────────\n\n"+
 			"Nomor Anda sedang dikunci dari percobaan login admin hingga *%s WIB*.\n"+
 			"Silakan coba lagi nanti.\n\n"+
-			"━━━━━━━━━━━━━━━━━━\n"+
+			"────────────\n"+
 			"• Ketik *0* untuk kembali ke Menu Utama", until.Format("15:04:05"))
 		return r.sender.SendTextMessage(ctx, p.JID, msg)
 	}
@@ -266,11 +266,11 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 		log.Printf("[ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", whatsapp.MaskJID(phone), lockoutDuration, attempts)
 		s.ResetToRoot()
 		msg := fmt.Sprintf("*AKSES DITOLAK*\n"+
-			"BPS Kabupaten Bangka Barat\n"+
-			"━━━━━━━━━━━━━━━━━━\n\n"+
+			"_BPS Kabupaten Bangka Barat_\n"+
+			"────────────\n\n"+
 			"Anda telah gagal memasukkan password sebanyak *%d kali* berturut-turut.\n"+
 			"Nomor Anda dikunci selama *%d menit* demi keamanan sistem.\n\n"+
-			"━━━━━━━━━━━━━━━━━━\n"+
+			"────────────\n"+
 			"• Ketik *0* untuk kembali ke Menu Utama", attempts, r.cfg.AdminLockoutMinutes)
 		return r.sender.SendTextMessage(ctx, p.JID, msg)
 	}
@@ -278,13 +278,13 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 
 	log.Printf("[ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", whatsapp.MaskJID(phone), attempts, maxRetry)
 	msg := fmt.Sprintf("*PASSWORD ADMIN SALAH*\n"+
-		"BPS Kabupaten Bangka Barat\n"+
-		"━━━━━━━━━━━━━━━━━━\n\n"+
+		"_BPS Kabupaten Bangka Barat_\n"+
+		"────────────\n\n"+
 		"Password yang Anda masukkan tidak sesuai.\n"+
 		"Sisa percobaan: *%d/%d*.\n\n"+
-		"━━━━━━━━━━━━━━━━━━\n"+
+		"────────────\n"+
 		"• Masukkan kembali password yang benar\n"+
-		"• Ketik *0* untuk membatalkan dan kembali ke Menu Utama", attempts, maxRetry)
+		"• Ketik *0* untuk Batal & Menu Utama", attempts, maxRetry)
 	return r.sender.SendTextMessage(ctx, p.JID, msg)
 }
 
@@ -294,17 +294,16 @@ func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *w
 
 	var sb strings.Builder
 	sb.WriteString("*PANEL KENDALI ADMIN*\n")
-	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
-	sb.WriteString("Halo Admin BPS Kabupaten Bangka Barat.\n")
-	sb.WriteString("Silakan pilih menu pengelolaan sistem bot:\n")
-	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-	sb.WriteString("1. *Kelola Narahubung Para Pakar (SQLite)*\n")
-	sb.WriteString("   • Lihat & ubah kontak WhatsApp 8 bidang pakar\n\n")
-	sb.WriteString("2. *Status Scraper & Usia Data*\n")
-	sb.WriteString("   • Cek volume data tersimpan, jadwal & circuit breaker\n\n")
-	sb.WriteString("3. *Jalankan Scraping Manual BPS*\n")
-	sb.WriteString("   • Memicu scraping on-demand portal Bangka Barat\n\n")
-	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+	sb.WriteString("_BPS Kabupaten Bangka Barat_\n")
+	sb.WriteString("────────────\n\n")
+	sb.WriteString("Silakan pilih menu pengelolaan sistem bot:\n\n")
+	sb.WriteString("*1. Kelola Kontak Pakar (SQLite)*\n")
+	sb.WriteString("Lihat & ubah kontak WhatsApp 8 bidang pakar\n\n")
+	sb.WriteString("*2. Status Scraper & Database*\n")
+	sb.WriteString("Cek volume data tersimpan & riwayat scraping\n\n")
+	sb.WriteString("*3. Jalankan Scraping Manual BPS*\n")
+	sb.WriteString("Pemicu pembaruan data portal Bangka Barat\n\n")
+	sb.WriteString("────────────\n")
 	sb.WriteString("Balas dengan *angka menu (1 - 3)*\n")
 	sb.WriteString("• Ketik *0* untuk keluar dari Mode Admin")
 
@@ -324,7 +323,14 @@ func (r *BotRouter) SendAdminDashboard(ctx context.Context, s *UserSession, p *w
 
 // HandleUnavailable sends fallback text with Quick Reply buttons
 func (r *BotRouter) HandleUnavailable(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	body := "Mohon maaf Sahabat Data, pilihan yang Anda masukkan tidak tersedia atau belum dikenali.\n\nSilakan pilih salah satu tombol navigasi di bawah atau ketik angka menu:\n*0.* Menu Utama\n*99.* Menu Sebelumnya"
+	body := "*PILIHAN TIDAK DITEMUKAN*\n" +
+		"_BPS Kabupaten Bangka Barat_\n" +
+		"────────────\n\n" +
+		"Mohon maaf Sahabat Data, pilihan yang Anda masukkan belum dikenali.\n\n" +
+		"────────────\n" +
+		"• Ketik *99* untuk Menu Sebelumnya\n" +
+		"• Ketik *0* untuk Menu Utama\n" +
+		"_Statistik Bermakna, Statistik Berdampak_"
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Pilihan Tidak Ditemukan",

@@ -26,8 +26,8 @@ func (r *BotRouter) HandleMenu6Konsultasi(ctx context.Context, s *UserSession, p
 		{ID: "3", Title: "Informasi PST & Jam Layanan", Description: "Jadwal operasional & kontak petugas PST"},
 	}
 
-	introText := "*TANYA PAKAR & KONSULTASI ONLINE*\nPST BPS Kabupaten Bangka Barat\n\nAda yang ingin Sahabat tanyakan seputar data & statistik? Pilih jenis layanan:\n━━━━━━━━━━━━━━━━━━"
-	footerText := "━━━━━━━━━━━━━━━━━━\nBalas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
+	introText := "*TANYA PAKAR & KONSULTASI ONLINE*\n_PST BPS Kabupaten Bangka Barat_\n────────────\n\nAda yang ingin Sahabat tanyakan seputar data & statistik? Pilih jenis layanan:"
+	footerText := "────────────\nBalas dengan *angka menu (1 - 3)*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -80,17 +80,18 @@ func formatPhoneDisplay(raw string) string {
 func (r *BotRouter) HandleMenu6BookingPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu6Booking)
 
-	prompt := "*PENGAJUAN JADWAL KONSULTASI*\nPST BPS Kabupaten Bangka Barat\n\n" +
+	prompt := "*PENGAJUAN JADWAL KONSULTASI*\n" +
+		"_PST BPS Kabupaten Bangka Barat_\n" +
+		"────────────\n\n" +
 		"Silakan kirimkan data permohonan konsultasi Sahabat dengan format berikut:\n\n" +
-		"━━━━━━━━━━━━━━━━━━\n" +
 		"Nama: \n" +
 		"Instansi / Asal: \n" +
 		"No. WhatsApp / HP: \n" +
 		"Topik / Kebutuhan Data: \n" +
-		"Rencana Hari / Jam: \n" +
-		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"(Atau ketik informasi kebutuhan data Sahabat secara bebas)\n\n" +
-		"• Ketik *0* untuk Batal & Kembali ke Menu Utama"
+		"Rencana Hari / Jam: \n\n" +
+		"_(Atau ketik informasi kebutuhan data Sahabat secara bebas)_\n\n" +
+		"────────────\n" +
+		"• Ketik *0* untuk Batal & Menu Utama"
 
 	return r.sender.SendTextMessage(ctx, p.JID, prompt)
 }
@@ -341,16 +342,17 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 	}
 
 	// 2. Reply confirmation to user
-	userReply := fmt.Sprintf("*PENGAJUAN JADWAL KONSULTASI DITERIMA*\nPST BPS Kabupaten Bangka Barat\n\n"+
-		"Terima kasih *%s*, permohonan konsultasi statistik Sahabat telah dicatat dan diteruskan ke Tim Pelayanan Statistik Terpadu (PST) BPS Bangka Barat.\n\n"+
-		"━━━━━━━━━━━━━━━━━━\n"+
-		"1. *No. Tiket*: `%s`\n"+
-		"2. *Nama*: %s\n"+
-		"3. *Instansi*: %s\n"+
-		"4. *Topik Data*: %s\n"+
-		"5. *Rencana Jadwal*: %s\n"+
-		"━━━━━━━━━━━━━━━━━━\n\n"+
-		"Petugas PST atau pakar terkait kami akan segera menghubungi Sahabat via WhatsApp untuk konfirmasi persiapan data.\n\n"+
+	userReply := fmt.Sprintf("*PENGAJUAN KONSULTASI DITERIMA*\n"+
+		"_PST BPS Kabupaten Bangka Barat_\n"+
+		"────────────\n\n"+
+		"Terima kasih *%s*, permohonan konsultasi statistik Sahabat telah dicatat dan diteruskan ke Tim PST BPS Bangka Barat.\n\n"+
+		"*1. No. Tiket*: `%s`\n"+
+		"*2. Nama*: %s\n"+
+		"*3. Instansi*: %s\n"+
+		"*4. Topik Data*: %s\n"+
+		"*5. Rencana Jadwal*: %s\n\n"+
+		"Petugas PST atau pakar terkait akan segera menghubungi Sahabat via WhatsApp.\n\n"+
+		"────────────\n"+
 		"• Ketik *0* untuk kembali ke Menu Utama",
 		name, ticketNo, name, instansi, topic, preferredTime)
 
@@ -360,17 +362,18 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 	if r.cfg.InternalPSTGroupJID != "" {
 		groupJID, err := types.ParseJID(r.cfg.InternalPSTGroupJID)
 		if err == nil {
-			groupMsg := fmt.Sprintf("*PEMBERITAHUAN JADWAL KONSULTASI BARU (PST BPS)*\n\n"+
-				"Halo Tim PST & Para Pakar BPS Bangka Barat, ada permohonan konsultasi baru masuk melalui WhatsApp Bot:\n\n"+
-				"1. *No. Tiket*: `%s`\n"+
-				"2. *Nama Pemohon*: %s\n"+
-				"3. *Instansi / Asal*: %s\n"+
-				"4. *Kontak WhatsApp*: %s\n"+
-				"5. *Bidang / Topik*: %s\n"+
-				"6. *Rencana Jadwal*: %s\n"+
-				"7. *Waktu Masuk*: %s WIB\n\n"+
+			groupMsg := fmt.Sprintf("*PEMBERITAHUAN KONSULTASI BARU (PST BPS)*\n"+
+				"────────────\n\n"+
+				"Halo Tim PST & Para Pakar BPS Bangka Barat, ada permohonan konsultasi baru melalui WhatsApp Bot:\n\n"+
+				"*1. No. Tiket*: `%s`\n"+
+				"*2. Nama Pemohon*: %s\n"+
+				"*3. Instansi / Asal*: %s\n"+
+				"*4. Kontak WhatsApp*: %s\n"+
+				"*5. Bidang / Topik*: %s\n"+
+				"*6. Rencana Jadwal*: %s\n"+
+				"*7. Waktu Masuk*: %s WIB\n\n"+
 				"*Pesan Lengkap*:\n%s\n\n"+
-				"*Dimohon petugas piket PST dan pakar terkait untuk menindaklanjuti dan mempersiapkan bahan data. Terima kasih!*",
+				"_Dimohon petugas piket PST dan pakar terkait untuk menindaklanjuti. Terima kasih!_",
 				ticketNo, name, instansi, waContact, topic, preferredTime, time.Now().Format("02 Jan 2006 15:04"), notes)
 
 			if sendErr := r.sender.SendTextMessage(ctx, groupJID, groupMsg); sendErr != nil {
@@ -393,16 +396,16 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 func (r *BotRouter) HandleKonsultasiUmum(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	pstPhone := "6282164302643"
 	formattedPhone := formatPhoneDisplay(pstPhone)
-	piketText := fmt.Sprintf("*INFORMASI PST & JAM LAYANAN*\nPelayanan Statistik Terpadu BPS Kabupaten Bangka Barat\n\n"+
+	piketText := fmt.Sprintf("*INFORMASI PST & JAM LAYANAN*\n"+
+		"_Pelayanan Statistik Terpadu BPS Bangka Barat_\n"+
+		"────────────\n\n"+
 		"Petugas PST kami siap melayani pertanyaan Sahabat seputar data, publikasi, dan rujukan statistik:\n\n"+
-		"━━━━━━━━━━━━━━━━━━\n"+
-		"1. *Jadwal Layanan*:\n"+
+		"*1. Jadwal Layanan*\n"+
 		"• Senin – Kamis: 08.00 – 15.30 WIB\n"+
 		"• Jumat: 08.00 – 15.00 WIB\n\n"+
-		"2. *WhatsApp Petugas PST*:\n"+
+		"*2. WhatsApp Petugas PST*\n"+
 		"• Nomor: %s\n"+
-		"• Tautan Chat: https://wa.me/%s?text=Halo%%20Petugas%%20PST%%20BPS%%20Bangka%%20Barat\n"+
-		"━━━━━━━━━━━━━━━━━━\n\n"+
+		"• Chat Langsung: https://wa.me/%s\n\n"+
 		"Silakan hubungi kami pada jam operasional kerja kedinasan.",
 		formattedPhone, pstPhone)
 
@@ -433,8 +436,8 @@ func (r *BotRouter) HandleKonsultasiPakarList(ctx context.Context, s *UserSessio
 		{ID: "8", Title: "Diseminasi & Layanan", Description: "Publikasi, Perpustakaan & Portal PST Online"},
 	}
 
-	introText := "*Menu Utama* > *[6] Konsultasi* > *Tanya Pakar*\n\nSilakan pilih bidang kepakaran yang ingin Sahabat konsultasikan:\n━━━━━━━━━━━━━━━━━━"
-	footerText := "━━━━━━━━━━━━━━━━━━\nBalas dengan *angka menu*\n• Ketik *99* untuk Kembali\n• Ketik *0* untuk Menu Utama"
+	introText := "*TANYA PARA PAKAR STATISTIK*\n_BPS Kabupaten Bangka Barat_\n────────────\n\nSilakan pilih bidang kepakaran yang ingin Sahabat konsultasikan:"
+	footerText := "────────────\nBalas dengan *angka menu (1 - 8)*\n• Ketik *99* untuk Kembali\n• Ketik *0* untuk Menu Utama"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -484,17 +487,17 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 	cleanPhone := normalizePhone(phone)
 	displayPhone := formatPhoneDisplay(cleanPhone)
 
-	waLink := fmt.Sprintf("https://wa.me/%s?text=Halo%%20%s,%%20saya%%20ingin%%20konsultasi%%20seputar%%20data%%20statistik%%20Bangka%%20Barat.", cleanPhone, strings.ReplaceAll(pakarName, " ", "%20"))
+	waLink := fmt.Sprintf("https://wa.me/%s", cleanPhone)
 
-	pakarText := fmt.Sprintf("*PROFIL PAKAR STATISTIK*\nBPS Kabupaten Bangka Barat\n\n"+
-		"━━━━━━━━━━━━━━━━━━\n"+
-		"1. *Bidang*: %s\n"+
-		"2. *Pakar*: %s\n"+
-		"3. *No. WhatsApp*: %s\n"+
-		"4. *Cakupan*: %s\n"+
-		"━━━━━━━━━━━━━━━━━━\n\n"+
+	pakarText := fmt.Sprintf("*PROFIL PAKAR STATISTIK*\n"+
+		"_BPS Kabupaten Bangka Barat_\n"+
+		"────────────\n\n"+
+		"*1. Bidang*\n%s\n\n"+
+		"*2. Nama Pakar*\n%s\n\n"+
+		"*3. Nomor WhatsApp*\n%s\n\n"+
+		"*4. Cakupan Konsultasi*\n%s\n\n"+
 		"*Hubungi via WhatsApp*:\n%s\n\n"+
-		"Mohon menghubungi beliau pada hari dan jam kerja dinas (Senin - Jumat, 08.00 - 15.30 WIB). Terima kasih!",
+		"Mohon menghubungi beliau pada jam kerja dinas (Senin – Jumat, 08.00 – 15.30 WIB).",
 		bidangTitle, pakarName, displayPhone, desc, waLink)
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -512,12 +515,12 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 
 // HandleMenu7Berlangganan renders Channel WhatsApp BPS Bangka Barat menu (currently unavailable)
 func (r *BotRouter) HandleMenu7Berlangganan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "*CHANNEL WHATSAPP BPS BANGKA BARAT*\nBPS Kabupaten Bangka Barat\n\n" +
-		"━━━━━━━━━━━━━━━━━━\n" +
+	text := "*CHANNEL WHATSAPP BPS BANGKA BARAT*\n" +
+		"_BPS Kabupaten Bangka Barat_\n" +
+		"────────────\n\n" +
 		"Mohon maaf Sahabat Data, fitur *Channel WhatsApp BPS Kabupaten Bangka Barat* saat ini *belum tersedia* dan sedang dalam tahap pengembangan.\n\n" +
-		"Untuk sementara, Sahabat Data tetap dapat memantau rilis publikasi, Berita Resmi Statistik (BRS), dan infografis terbaru melalui menu utama Bot ISTIMEWA atau portal resmi https://bangkabaratkab.bps.go.id.\n" +
-		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"```Statistik Bermakna, Statistik Berdampak```"
+		"Untuk sementara, Sahabat Data dapat memantau rilis publikasi, Berita Resmi Statistik (BRS), dan infografis terbaru melalui menu utama Bot ISTIMEWA atau portal resmi:\n" +
+		"https://bangkabaratkab.bps.go.id"
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Channel WhatsApp BPS Bangka Barat",
@@ -533,20 +536,21 @@ func (r *BotRouter) HandleMenu7Berlangganan(ctx context.Context, s *UserSession,
 
 // HandleMenu8Pengaduan renders complaint & aspiration channels
 func (r *BotRouter) HandleMenu8Pengaduan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "*PENGADUAN & SARAN*\nBPS Kabupaten Bangka Barat\n\n" +
-		"BPS Kabupaten Bangka Barat berkomitmen memberikan pelayanan prima yang bersih, transparan, dan bebas dari pungutan liar (Zona Integritas WBK/WBBM). Sampaikan pengaduan dan saran Sahabat melalui saluran berikut:\n\n" +
-		"━━━━━━━━━━━━━━━━━━\n" +
-		"1. *Tatap Muka*:\n" +
-		"   Pelayanan Statistik Terpadu (PST) BPS Kabupaten Bangka Barat (Komplek Perkantoran Pemda Terpadu Bangka Barat)\n\n" +
-		"2. *Kotak Pengaduan*:\n" +
-		"   Kotak Pengaduan & Saran di Ruang Layanan PST BPS Kabupaten Bangka Barat\n\n" +
-		"3. *SP4N-LAPOR*:\n" +
-		"   https://www.lapor.go.id\n\n" +
-		"4. *Email*:\n" +
-		"   bps1903@bps.go.id\n\n" +
-		"5. *Link Google Form*:\n" +
-		"   https://forms.gle/ContohLinkPengaduanBPS1903\n" +
-		"━━━━━━━━━━━━━━━━━━\n\n" +
+	text := "*PENGADUAN & SARAN*\n" +
+		"_BPS Kabupaten Bangka Barat_\n" +
+		"────────────\n\n" +
+		"BPS Kabupaten Bangka Barat berkomitmen memberikan pelayanan prima yang bersih, transparan, dan bebas dari pungutan liar (Zona Integritas WBK/WBBM).\n\n" +
+		"Saluran resmi pengaduan dan saran:\n\n" +
+		"*1. Tatap Muka*\n" +
+		"Ruang PST BPS Kabupaten Bangka Barat, Komplek Perkantoran Pemda Terpadu Bangka Barat\n\n" +
+		"*2. Kotak Pengaduan*\n" +
+		"Kotak Pengaduan & Saran di Ruang Layanan PST BPS Kabupaten Bangka Barat\n\n" +
+		"*3. SP4N-LAPOR*\n" +
+		"https://www.lapor.go.id\n\n" +
+		"*4. Email*\n" +
+		"bps1903@bps.go.id\n\n" +
+		"*5. Link Google Form*\n" +
+		"https://forms.gle/ContohLinkPengaduanBPS1903\n\n" +
 		"Setiap aspirasi & laporan yang masuk akan ditindaklanjuti secara profesional dan rahasia."
 
 	msg := whatsapp.BuildQuickReplyButtons(
@@ -574,8 +578,8 @@ func (r *BotRouter) HandleMenu10FAQ(ctx context.Context, s *UserSession, p *what
 		{ID: "6", Title: "Bagaimana Data BPS Dihasilkan", Description: "Proses bisnis statistik (GSBPM) BPS"},
 	}
 
-	introText := "*BANTUAN & FAQ*\nBPS Kabupaten Bangka Barat\n\nBerikut beberapa pertanyaan yang sering diajukan seputar layanan BPS Bangka Barat:\n━━━━━━━━━━━━━━━━━━"
-	footerText := "━━━━━━━━━━━━━━━━━━\nBalas dengan *angka menu (1 - 6)*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
+	introText := "*BANTUAN & FAQ*\n_BPS Kabupaten Bangka Barat_\n────────────\n\nBerikut beberapa pertanyaan yang sering diajukan seputar layanan BPS Bangka Barat:"
+	footerText := "────────────\nBalas dengan *angka menu (1 - 6)*\n• Ketik *0* untuk Menu Utama\n_Statistik Bermakna, Statistik Berdampak_"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -594,9 +598,9 @@ func (r *BotRouter) HandleMenu10FAQ(ctx context.Context, s *UserSession, p *what
 func (r *BotRouter) buildARCScheduleFAQ(ctx context.Context) string {
 	var sb strings.Builder
 	sb.WriteString("*BANTUAN & FAQ #5*\n")
-	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
+	sb.WriteString("_BPS Kabupaten Bangka Barat_\n")
+	sb.WriteString("────────────\n\n")
 	sb.WriteString("*Jadwal Rilis Data (Advance Release Calendar / ARC)*\n\n")
-	sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
 
 	if r.scraper != nil {
 		arcItems, fresh, err := r.scraper.LatestARCSchedule(ctx, "id", 50)
@@ -611,7 +615,7 @@ func (r *BotRouter) buildARCScheduleFAQ(ctx context.Context) string {
 			}
 
 			if len(pubs) > 0 {
-				sb.WriteString("*A. Jadwal Rilis Publikasi Statistik*:\n")
+				sb.WriteString("*A. Jadwal Rilis Publikasi Statistik*\n\n")
 				maxPub := len(pubs)
 				if maxPub > 10 {
 					maxPub = 10
@@ -626,48 +630,37 @@ func (r *BotRouter) buildARCScheduleFAQ(ctx context.Context) string {
 					if statusStr == "" {
 						statusStr = "Terjadwal"
 					}
-					fmt.Fprintf(&sb, "%d. *%s*\n   • Jadwal: %s | Status: %s\n", i+1, it.Title, dateStr, statusStr)
+					fmt.Fprintf(&sb, "*%d. %s*\nJadwal: %s (%s)\n\n", i+1, it.Title, dateStr, statusStr)
 				}
-				sb.WriteString("\n")
 			}
 
 			if len(brsList) > 0 {
-				sb.WriteString("*B. Jadwal Rilis Berita Resmi Statistik (BRS)*:\n")
+				sb.WriteString("*B. Jadwal Rilis Berita Resmi Statistik (BRS)*\n\n")
 				maxBRS := len(brsList)
 				if maxBRS > 6 {
 					maxBRS = 6
 				}
 				for i := 0; i < maxBRS; i++ {
 					it := brsList[i]
-					dateStr := "-"
-					if it.ReleaseDate != nil {
-						dateStr = it.ReleaseDate.Format("02 Jan 2006")
-					}
-					statusStr := it.Abstract
+					statusStr := strings.ReplaceAll(it.Abstract, " | ", ", ")
 					if statusStr == "" {
 						statusStr = "Terjadwal"
 					}
-					fmt.Fprintf(&sb, "%d. *%s*\n   • Jadwal: %s | Status: %s\n", i+1, it.Title, dateStr, statusStr)
+					fmt.Fprintf(&sb, "*%d. %s*\nJadwal: %s\n\n", i+1, it.Title, statusStr)
 				}
-				sb.WriteString("\n")
 			}
 
 			if fresh.UpdatedAt.Year() > 2000 {
-				fmt.Fprintf(&sb, "Diperbarui: %s WIB\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
+				fmt.Fprintf(&sb, "_Diperbarui: %s WIB_\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
 			}
-			sb.WriteString("Portal ARC Resmi: https://bangkabaratkab.bps.go.id/id/arc\n")
-			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-			sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
+			sb.WriteString("Portal ARC Resmi:\nhttps://bangkabaratkab.bps.go.id/id/arc")
 			return sb.String()
 		}
 	}
 
-	sb.WriteString("*Penjelasan*:\n")
 	sb.WriteString("Jadwal rilis publikasi dan Berita Resmi Statistik (BRS) BPS Kabupaten Bangka Barat disusun dalam Advance Release Calendar (ARC).\n\n")
 	sb.WriteString("Lihat kalender jadwal rilis selengkapnya di:\n")
-	sb.WriteString("https://bangkabaratkab.bps.go.id/id/arc\n")
-	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
-	sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
+	sb.WriteString("https://bangkabaratkab.bps.go.id/id/arc")
 	return sb.String()
 }
 
@@ -719,13 +712,12 @@ func (r *BotRouter) HandleFAQDetail(ctx context.Context, s *UserSession, p *what
 	var faqText string
 	if idx >= 1 && idx <= len(faqs) {
 		item := faqs[idx-1]
-		faqText = fmt.Sprintf("*BANTUAN & FAQ #%d*\nBPS Kabupaten Bangka Barat\n\n"+
+		faqText = fmt.Sprintf("*BANTUAN & FAQ #%d*\n"+
+			"_BPS Kabupaten Bangka Barat_\n"+
+			"────────────\n\n"+
 			"*%s*\n\n"+
-			"━━━━━━━━━━━━━━━━━━\n"+
 			"*Penjelasan*:\n"+
-			"%s\n"+
-			"━━━━━━━━━━━━━━━━━━\n\n"+
-			"```Statistik Bermakna, Statistik Berdampak```", idx, item.Q, item.A)
+			"%s", idx, item.Q, item.A)
 	} else {
 		faqText = "Informasi untuk pertanyaan ini sedang diperbarui."
 	}
