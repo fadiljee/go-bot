@@ -79,9 +79,9 @@ func LoadConfig() *Config {
 
 	appHost := getEnv("APP_HOST", "127.0.0.1")
 	port := getEnv("APP_PORT", "3000")
-	apiSecret := getEnv("API_SECRET_KEY", "change_this_secret_in_production_32chars")
+	apiSecret := getEnv("API_SECRET_KEY", "")
 	adminTrigger := getEnv("ADMIN_TRIGGER_KEYWORD", "login admin - 1903")
-	adminPass := getEnv("ADMIN_PASSWORD", "ganti_dengan_password_admin_yang_kuat")
+	adminPass := getEnv("ADMIN_PASSWORD", "")
 	browserName := getEnv("WA_BROWSER_NAME", "BPS KABUPATEN BANGKA BARAT")
 	indicatorYear := getEnv("ACTIVE_INDICATOR_YEAR", "2025")
 
