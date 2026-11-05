@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"log"
 	"strings"
@@ -33,14 +34,16 @@ func getTimeGreeting() string {
 		now = now.In(loc)
 	}
 	hour := now.Hour()
-	if hour >= 4 && hour < 11 {
+	switch {
+	case hour >= 4 && hour < 11:
 		return "Selamat Pagi"
-	} else if hour >= 11 && hour < 15 {
+	case hour >= 11 && hour < 15:
 		return "Selamat Siang"
-	} else if hour >= 15 && hour < 18 {
+	case hour >= 15 && hour < 18:
 		return "Selamat Sore"
+	default:
+		return "Selamat Malam"
 	}
-	return "Selamat Malam"
 }
 
 func buildWelcomeMenuBody(greetingLine, introSubtitle string) string {
@@ -160,7 +163,7 @@ func (r *BotRouter) HandleReset(ctx context.Context, s *UserSession, p *whatsapp
 // HandleBack pops state from stack and re-executes previous menu
 func (r *BotRouter) HandleBack(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	prevState := s.PopState()
-	log.Printf("[NAVIGASI] Tombol Kembali (99) ditekan oleh %s -> Kembali ke state: %s", p.JID.User, prevState)
+	log.Printf("[NAVIGASI] Tombol Kembali (99) ditekan oleh %s -> Kembali ke state: %s", whatsapp.MaskJID(p.JID.User), prevState)
 
 	switch prevState {
 	case StateAdminLoggedIn, StateAdminManagePakar:
@@ -169,24 +172,24 @@ func (r *BotRouter) HandleBack(ctx context.Context, s *UserSession, p *whatsapp.
 	case StateRoot:
 		return r.HandleWelcomeShort(ctx, s, p)
 	case StateMenu1:
-		return r.HandleMenu1_LayananData(ctx, s, p)
-	case StateMenu1_Sosduk:
-		return r.HandleLayananSub_Sosduk(ctx, s, p)
-	case StateMenu1_Ekonomi:
-		return r.HandleLayananSub_Ekonomi(ctx, s, p)
-	case StateMenu1_Pertanian:
-		return r.HandleLayananSub_Pertanian(ctx, s, p)
+		return r.HandleMenu1LayananData(ctx, s, p)
+	case StateMenu1Sosduk:
+		return r.HandleLayananSubSosduk(ctx, s, p)
+	case StateMenu1Ekonomi:
+		return r.HandleLayananSubEkonomi(ctx, s, p)
+	case StateMenu1Pertanian:
+		return r.HandleLayananSubPertanian(ctx, s, p)
 	case StateMenu2:
-		return r.HandleMenu2_Indikator(ctx, s, p)
+		return r.HandleMenu2Indikator(ctx, s, p)
 	case StateMenu3:
-		return r.HandleMenu3_Produk(ctx, s, p)
-	case StateMenu4, StateMenu4_Sosduk, StateMenu4_Ekonomi:
-		return r.HandleMenu4_Video(ctx, s, p)
+		return r.HandleMenu3Produk(ctx, s, p)
+	case StateMenu4, StateMenu4Sosduk, StateMenu4Ekonomi:
+		return r.HandleMenu4Video(ctx, s, p)
 	case StateMenu5:
-		return r.HandleMenu5_Infografik(ctx, s, p)
-	case StateMenu6, StateMenu6_Booking:
-		return r.HandleMenu6_Konsultasi(ctx, s, p)
-	case StateMenu6_Pakar:
+		return r.HandleMenu5Infografik(ctx, s, p)
+	case StateMenu6, StateMenu6Booking:
+		return r.HandleMenu6Konsultasi(ctx, s, p)
+	case StateMenu6Pakar:
 		return r.HandleKonsultasiPakarList(ctx, s, p)
 	default:
 		return r.HandleWelcomeShort(ctx, s, p)
@@ -230,12 +233,12 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	}
 
 	enteredPass := strings.TrimSpace(p.Text)
-	if enteredPass == r.cfg.AdminPassword {
+	if r.cfg.AdminPassword != "" && subtle.ConstantTimeCompare([]byte(enteredPass), []byte(r.cfg.AdminPassword)) == 1 {
 		r.adminMu.Lock()
 		r.adminFailedAttempts[phone] = 0
 		r.adminMu.Unlock()
 
-		log.Printf("[ADMIN AUTH] Admin %s berhasil login", phone)
+		log.Printf("[ADMIN AUTH] Admin %s berhasil login", whatsapp.MaskJID(phone))
 		s.CurrentState = StateAdminLoggedIn
 		return r.SendAdminDashboard(ctx, s, p)
 	}
@@ -258,7 +261,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 		r.adminFailedAttempts[phone] = 0
 		r.adminMu.Unlock()
 
-		log.Printf("[ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", phone, lockoutDuration, attempts)
+		log.Printf("[ADMIN LOCKOUT] Nomor %s dikunci selama %v karena gagal password %d kali", whatsapp.MaskJID(phone), lockoutDuration, attempts)
 		s.ResetToRoot()
 		msg := fmt.Sprintf("*AKSES DITOLAK*\n"+
 			"BPS Kabupaten Bangka Barat\n"+
@@ -271,7 +274,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	}
 	r.adminMu.Unlock()
 
-	log.Printf("[ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", phone, attempts, maxRetry)
+	log.Printf("[ADMIN AUTH FAIL] Nomor %s salah memasukkan password (%d/%d)", whatsapp.MaskJID(phone), attempts, maxRetry)
 	msg := fmt.Sprintf("*PASSWORD ADMIN SALAH*\n"+
 		"BPS Kabupaten Bangka Barat\n"+
 		"━━━━━━━━━━━━━━━━━━\n\n"+
@@ -336,7 +339,7 @@ func (r *BotRouter) HandleUnavailable(ctx context.Context, s *UserSession, p *wh
 
 // HandleIdleTimeout sends SKD survey outro after 15 min idle
 func (r *BotRouter) HandleIdleTimeout(ctx context.Context, s *UserSession) {
-	log.Printf("[TIMEOUT] Sesi idle %d menit berakhir untuk %s. Mengirim Survei SKD dan penutup.", r.cfg.IdleTimeoutMinutes, s.JID.User)
+	log.Printf("[TIMEOUT] Sesi idle %d menit berakhir untuk %s. Mengirim Survei SKD dan penutup.", r.cfg.IdleTimeoutMinutes, whatsapp.MaskJID(s.JID.User))
 
 	outro := locale.T("outro")
 	if outro != "" {

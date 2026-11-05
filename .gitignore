@@ -49,13 +49,15 @@ VideoliterasiStatistik/
 *.avi
 *.mov
 
-# 6. Editor & IDE Settings
+# 6. Editor, IDE & Agent Settings
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 .antigravity*
+.agent/
+.goroot/
 
 # 7. OS Metadata
 .DS_Store

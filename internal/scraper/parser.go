@@ -2,7 +2,7 @@ package scraper
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"net/url"
@@ -21,7 +21,6 @@ type Parser interface {
 	ParseList(body []byte, pageURL *url.URL) ([]Item, Pagination, error)
 	ParseDetail(body []byte, pageURL *url.URL, it *Item) error
 }
-
 
 // GenericKindParser implements Parser driven by KindSelector from YAML (§8.2, §8.3).
 type GenericKindParser struct {
@@ -237,8 +236,8 @@ func extractSourceKey(rawURL string) string {
 		}
 	}
 
-	// Fallback (§8.5): sha1 of host + path
-	h := sha1.New()
+	// Fallback (§8.5): sha256 of host + path
+	h := sha256.New()
 	if u != nil {
 		h.Write([]byte(strings.ToLower(u.Host + u.Path)))
 	} else {

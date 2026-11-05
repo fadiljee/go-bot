@@ -22,7 +22,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error opening scraper store: %v", err)
 	}
-	defer store.Close()
 
 	var enabledKinds []scraper.Kind
 	if *kindFlag == "all" {
@@ -35,28 +34,30 @@ func main() {
 
 	selectorsCfg, err := scraper.LoadSelectors(cfg.ScraperSelectorsPath, enabledKinds)
 	if err != nil {
+		_ = store.Close()
 		log.Fatalf("Error loading selectors: %v", err)
 	}
+	defer func() { _ = store.Close() }()
 
 	scraperCfg := &scraper.Config{
-		Enabled:               true,
-		BaseURL:               cfg.ScraperBaseURL,
-		AllowedHosts:          cfg.ScraperAllowedHosts,
-		UserAgent:             cfg.ScraperUserAgent,
-		DBPath:                cfg.ScraperDBPath,
-		SelectorsPath:         cfg.ScraperSelectorsPath,
-		CronSpec:              cfg.ScraperCronSpec,
-		Timezone:              cfg.ScraperTimezone,
-		RunTimeout:            15 * time.Minute,
-		EnabledKinds:          enabledKinds,
-		MinDelayMs:            cfg.ScraperMinDelayMs,
-		JitterMs:              cfg.ScraperJitterMs,
-		HTTPTimeoutSeconds:    cfg.ScraperHTTPTimeoutSeconds,
-		MaxPageBytes:          cfg.ScraperMaxPageBytes,
-		MaxListPages:          cfg.ScraperMaxListPages,
-		MaxRequestsPerRun:     cfg.ScraperMaxRequestsPerRun,
-		RespectRobots:         cfg.ScraperRespectRobots,
-		AppEnv:                cfg.AppEnv,
+		Enabled:            true,
+		BaseURL:            cfg.ScraperBaseURL,
+		AllowedHosts:       cfg.ScraperAllowedHosts,
+		UserAgent:          cfg.ScraperUserAgent,
+		DBPath:             cfg.ScraperDBPath,
+		SelectorsPath:      cfg.ScraperSelectorsPath,
+		CronSpec:           cfg.ScraperCronSpec,
+		Timezone:           cfg.ScraperTimezone,
+		RunTimeout:         15 * time.Minute,
+		EnabledKinds:       enabledKinds,
+		MinDelayMs:         cfg.ScraperMinDelayMs,
+		JitterMs:           cfg.ScraperJitterMs,
+		HTTPTimeoutSeconds: cfg.ScraperHTTPTimeoutSeconds,
+		MaxPageBytes:       cfg.ScraperMaxPageBytes,
+		MaxListPages:       cfg.ScraperMaxListPages,
+		MaxRequestsPerRun:  cfg.ScraperMaxRequestsPerRun,
+		RespectRobots:      cfg.ScraperRespectRobots,
+		AppEnv:             cfg.AppEnv,
 	}
 
 	breaker := scraper.NewCircuitBreaker(store)

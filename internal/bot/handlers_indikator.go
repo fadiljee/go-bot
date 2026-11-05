@@ -10,8 +10,8 @@ import (
 	"bot-istimewa/internal/whatsapp"
 )
 
-// HandleMenu2_Indikator renders 7 strategic indicators
-func (r *BotRouter) HandleMenu2_Indikator(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu2Indikator renders 7 strategic indicators
+func (r *BotRouter) HandleMenu2Indikator(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu2)
 
 	items := []whatsapp.ListRow{
@@ -53,20 +53,20 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 		ind, fresh, err := r.scraper.GetStrategicIndicator(ctx, strconv.Itoa(indicatorIdx))
 		if err == nil && ind != nil {
 			var sb strings.Builder
-			sb.WriteString(fmt.Sprintf("*%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", ind.Title))
+			fmt.Fprintf(&sb, "*%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", ind.Title)
 
 			sb.WriteString("*Capaian Angka & Metrik Resmi*:\n")
 			for _, m := range ind.Metrics {
-				sb.WriteString(fmt.Sprintf("> • *%s*: %s", m.Label, m.Value))
+				fmt.Fprintf(&sb, "> • *%s*: %s", m.Label, m.Value)
 				if m.Note != "" {
-					sb.WriteString(fmt.Sprintf(" (%s)", m.Note))
+					fmt.Fprintf(&sb, " (%s)", m.Note)
 				}
 				sb.WriteString("\n")
 			}
 			sb.WriteString("\n")
 
 			if ind.Description != "" {
-				sb.WriteString(fmt.Sprintf("*Uraian & Analisis Statistik*:\n%s\n\n", ind.Description))
+				fmt.Fprintf(&sb, "*Uraian & Analisis Statistik*:\n%s\n\n", ind.Description)
 			}
 
 			if len(ind.Items) > 0 {
@@ -78,17 +78,17 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 				for i := 0; i < limit; i++ {
 					it := ind.Items[i]
 					cleanTitle := scraper.CleanHTML(it.Title)
-					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
+					fmt.Fprintf(&sb, "%d. %s\n", i+1, cleanTitle)
 				}
 				sb.WriteString("\n")
 			}
 
 			sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
-			sb.WriteString(fmt.Sprintf("*Sumber*: %s\n", ind.Source))
+			fmt.Fprintf(&sb, "*Sumber*: %s\n", ind.Source)
 			sb.WriteString("Untuk konsultasi lebih mendalam, manfaatkan Layanan Konsultasi di Menu *6*.\n\n")
 
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("Pembaruan: %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				fmt.Fprintf(&sb, "Pembaruan: %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
 			}
 			textData = sb.String()
 			imgURL = ind.ImageURL

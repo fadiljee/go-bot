@@ -37,11 +37,12 @@ func ParseIncomingMessage(evt *events.Message) *ParsedMessage {
 	msg := evt.Message
 
 	var phone string
-	if info.SenderAlt.Server == "s.whatsapp.net" && info.SenderAlt.User != "" {
+	switch {
+	case info.SenderAlt.Server == "s.whatsapp.net" && info.SenderAlt.User != "":
 		phone = info.SenderAlt.User
-	} else if info.Sender.Server == "s.whatsapp.net" && info.Sender.User != "" {
+	case info.Sender.Server == "s.whatsapp.net" && info.Sender.User != "":
 		phone = info.Sender.User
-	} else if info.Chat.Server == "s.whatsapp.net" && info.Chat.User != "" {
+	case info.Chat.Server == "s.whatsapp.net" && info.Chat.User != "":
 		phone = info.Chat.User
 	}
 
@@ -136,4 +137,21 @@ func ParseIncomingMessage(evt *events.Message) *ParsedMessage {
 	}
 
 	return parsed
+}
+
+// MaskJID masks a WhatsApp JID or phone number for privacy in logs (e.g. 628****1234).
+func MaskJID(raw string) string {
+	user := raw
+	suffix := ""
+	if at := strings.Index(raw, "@"); at != -1 {
+		user = raw[:at]
+		suffix = raw[at:]
+	}
+	if colon := strings.Index(user, ":"); colon != -1 {
+		user = user[:colon]
+	}
+	if len(user) <= 6 {
+		return "****" + suffix
+	}
+	return user[:3] + "****" + user[len(user)-4:] + suffix
 }

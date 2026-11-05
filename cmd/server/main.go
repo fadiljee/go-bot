@@ -70,7 +70,7 @@ func main() {
 			log.Printf("Gagal menginisialisasi SQLite scraper store: %v", err)
 		} else {
 			scraperStore = store
-			var enabledKinds []scraper.Kind
+			enabledKinds := make([]scraper.Kind, 0, len(cfg.ScraperEnabledKinds))
 			for _, k := range cfg.ScraperEnabledKinds {
 				enabledKinds = append(enabledKinds, scraper.Kind(k))
 			}
@@ -158,7 +158,7 @@ func main() {
 
 			// Message Deduplication: ignore duplicate message IDs (WhatsApp retries/multi-device echoes)
 			if evt.Info.ID != "" && msgDedup.IsDuplicate(evt.Info.ID) {
-				log.Printf("[DEDUP] Mengabaikan pesan duplikat ID: %s dari %s", evt.Info.ID, evt.Info.Sender.User)
+				log.Printf("[DEDUP] Mengabaikan pesan duplikat ID: %s dari %s", evt.Info.ID, whatsapp.MaskJID(evt.Info.Sender.User))
 				return
 			}
 
@@ -188,7 +188,7 @@ func main() {
 				if err == nil && len(groups) > 0 {
 					log.Printf("[DAFTAR GRUP WA BOT (%d grup)]:", len(groups))
 					for i, g := range groups {
-						log.Printf("   %d. Nama: '%s' -> JID: %s", i+1, g.GroupName.Name, g.JID.String())
+						log.Printf("   %d. Nama: '%s' -> JID: %s", i+1, g.Name, g.JID.String())
 					}
 					log.Println("[TIPS] Copy salah satu JID di atas dan masukkan ke .env (INTERNAL_PST_GROUP_JID=...)")
 				}

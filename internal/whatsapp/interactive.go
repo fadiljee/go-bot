@@ -43,9 +43,9 @@ type quickReplyParams struct {
 
 // BuildInteractiveList constructs a native WhatsApp List Message with Dropdown Drawer (single_select)
 func BuildInteractiveList(header, body, footer, buttonText string, sections []ListSection) *waE2E.Message {
-	var secList []singleSelectSection
+	secList := make([]singleSelectSection, 0, len(sections))
 	for _, sec := range sections {
-		var rows []ListRow
+		rows := make([]ListRow, 0, len(sec.Rows))
 		for _, r := range sec.Rows {
 			row := r
 			if row.RowID == "" {
@@ -109,7 +109,7 @@ func BuildInteractiveList(header, body, footer, buttonText string, sections []Li
 
 // BuildQuickReplyButtons constructs a native WhatsApp Quick Reply Buttons Message (vertical stacked full-width)
 func BuildQuickReplyButtons(header, body, footer string, buttons []QuickReplyButton) *waE2E.Message {
-	var nativeButtons []*waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton
+	nativeButtons := make([]*waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton, 0, len(buttons))
 	for _, b := range buttons {
 		p := quickReplyParams{
 			DisplayText: b.DisplayText,
@@ -197,10 +197,10 @@ func BuildBodyText(intro string, rows []ListRow, footer string) string {
 	}
 
 	for _, r := range rows {
-		sb.WriteString(fmt.Sprintf("%s  %s\n", NumberToEmoji(r.ID), strings.TrimSpace(r.Title)))
+		fmt.Fprintf(&sb, "%s  %s\n", NumberToEmoji(r.ID), strings.TrimSpace(r.Title))
 		desc := strings.TrimSpace(r.Description)
 		if desc != "" && !isRedundantDesc(r.Title, desc) {
-			sb.WriteString(fmt.Sprintf("   • %s\n", desc))
+			fmt.Fprintf(&sb, "   • %s\n", desc)
 		}
 	}
 

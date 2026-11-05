@@ -240,4 +240,3 @@ func TestStore_InfographicsBySubject(t *testing.T) {
 		t.Errorf("expected 1 lingkungan infographic (cat3_103), got %+v (err=%v)", lingkungan, err)
 	}
 }
-

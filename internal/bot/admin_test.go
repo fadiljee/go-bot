@@ -15,7 +15,7 @@ func TestAdminWhitelistAndLockout(t *testing.T) {
 	cfg := &config.Config{
 		AdminTriggerKeyword:   "login admin - 1903",
 		AdminPassword:         "test_admin_pass_123",
-		AdminWhitelistNumbers: []string{"6283843607098"},
+		AdminWhitelistNumbers: []string{"6281234567890"},
 		AdminMaxRetry:         3,
 		AdminLockoutMinutes:   60,
 	}
@@ -23,21 +23,21 @@ func TestAdminWhitelistAndLockout(t *testing.T) {
 	router := NewBotRouter(cfg, nil, nil)
 
 	// 1. Test whitelist check
-	if !router.isAdminWhitelisted("6283843607098") {
-		t.Error("expected 6283843607098 to be whitelisted")
+	if !router.isAdminWhitelisted("6281234567890") {
+		t.Error("expected 6281234567890 to be whitelisted")
 	}
-	if !router.isAdminWhitelisted("+6283843607098") {
-		t.Error("expected +6283843607098 to be whitelisted after normalization")
+	if !router.isAdminWhitelisted("+6281234567890") {
+		t.Error("expected +6281234567890 to be whitelisted after normalization")
 	}
-	if !router.isAdminWhitelisted("083843607098") {
-		t.Error("expected 083843607098 to be whitelisted after 08->62 conversion")
+	if !router.isAdminWhitelisted("081234567890") {
+		t.Error("expected 081234567890 to be whitelisted after 08->62 conversion")
 	}
 	if router.isAdminWhitelisted("6281111111111") {
 		t.Error("did not expect 6281111111111 to be whitelisted")
 	}
 
 	// 2. Test lockout logic
-	phone := "6283843607098"
+	phone := "6281234567890"
 	session := &UserSession{
 		JID:          types.NewJID(phone, types.DefaultUserServer),
 		CurrentState: StateAdminWaitPass,

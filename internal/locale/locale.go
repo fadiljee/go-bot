@@ -5,13 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 )
 
-var (
-	translations map[string]string
-	once         sync.Once
-)
+var translations map[string]string
 
 // Init loads the locale file (default: locales/id_ID.json)
 func Init(filePath string) error {

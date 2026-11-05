@@ -67,7 +67,7 @@ func (cb *CircuitBreaker) IsOpen() (bool, *time.Time) {
 }
 
 // Trip trips the breaker due to blocking/rate limiting.
-func (cb *CircuitBreaker) Trip(reason string) time.Duration {
+func (cb *CircuitBreaker) Trip(ctx context.Context, reason string) time.Duration {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
@@ -78,14 +78,14 @@ func (cb *CircuitBreaker) Trip(reason string) time.Duration {
 	cb.lastReason = reason
 
 	if cb.store != nil {
-		_ = cb.store.SaveBreakerState(context.Background(), cb.consecutiveFail, cb.openUntil, cb.lastReason)
+		_ = cb.store.SaveBreakerState(ctx, cb.consecutiveFail, cb.openUntil, cb.lastReason)
 	}
 
 	return cooldown
 }
 
 // Reset clears the breaker state on successful runs or manual admin intervention.
-func (cb *CircuitBreaker) Reset() {
+func (cb *CircuitBreaker) Reset(ctx context.Context) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
@@ -94,7 +94,7 @@ func (cb *CircuitBreaker) Reset() {
 	cb.lastReason = ""
 
 	if cb.store != nil {
-		_ = cb.store.SaveBreakerState(context.Background(), 0, nil, "")
+		_ = cb.store.SaveBreakerState(ctx, 0, nil, "")
 	}
 }
 
@@ -103,9 +103,6 @@ func (cb *CircuitBreaker) Status() (isOpen bool, consecutiveFail int, openUntil 
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 
-	open := false
-	if cb.openUntil != nil && time.Now().Before(*cb.openUntil) {
-		open = true
-	}
+	open := cb.openUntil != nil && time.Now().Before(*cb.openUntil)
 	return open, cb.consecutiveFail, cb.openUntil, cb.lastReason
 }

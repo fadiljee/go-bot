@@ -7,13 +7,14 @@ import (
 	"os"
 	"strings"
 
+	"go.mau.fi/whatsmeow/types"
+
 	"bot-istimewa/internal/scraper"
 	"bot-istimewa/internal/whatsapp"
-	"go.mau.fi/whatsmeow/types"
 )
 
-// HandleMenu3_Produk renders Produk Statistik menu
-func (r *BotRouter) HandleMenu3_Produk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu3Produk renders Produk Statistik menu
+func (r *BotRouter) HandleMenu3Produk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu3)
 
 	items := []whatsapp.ListRow{
@@ -57,20 +58,20 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 				for i, item := range scrapedItems {
 					cleanTitle := scraper.CleanHTML(item.Title)
 					cleanTitle = strings.TrimSuffix(cleanTitle, ".")
-					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, cleanTitle))
+					fmt.Fprintf(&sb, "%d. *%s*\n", i+1, cleanTitle)
 					if item.ReleaseDate != nil {
-						sb.WriteString(fmt.Sprintf("   • Tanggal Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
+						fmt.Fprintf(&sb, "   • Tanggal Rilis: %s\n", item.ReleaseDate.Format("02 Jan 2006"))
 					}
 					if item.Abstract != "" {
 						summary := scraper.SummarizeText(item.Abstract, 240)
 						if summary != "" {
-							sb.WriteString(fmt.Sprintf("   • Ringkasan: %s\n", summary))
+							fmt.Fprintf(&sb, "   • Ringkasan: %s\n", summary)
 						}
 					}
 					sb.WriteString("\n")
 				}
 				if fresh.UpdatedAt.Year() > 2000 {
-					sb.WriteString(fmt.Sprintf("Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+					fmt.Fprintf(&sb, "Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
 				}
 
 				// Kirim gambar rilis teratas jika tersedia
@@ -100,20 +101,20 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 				for i, item := range scrapedPubs {
 					cleanTitle := scraper.CleanHTML(item.Title)
 					cleanTitle = strings.TrimSuffix(cleanTitle, ".")
-					sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, cleanTitle))
+					fmt.Fprintf(&sb, "%d. *%s*\n", i+1, cleanTitle)
 					if item.ReleaseDate != nil {
-						sb.WriteString(fmt.Sprintf("   • Tanggal Terbit: %s\n", item.ReleaseDate.Format("02 Jan 2006")))
+						fmt.Fprintf(&sb, "   • Tanggal Terbit: %s\n", item.ReleaseDate.Format("02 Jan 2006"))
 					}
 					if item.Abstract != "" {
 						summary := scraper.SummarizeText(item.Abstract, 240)
 						if summary != "" {
-							sb.WriteString(fmt.Sprintf("   • Cakupan Isi: %s\n", summary))
+							fmt.Fprintf(&sb, "   • Cakupan Isi: %s\n", summary)
 						}
 					}
 					sb.WriteString("\n")
 				}
 				if fresh.UpdatedAt.Year() > 2000 {
-					sb.WriteString(fmt.Sprintf("Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+					fmt.Fprintf(&sb, "Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
 				}
 
 				// Kirim gambar cover publikasi teratas jika tersedia
@@ -165,8 +166,8 @@ func (r *BotRouter) HandleProdukDetail(ctx context.Context, s *UserSession, p *w
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleMenu4_Video renders Video Literasi menu
-func (r *BotRouter) HandleMenu4_Video(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu4Video renders Video Literasi menu
+func (r *BotRouter) HandleMenu4Video(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu4)
 
 	items := []whatsapp.ListRow{
@@ -201,14 +202,14 @@ func (r *BotRouter) HandleVideoDetail(ctx context.Context, s *UserSession, p *wh
 	switch idx {
 	case 1:
 		// Sub-menu for Sosial Kependudukan (5 videos)
-		return r.HandleVideoSub_Sosduk(ctx, s, p)
+		return r.HandleVideoSubSosduk(ctx, s, p)
 	case 2:
 		// Pertanian - Belum ada video lokal
 		text := "*VIDEO LITERASI: PERTANIAN*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\nVideo edukasi sektor pertanian sedang dalam tahap produksi oleh tim Diseminasi BPS Bangka Barat.\n\n*Kanal Resmi YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n━━━━━━━━━━━━━━━━━━"
 		return r.sendVideoPlaceholder(ctx, p.JID, "Statistik Pertanian", text)
 	case 3:
 		// Sub-menu for Ekonomi (5 videos)
-		return r.HandleVideoSub_Ekonomi(ctx, s, p)
+		return r.HandleVideoSubEkonomi(ctx, s, p)
 	case 4:
 		// Sensus - Belum ada video lokal
 		text := "*VIDEO LITERASI: SENSUS BPS*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\nVideo edukasi Sensus Penduduk dan Sensus Pertanian sedang dipersiapkan.\n\n*Kanal Resmi YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n━━━━━━━━━━━━━━━━━━"
@@ -236,13 +237,13 @@ func (r *BotRouter) HandleVideoDetail(ctx context.Context, s *UserSession, p *wh
 		text := "*VIDEO LITERASI: TIPS & TRIK*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\nVideo panduan tips & trik membaca data statistik segera hadir.\n\n*Kanal Resmi YouTube BPS Bangka Barat*:\nhttps://www.youtube.com/channel/UCGAZVY1p74KlQbs1L1KhGtg\n━━━━━━━━━━━━━━━━━━"
 		return r.sendVideoPlaceholder(ctx, p.JID, "Tips & Trik Statistik", text)
 	default:
-		return r.HandleMenu4_Video(ctx, s, p)
+		return r.HandleMenu4Video(ctx, s, p)
 	}
 }
 
-// HandleVideoSub_Sosduk renders sub-list for Sosial Kependudukan videos
-func (r *BotRouter) HandleVideoSub_Sosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu4_Sosduk)
+// HandleVideoSubSosduk renders sub-list for Sosial Kependudukan videos
+func (r *BotRouter) HandleVideoSubSosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu4Sosduk)
 
 	items := []whatsapp.ListRow{
 		{ID: "1", Title: "Garis Kemiskinan", Description: "Konsep penentuan batas garis kemiskinan"},
@@ -269,7 +270,7 @@ func (r *BotRouter) HandleVideoSub_Sosduk(ctx context.Context, s *UserSession, p
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-func (r *BotRouter) HandleVideoDetail_Sosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
+func (r *BotRouter) HandleVideoDetailSosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
 	var filePath, title, desc string
 	switch idx {
 	case 1:
@@ -293,15 +294,15 @@ func (r *BotRouter) HandleVideoDetail_Sosduk(ctx context.Context, s *UserSession
 		title = "Memahami Penghitungan Angka Kemiskinan"
 		desc = "Video edukasi metodologi dan survei Susenas dalam menghitung angka kemiskinan."
 	default:
-		return r.HandleVideoSub_Sosduk(ctx, s, p)
+		return r.HandleVideoSubSosduk(ctx, s, p)
 	}
 
 	return r.sendVideoResponse(ctx, p.JID, filePath, title, desc)
 }
 
-// HandleVideoSub_Ekonomi renders sub-list for Ekonomi videos
-func (r *BotRouter) HandleVideoSub_Ekonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu4_Ekonomi)
+// HandleVideoSubEkonomi renders sub-list for Ekonomi videos
+func (r *BotRouter) HandleVideoSubEkonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu4Ekonomi)
 
 	items := []whatsapp.ListRow{
 		{ID: "1", Title: "Membaca PDRB Lapangan Usaha", Description: "Struktur ekonomi & sektor unggulan daerah"},
@@ -328,7 +329,7 @@ func (r *BotRouter) HandleVideoSub_Ekonomi(ctx context.Context, s *UserSession, 
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-func (r *BotRouter) HandleVideoDetail_Ekonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
+func (r *BotRouter) HandleVideoDetailEkonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
 	var filePath, title, desc string
 	switch idx {
 	case 1:
@@ -352,7 +353,7 @@ func (r *BotRouter) HandleVideoDetail_Ekonomi(ctx context.Context, s *UserSessio
 		title = "Pertumbuhan Ekonomi"
 		desc = "Video edukasi resmi BPS tentang perhitungan dan makna pertumbuhan ekonomi."
 	default:
-		return r.HandleVideoSub_Ekonomi(ctx, s, p)
+		return r.HandleVideoSubEkonomi(ctx, s, p)
 	}
 
 	return r.sendVideoResponse(ctx, p.JID, filePath, title, desc)
@@ -401,8 +402,8 @@ func (r *BotRouter) sendVideoPlaceholder(ctx context.Context, jid types.JID, tit
 	return r.sender.SendInteractiveMessage(ctx, jid, msg)
 }
 
-// HandleMenu5_Infografik renders Infografik menu
-func (r *BotRouter) HandleMenu5_Infografik(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu5Infografik renders Infografik menu
+func (r *BotRouter) HandleMenu5Infografik(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu5)
 
 	items := []whatsapp.ListRow{
@@ -474,9 +475,9 @@ func (r *BotRouter) HandleInfografikDetail(ctx context.Context, s *UserSession, 
 	return r.sender.SendTextMessage(ctx, p.JID, fmt.Sprintf("Belum ada infografik terbaru untuk kategori %s.\nCek infografik lengkap di: https://bangkabaratkab.bps.go.id/id/infographic\n\nKetik *99* untuk kembali atau *0* ke menu utama.", categoryTitle))
 }
 
-// HandleMenu11_TentangBPS handles Tentang BPS (Resolves TD-01 & TD-06)
-func (r *BotRouter) HandleMenu11_TentangBPS(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu11_About)
+// HandleMenu11TentangBPS handles Tentang BPS (Resolves TD-01 & TD-06)
+func (r *BotRouter) HandleMenu11TentangBPS(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu11About)
 
 	videoPath := "storage/videos/menu11_TentangBPS.mp4"
 	if _, err := os.Stat(videoPath); err == nil {
@@ -522,4 +523,3 @@ func formatFreshnessFooter(f scraper.Freshness) string {
 	}
 	return msg
 }
-

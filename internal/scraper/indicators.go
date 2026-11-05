@@ -71,29 +71,24 @@ func (p *Provider) GetStrategicIndicator(ctx context.Context, idOrSlug string) (
 	}
 
 	var ind *StrategicIndicator
-	var err error
 
 	switch key {
 	case "1", "kependudukan", "penduduk":
-		ind, err = p.buildKependudukan(ctx)
+		ind = p.buildKependudukan(ctx)
 	case "2", "pertanian", "perkebunan":
-		ind, err = p.buildPertanian(ctx)
+		ind = p.buildPertanian(ctx)
 	case "3", "kemiskinan", "miskin":
-		ind, err = p.buildKemiskinan(ctx)
+		ind = p.buildKemiskinan(ctx)
 	case "4", "ketenagakerjaan", "tenagakerja", "pekerjaan":
-		ind, err = p.buildKetenagakerjaan(ctx)
+		ind = p.buildKetenagakerjaan(ctx)
 	case "5", "ekonomi", "pdrb", "pertumbuhan-ekonomi":
-		ind, err = p.buildEkonomi(ctx)
+		ind = p.buildEkonomi(ctx)
 	case "6", "inflasi", "harga", "ihk":
-		ind, err = p.buildInflasi(ctx)
+		ind = p.buildInflasi(ctx)
 	case "7", "ipm", "kesejahteraan", "pembangunan-manusia":
-		ind, err = p.buildIPM(ctx)
+		ind = p.buildIPM(ctx)
 	default:
 		return nil, Freshness{}, fmt.Errorf("indikator strategis tidak ditemukan untuk id/slug: %q (tersedia 1-7)", idOrSlug)
-	}
-
-	if err != nil {
-		return nil, Freshness{}, err
 	}
 
 	freshness := p.calculateFreshness(ctx, ind.Items)
@@ -109,7 +104,7 @@ func (p *Provider) GetStrategicIndicator(ctx context.Context, idOrSlug string) (
 	return ind, freshness, nil
 }
 
-func (p *Provider) buildKependudukan(ctx context.Context) (*StrategicIndicator, error) {
+func (p *Provider) buildKependudukan(ctx context.Context) *StrategicIndicator {
 	ind := &StrategicIndicator{
 		ID:          1,
 		Slug:        "kependudukan",
@@ -129,17 +124,18 @@ func (p *Provider) buildKependudukan(ctx context.Context) (*StrategicIndicator, 
 
 	items, _, _ := p.SearchItems(ctx, "Indikator Strategis", "id", 2)
 	moreItems, _, _ := p.SearchItems(ctx, "Dalam Angka", "id", 1)
-	ind.Items = append(items, moreItems...)
+	ind.Items = append(ind.Items, items...)
+	ind.Items = append(ind.Items, moreItems...)
 	if len(ind.Items) > 0 && ind.Items[0].ReleaseDate != nil {
 		ind.UpdatedAt = ind.Items[0].ReleaseDate.Format("2006-01-02")
 		if ind.Items[0].FileURL != "" {
 			ind.SourceURL = ind.Items[0].FileURL
 		}
 	}
-	return ind, nil
+	return ind
 }
 
-func (p *Provider) buildPertanian(ctx context.Context) (*StrategicIndicator, error) {
+func (p *Provider) buildPertanian(ctx context.Context) *StrategicIndicator {
 	ind := &StrategicIndicator{
 		ID:          2,
 		Slug:        "pertanian",
@@ -159,11 +155,12 @@ func (p *Provider) buildPertanian(ctx context.Context) (*StrategicIndicator, err
 
 	newsItems, _, _ := p.SearchItems(ctx, "SITASI", "id", 1)
 	pubItems, _, _ := p.SearchItems(ctx, "Kabupaten Bangka Barat Dalam Angka", "id", 1)
-	ind.Items = append(newsItems, pubItems...)
-	return ind, nil
+	ind.Items = append(ind.Items, newsItems...)
+	ind.Items = append(ind.Items, pubItems...)
+	return ind
 }
 
-func (p *Provider) buildKemiskinan(ctx context.Context) (*StrategicIndicator, error) {
+func (p *Provider) buildKemiskinan(ctx context.Context) *StrategicIndicator {
 	ind := &StrategicIndicator{
 		ID:          3,
 		Slug:        "kemiskinan",
@@ -189,10 +186,10 @@ func (p *Provider) buildKemiskinan(ctx context.Context) (*StrategicIndicator, er
 			ind.SourceURL = ind.Items[0].FileURL
 		}
 	}
-	return ind, nil
+	return ind
 }
 
-func (p *Provider) buildKetenagakerjaan(ctx context.Context) (*StrategicIndicator, error) {
+func (p *Provider) buildKetenagakerjaan(ctx context.Context) *StrategicIndicator {
 	ind := &StrategicIndicator{
 		ID:          4,
 		Slug:        "ketenagakerjaan",
@@ -211,10 +208,10 @@ func (p *Provider) buildKetenagakerjaan(ctx context.Context) (*StrategicIndicato
 
 	items, _, _ := p.SearchItems(ctx, "Ketenagakerjaan", "id", 2)
 	ind.Items = items
-	return ind, nil
+	return ind
 }
 
-func (p *Provider) buildEkonomi(ctx context.Context) (*StrategicIndicator, error) {
+func (p *Provider) buildEkonomi(ctx context.Context) *StrategicIndicator {
 	ind := &StrategicIndicator{
 		ID:          5,
 		Slug:        "ekonomi",
@@ -234,11 +231,12 @@ func (p *Provider) buildEkonomi(ctx context.Context) (*StrategicIndicator, error
 
 	items, _, _ := p.SearchItems(ctx, "PDRB", "id", 2)
 	news, _, _ := p.SearchItems(ctx, "Tumbuh 3,35", "id", 1)
-	ind.Items = append(news, items...)
-	return ind, nil
+	ind.Items = append(ind.Items, news...)
+	ind.Items = append(ind.Items, items...)
+	return ind
 }
 
-func (p *Provider) buildInflasi(ctx context.Context) (*StrategicIndicator, error) {
+func (p *Provider) buildInflasi(ctx context.Context) *StrategicIndicator {
 	ind := &StrategicIndicator{
 		ID:          6,
 		Slug:        "inflasi",
@@ -288,10 +286,10 @@ func (p *Provider) buildInflasi(ctx context.Context) (*StrategicIndicator, error
 		}
 	}
 
-	return ind, nil
+	return ind
 }
 
-func (p *Provider) buildIPM(ctx context.Context) (*StrategicIndicator, error) {
+func (p *Provider) buildIPM(ctx context.Context) *StrategicIndicator {
 	ind := &StrategicIndicator{
 		ID:          7,
 		Slug:        "ipm",
@@ -318,5 +316,5 @@ func (p *Provider) buildIPM(ctx context.Context) (*StrategicIndicator, error) {
 			ind.SourceURL = ind.Items[0].FileURL
 		}
 	}
-	return ind, nil
+	return ind
 }

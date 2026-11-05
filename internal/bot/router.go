@@ -16,35 +16,34 @@ import (
 )
 
 const (
-	StateRoot            = "menuAwal"
-	StateMenu1           = "menu1"
-	StateMenu1_Sosduk    = "menu11"
-	StateMenu1_Ekonomi   = "menu12"
-	StateMenu1_Pertanian = "menu13"
-	StateMenu1_Sektoral  = "menu14"
-	StateMenu1_Search    = "menu15"
-	StateMenu2           = "menu2"
-	StateMenu3           = "menu3"
-	StateMenu4           = "menu4"
-	StateMenu4_Sosduk    = "menu4_sosduk"
-	StateMenu4_Ekonomi   = "menu4_ekonomi"
-	StateMenu5           = "menu5"
-	StateMenu6           = "menu6"
-	StateMenu6_Booking   = "menu6_booking"
-	StateMenu6_Pakar     = "menu62"
+	StateRoot             = "menuAwal"
+	StateMenu1            = "menu1"
+	StateMenu1Sosduk      = "menu11"
+	StateMenu1Ekonomi     = "menu12"
+	StateMenu1Pertanian   = "menu13"
+	StateMenu1Sektoral    = "menu14"
+	StateMenu1Search      = "menu15"
+	StateMenu2            = "menu2"
+	StateMenu3            = "menu3"
+	StateMenu4            = "menu4"
+	StateMenu4Sosduk      = "menu4_sosduk"
+	StateMenu4Ekonomi     = "menu4_ekonomi"
+	StateMenu5            = "menu5"
+	StateMenu6            = "menu6"
+	StateMenu6Booking     = "menu6_booking"
+	StateMenu6Pakar       = "menu62"
 	StateMenu7            = "menu7"
 	StateMenu8            = "menu8"
 	StateMenu10           = "menu10"
-	StateMenu11_About     = "menu11_about" // Resolves TD-01 (Isolated from menu11 Sosduk)
-	StateAdminWaitPass   = "menuAdmin"
-	StateAdminLoggedIn   = "menuAdminActive"
+	StateMenu11About      = "menu11_about" // Resolves TD-01 (Isolated from menu11 Sosduk)
+	StateAdminWaitPass    = "menuAdmin"
+	StateAdminLoggedIn    = "menuAdminActive"
 	StateAdminManagePakar = "menuAdminPakar"
 )
 
 type BotRouter struct {
 	cfg                 *config.Config
 	sender              *whatsapp.Sender
-	gsheet              *gsheet.Client
 	scraper             scraper.DataProvider
 	scraperRunner       *scraper.Runner
 	sessions            *SessionManager
@@ -63,11 +62,10 @@ func (r *BotRouter) SetScraperRunner(runner *scraper.Runner) {
 	r.scraperRunner = runner
 }
 
-func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, gsheetClient *gsheet.Client) *BotRouter {
+func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, _ *gsheet.Client) *BotRouter {
 	r := &BotRouter{
 		cfg:                 cfg,
 		sender:              sender,
-		gsheet:              gsheetClient,
 		sessions:            NewSessionManager(cfg.IdleTimeoutMinutes),
 		handlerMap:          make(map[string]func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error),
 		rateLimiter:         NewRateLimiter(cfg.UserRateLimitPer10s, cfg.UserCooldownSeconds),
@@ -100,7 +98,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 			}
 		}
 		if !allowed {
-			log.Printf("[FILTER] Mengabaikan pesan dari %s (tidak terdaftar di ALLOWED_NUMBERS)", p.JID.String())
+			log.Printf("[FILTER] Mengabaikan pesan dari %s (tidak terdaftar di ALLOWED_NUMBERS)", whatsapp.MaskJID(p.JID.String()))
 			return
 		}
 	}
@@ -111,7 +109,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		userKey = p.PhoneNumber
 	}
 	if !r.rateLimiter.Allow(userKey) {
-		log.Printf("[RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", userKey)
+		log.Printf("[RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", whatsapp.MaskJID(userKey))
 		return
 	}
 
@@ -119,7 +117,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	input := strings.TrimSpace(p.Text)
 	if input == "" {
 		// Abaikan pesan tanpa konten teks / respon interaktif (misal protokol, keepalive, reaksi)
-		log.Printf("[ROUTER] Mengabaikan pesan tanpa teks/pilihan dari %s", p.JID.String())
+		log.Printf("[ROUTER] Mengabaikan pesan tanpa teks/pilihan dari %s", whatsapp.MaskJID(p.JID.String()))
 		return
 	}
 
@@ -141,11 +139,12 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	if p.PhoneNumber != "" {
 		sessionKey = p.PhoneNumber
 	}
+	idleCtx := context.WithoutCancel(ctx)
 	session := r.sessions.GetOrCreate(p.JID, func(s *UserSession) {
-		r.HandleIdleTimeout(context.Background(), s)
+		r.HandleIdleTimeout(idleCtx, s)
 	}, sessionKey)
 
-	log.Printf("[ROUTER] Dari: %s | State: %s | Input: '%s'", p.JID.User, session.CurrentState, input)
+	log.Printf("[ROUTER] Dari: %s | State: %s | Input: '%s'", whatsapp.MaskJID(p.JID.User), session.CurrentState, input)
 
 	// =========================================================
 	// 1. GLOBAL KEYWORDS (Overrules any state)
@@ -181,8 +180,8 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	}
 
 	// Opt-Out / Berhenti Berlangganan (Anti-Spam Report Protection)
-	if inputLower == "berhenti_langganan" || inputLower == "unsub" || inputLower == "unsubscribe" || inputLower == "stop" {
-		log.Printf("[UNSUBSCRIBE] Permintaan berhenti berlangganan dari %s", p.JID.User)
+	if inputLower == "berhenti_langganan" || inputLower == "unsub" || inputLower == "unsubscribe" || inputLower == "stop" || inputLower == "!stop" || inputLower == "!unsubscribe" {
+		log.Printf("[UNSUBSCRIBE] Permintaan berhenti berlangganan dari %s", whatsapp.MaskJID(p.JID.User))
 		session.ResetToRoot()
 		msg := "*Berhenti Berlangganan Berhasil*\n\nNomor Anda telah dicatat untuk berhenti menerima siaran rilis data berkala BPS Kabupaten Bangka Barat.\n\nTerima kasih telah menggunakan layanan kami \nKetik *0* untuk kembali ke menu utama."
 		_ = r.sender.SendTextMessage(ctx, p.JID, msg)
@@ -200,14 +199,14 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	if isAdminTrigger {
 		// Whitelist check: only registered numbers in .env can trigger admin mode (if whitelist configured)
 		if !r.isAdminWhitelisted(p.JID.User) {
-			log.Printf("[ADMIN AUDIT] Percobaan login admin dari nomor tidak dikenal: %s (silent reject)", p.JID.User)
+			log.Printf("[ADMIN AUDIT] Percobaan login admin dari nomor tidak dikenal: %s (silent reject)", whatsapp.MaskJID(p.JID.User))
 			_ = r.HandleUnavailable(ctx, session, p)
 			return
 		}
 
 		// Lockout check: verify if temporarily locked out due to previous failed attempts
 		if locked, until := r.isAdminLockedOut(p.JID.User); locked {
-			log.Printf("[ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", p.JID.User, until.Format("15:04:05"))
+			log.Printf("[ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", whatsapp.MaskJID(p.JID.User), until.Format("15:04:05"))
 			msg := fmt.Sprintf("Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
 			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 			return
@@ -254,9 +253,9 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				contacts, err := r.scraper.GetExpertContacts(ctx)
 				if err == nil && len(contacts) > 0 {
 					for _, c := range contacts {
-						sb.WriteString(fmt.Sprintf("%d. *%s*\n", c.BidangID, c.BidangTitle))
-						sb.WriteString(fmt.Sprintf("   • Pakar: %s\n", c.PakarName))
-						sb.WriteString(fmt.Sprintf("   • No. WhatsApp: +%s\n\n", c.Phone))
+						fmt.Fprintf(&sb, "%d. *%s*\n", c.BidangID, c.BidangTitle)
+						fmt.Fprintf(&sb, "   • Pakar: %s\n", c.PakarName)
+						fmt.Fprintf(&sb, "   • No. WhatsApp: +%s\n\n", c.Phone)
 					}
 				}
 			}
@@ -286,11 +285,11 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				counts, err := st.GetCountsByKind(ctx)
 				if err == nil && len(counts) > 0 {
 					sb.WriteString("\n*Volume Data Tersimpan:*\n")
-					sb.WriteString(fmt.Sprintf("• Tabel Statis: %d item\n", counts[string(scraper.KindStaticTable)]))
-					sb.WriteString(fmt.Sprintf("• Publikasi BPS: %d item\n", counts[string(scraper.KindPublication)]))
-					sb.WriteString(fmt.Sprintf("• Berita Resmi (BRS): %d item\n", counts[string(scraper.KindPressRelease)]))
-					sb.WriteString(fmt.Sprintf("• Infografis: %d item\n", counts[string(scraper.KindInfographic)]))
-					sb.WriteString(fmt.Sprintf("• Berita Kegiatan: %d item\n", counts[string(scraper.KindNews)]))
+					fmt.Fprintf(&sb, "• Tabel Statis: %d item\n", counts[string(scraper.KindStaticTable)])
+					fmt.Fprintf(&sb, "• Publikasi BPS: %d item\n", counts[string(scraper.KindPublication)])
+					fmt.Fprintf(&sb, "• Berita Resmi (BRS): %d item\n", counts[string(scraper.KindPressRelease)])
+					fmt.Fprintf(&sb, "• Infografis: %d item\n", counts[string(scraper.KindInfographic)])
+					fmt.Fprintf(&sb, "• Berita Kegiatan: %d item\n", counts[string(scraper.KindNews)])
 				}
 
 				lastRun, err := st.GetLastRun(ctx)
@@ -300,12 +299,12 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 						dur = lastRun.FinishedAt.Sub(lastRun.StartedAt).Round(time.Second).String()
 					}
 					sb.WriteString("\n*Riwayat Scraping Terakhir:*\n")
-					sb.WriteString(fmt.Sprintf("• Status: *%s*\n", strings.ToUpper(lastRun.Status)))
-					sb.WriteString(fmt.Sprintf("• Waktu: %s WIB\n", lastRun.StartedAt.Format("02 Jan 2006, 15:04")))
-					sb.WriteString(fmt.Sprintf("• Pemicu: %s | Durasi: %s\n", lastRun.Trigger, dur))
-					sb.WriteString(fmt.Sprintf("• Hasil: %d Ditemukan | %d Baru | %d Diperbarui\n", lastRun.ItemsFound, lastRun.ItemsNew, lastRun.ItemsUpdated))
+					fmt.Fprintf(&sb, "• Status: *%s*\n", strings.ToUpper(lastRun.Status))
+					fmt.Fprintf(&sb, "• Waktu: %s WIB\n", lastRun.StartedAt.Format("02 Jan 2006, 15:04"))
+					fmt.Fprintf(&sb, "• Pemicu: %s | Durasi: %s\n", lastRun.Trigger, dur)
+					fmt.Fprintf(&sb, "• Hasil: %d Ditemukan | %d Baru | %d Diperbarui\n", lastRun.ItemsFound, lastRun.ItemsNew, lastRun.ItemsUpdated)
 					if lastRun.ErrorMessage != "" {
-						sb.WriteString(fmt.Sprintf("• Pesan Error: %s\n", lastRun.ErrorMessage))
+						fmt.Fprintf(&sb, "• Pesan Error: %s\n", lastRun.ErrorMessage)
 					}
 				}
 			}
@@ -342,8 +341,8 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 
 			adminJID := p.JID
+			bgCtx := context.WithoutCancel(ctx)
 			go func() {
-				bgCtx := context.Background()
 				res, err := r.scraperRunner.RunAll(bgCtx, scraper.TriggerManual)
 				if err != nil {
 					errMsg := fmt.Sprintf("*SCRAPING MANUAL GAGAL*\n"+
@@ -352,7 +351,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 						"Proses scraping mengalami kendala:\n%v\n\n"+
 						"━━━━━━━━━━━━━━━━━━\n"+
 						"• Ketik *99* untuk Dashboard Admin", err)
-					_ = r.sender.SendTextMessage(context.Background(), adminJID, errMsg)
+					_ = r.sender.SendTextMessage(bgCtx, adminJID, errMsg)
 					return
 				}
 				durStr := "-"
@@ -382,7 +381,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 					res.ItemsNew,
 					res.ItemsUpdated,
 				)
-				_ = r.sender.SendTextMessage(context.Background(), adminJID, doneMsg)
+				_ = r.sender.SendTextMessage(bgCtx, adminJID, doneMsg)
 			}()
 			return
 		}
@@ -432,7 +431,8 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 						}
 					}
 
-					if updateErr := r.scraper.UpdateExpertContact(ctx, bidangID, name, phone); updateErr == nil {
+					updateErr := r.scraper.UpdateExpertContact(ctx, bidangID, name, phone)
+					if updateErr == nil {
 						// Ambil detail bidang untuk konfirmasi
 						bidangTitle := fmt.Sprintf("Bidang %d", bidangID)
 						if updated, err := r.scraper.GetExpertContact(ctx, bidangID); err == nil && updated != nil {
@@ -453,9 +453,8 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 							bidangTitle, name, phone)
 						_ = r.sender.SendTextMessage(ctx, p.JID, reply)
 						return
-					} else {
-						log.Printf("[ADMIN PAKAR] Gagal update pakar: %v", updateErr)
 					}
+					log.Printf("[ADMIN PAKAR] Gagal update pakar: %v", updateErr)
 				}
 			}
 		}
@@ -498,16 +497,16 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
-	// Dynamic handler for Keyword Search (StateMenu1_Search)
-	if session.CurrentState == StateMenu1_Search {
+	// Dynamic handler for Keyword Search (StateMenu1Search)
+	if session.CurrentState == StateMenu1Search {
 		if err := r.HandleSearchKeyword(ctx, session, p); err != nil {
 			log.Printf("[ERROR] Gagal memproses pencarian keyword: %v", err)
 		}
 		return
 	}
 
-	// Dynamic handler for Consultation Booking (StateMenu6_Booking)
-	if session.CurrentState == StateMenu6_Booking {
+	// Dynamic handler for Consultation Booking (StateMenu6Booking)
+	if session.CurrentState == StateMenu6Booking {
 		if err := r.HandleProcessBooking(ctx, session, p); err != nil {
 			log.Printf("[ERROR] Gagal memproses booking konsultasi: %v", err)
 		}
@@ -523,29 +522,29 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 
 func (r *BotRouter) registerRoutes() {
 	// Level 1: Root Menu (1 - 10)
-	r.handlerMap[StateRoot+":1"] = r.HandleMenu1_LayananData
-	r.handlerMap[StateRoot+":2"] = r.HandleMenu2_Indikator
-	r.handlerMap[StateRoot+":3"] = r.HandleMenu3_Produk
-	r.handlerMap[StateRoot+":4"] = r.HandleMenu4_Video
-	r.handlerMap[StateRoot+":5"] = r.HandleMenu5_Infografik
-	r.handlerMap[StateRoot+":6"] = r.HandleMenu6_Konsultasi
-	r.handlerMap[StateRoot+":7"] = r.HandleMenu7_Berlangganan
-	r.handlerMap[StateRoot+":8"] = r.HandleMenu8_Pengaduan
-	r.handlerMap[StateRoot+":9"] = r.HandleMenu10_FAQ
-	r.handlerMap[StateRoot+":10"] = r.HandleMenu11_TentangBPS
-	r.handlerMap[StateRoot+":11"] = r.HandleMenu11_TentangBPS // kompatibilitas bila user mengetik 11
+	r.handlerMap[StateRoot+":1"] = r.HandleMenu1LayananData
+	r.handlerMap[StateRoot+":2"] = r.HandleMenu2Indikator
+	r.handlerMap[StateRoot+":3"] = r.HandleMenu3Produk
+	r.handlerMap[StateRoot+":4"] = r.HandleMenu4Video
+	r.handlerMap[StateRoot+":5"] = r.HandleMenu5Infografik
+	r.handlerMap[StateRoot+":6"] = r.HandleMenu6Konsultasi
+	r.handlerMap[StateRoot+":7"] = r.HandleMenu7Berlangganan
+	r.handlerMap[StateRoot+":8"] = r.HandleMenu8Pengaduan
+	r.handlerMap[StateRoot+":9"] = r.HandleMenu10FAQ
+	r.handlerMap[StateRoot+":10"] = r.HandleMenu11TentangBPS
+	r.handlerMap[StateRoot+":11"] = r.HandleMenu11TentangBPS // kompatibilitas bila user mengetik 11
 
 	// Level 2: Layanan Data Submenus (1 - 5)
-	r.handlerMap[StateMenu1+":1"] = r.HandleLayananSub_Sosduk
-	r.handlerMap[StateMenu1+":2"] = r.HandleLayananSub_Ekonomi
-	r.handlerMap[StateMenu1+":3"] = r.HandleLayananSub_Pertanian
-	r.handlerMap[StateMenu1+":4"] = r.HandleLayananSub_Sektoral
-	r.handlerMap[StateMenu1+":5"] = r.HandleLayananSub_SearchPrompt
+	r.handlerMap[StateMenu1+":1"] = r.HandleLayananSubSosduk
+	r.handlerMap[StateMenu1+":2"] = r.HandleLayananSubEkonomi
+	r.handlerMap[StateMenu1+":3"] = r.HandleLayananSubPertanian
+	r.handlerMap[StateMenu1+":4"] = r.HandleLayananSubSektoral
+	r.handlerMap[StateMenu1+":5"] = r.HandleLayananSubSearchPrompt
 
 	// Level 3: Sosduk Topics (1 - 12)
 	for i := 1; i <= 12; i++ {
 		idx := i
-		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu1_Sosduk, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu1Sosduk, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 			return r.HandleSosdukTopic(ctx, s, p, idx)
 		}
 	}
@@ -553,7 +552,7 @@ func (r *BotRouter) registerRoutes() {
 	// Level 3: Ekonomi Topics (1 - 10)
 	for i := 1; i <= 10; i++ {
 		idx := i
-		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu1_Ekonomi, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu1Ekonomi, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 			return r.HandleEkonomiTopic(ctx, s, p, idx)
 		}
 	}
@@ -561,7 +560,7 @@ func (r *BotRouter) registerRoutes() {
 	// Level 3: Pertanian Topics (1 - 2)
 	for i := 1; i <= 2; i++ {
 		idx := i
-		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu1_Pertanian, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu1Pertanian, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 			return r.HandlePertanianTopic(ctx, s, p, idx)
 		}
 	}
@@ -593,16 +592,16 @@ func (r *BotRouter) registerRoutes() {
 	// Level 3: Video Sub-Menu Sosduk (1 - 5)
 	for i := 1; i <= 5; i++ {
 		idx := i
-		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu4_Sosduk, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-			return r.HandleVideoDetail_Sosduk(ctx, s, p, idx)
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu4Sosduk, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+			return r.HandleVideoDetailSosduk(ctx, s, p, idx)
 		}
 	}
 
 	// Level 3: Video Sub-Menu Ekonomi (1 - 5)
 	for i := 1; i <= 5; i++ {
 		idx := i
-		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu4_Ekonomi, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-			return r.HandleVideoDetail_Ekonomi(ctx, s, p, idx)
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu4Ekonomi, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+			return r.HandleVideoDetailEkonomi(ctx, s, p, idx)
 		}
 	}
 
@@ -615,14 +614,14 @@ func (r *BotRouter) registerRoutes() {
 	}
 
 	// Level 2: Konsultasi (1: Booking Jadwal, 2: Pakar, 3: Info PST & Jam Layanan)
-	r.handlerMap[StateMenu6+":1"] = r.HandleMenu6_BookingPrompt
+	r.handlerMap[StateMenu6+":1"] = r.HandleMenu6BookingPrompt
 	r.handlerMap[StateMenu6+":2"] = r.HandleKonsultasiPakarList
 	r.handlerMap[StateMenu6+":3"] = r.HandleKonsultasiUmum
 
 	// Level 3: Pakar Bidang (1 - 8)
 	for i := 1; i <= 8; i++ {
 		idx := i
-		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu6_Pakar, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+		r.handlerMap[fmt.Sprintf("%s:%d", StateMenu6Pakar, idx)] = func(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 			return r.HandlePakarDetail(ctx, s, p, idx)
 		}
 	}
@@ -671,4 +670,3 @@ func (r *BotRouter) isAdminLockedOut(phone string) (bool, time.Time) {
 	delete(r.adminLockedUntil, phone)
 	return false, time.Time{}
 }
-

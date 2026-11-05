@@ -28,7 +28,7 @@ type ClientManager struct {
 }
 
 func NewClientManager(cfg *config.Config) (*ClientManager, error) {
-	_ = os.MkdirAll("storage", 0755)
+	_ = os.MkdirAll("storage", 0750)
 
 	ctx := context.Background()
 	dbLog := waLog.Stdout("Database", "ERROR", true)

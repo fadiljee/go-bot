@@ -54,10 +54,6 @@ func NewSender(client *whatsmeow.Client, queue *MessageQueue, cfg ...*config.Con
 	}
 }
 
-func (s *Sender) SetConfig(cfg *config.Config) {
-	s.cfg = cfg
-}
-
 func (s *Sender) Queue() *MessageQueue {
 	return s.queue
 }
@@ -101,7 +97,7 @@ func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string
 	if s == nil {
 		return nil
 	}
-	log.Printf("[SENDER] Mengirim pesan teks ke %s...", jid.String())
+	log.Printf("[SENDER] Mengirim pesan teks ke %s...", MaskJID(jid.String()))
 	msg := &waE2E.Message{
 		Conversation: proto.String(text),
 	}
@@ -114,10 +110,10 @@ func (s *Sender) SendTextMessage(ctx context.Context, jid types.JID, text string
 	}
 
 	if err != nil {
-		log.Printf("[SENDER ERROR] Gagal mengirim pesan teks ke %s: %v", jid.String(), err)
+		log.Printf("[SENDER ERROR] Gagal mengirim pesan teks ke %s: %v", MaskJID(jid.String()), err)
 		return err
 	}
-	log.Printf("[SENDER OK] Pesan teks berhasil terkirim ke %s", jid.String())
+	log.Printf("[SENDER OK] Pesan teks berhasil terkirim ke %s", MaskJID(jid.String()))
 	return nil
 }
 
@@ -134,12 +130,12 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 	if s.cfg == nil || !s.cfg.EnableInteractiveMenus {
 		text := ExtractTextFromMessage(msg)
 		if text != "" {
-			log.Printf("[SENDER] Mengirim pesan menu sebagai teks terformat universal (Kompatibel 100%% iOS & Android) ke %s", jid.String())
+			log.Printf("[SENDER] Mengirim pesan menu sebagai teks terformat universal (Kompatibel 100%% iOS & Android) ke %s", MaskJID(jid.String()))
 			return s.SendTextMessage(ctx, jid, text)
 		}
 	}
 
-	log.Printf("[SENDER] Mengirim pesan tombol resmi WhatsApp (Native Flow List / Buttons) ke %s...", jid.String())
+	log.Printf("[SENDER] Mengirim pesan tombol resmi WhatsApp (Native Flow List / Buttons) ke %s...", MaskJID(jid.String()))
 
 	extra := &whatsmeow.SendRequestExtra{
 		AdditionalNodes: &[]waBinary.Node{
@@ -147,11 +143,11 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 				Tag: "biz",
 				Content: []waBinary.Node{
 					{
-						Tag: "interactive",
+						Tag:   "interactive",
 						Attrs: waBinary.Attrs{"type": "native_flow", "v": "1"},
 						Content: []waBinary.Node{
 							{
-								Tag: "native_flow",
+								Tag:   "native_flow",
 								Attrs: waBinary.Attrs{"v": "9", "name": "mixed"},
 							},
 						},
@@ -169,7 +165,7 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 	}
 
 	if err != nil {
-		log.Printf("[SENDER ERROR] Gagal mengirim pesan tombol ke %s: %v. Mengirim versi teks cadangan...", jid.String(), err)
+		log.Printf("[SENDER ERROR] Gagal mengirim pesan tombol ke %s: %v. Mengirim versi teks cadangan...", MaskJID(jid.String()), err)
 		textToSend := ExtractTextFromMessage(msg)
 		if textToSend != "" {
 			return s.SendTextMessage(ctx, jid, textToSend)
@@ -177,68 +173,7 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 		return err
 	}
 
-	log.Printf("[SENDER OK] Pesan tombol resmi berhasil terkirim ke %s", jid.String())
-	return nil
-}
-
-// SendSticker sends a webp sticker from local file path with media upload caching
-func (s *Sender) SendSticker(ctx context.Context, jid types.JID, filePath string) error {
-	if s == nil {
-		return nil
-	}
-	s.mediaMu.RLock()
-	cached, found := s.mediaCache[filePath]
-	s.mediaMu.RUnlock()
-
-	if !found {
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			return fmt.Errorf("read sticker file %s: %w", filePath, err)
-		}
-
-		uploaded, err := s.client.Upload(ctx, data, whatsmeow.MediaImage)
-		if err != nil {
-			return fmt.Errorf("upload sticker: %w", err)
-		}
-
-		cached = &CachedMedia{
-			URL:           uploaded.URL,
-			DirectPath:    uploaded.DirectPath,
-			MediaKey:      uploaded.MediaKey,
-			FileSHA256:    uploaded.FileSHA256,
-			FileEncSHA256: uploaded.FileEncSHA256,
-			FileLength:    uploaded.FileLength,
-		}
-
-		s.mediaMu.Lock()
-		s.mediaCache[filePath] = cached
-		s.mediaMu.Unlock()
-	}
-
-	msg := &waE2E.Message{
-		StickerMessage: &waE2E.StickerMessage{
-			URL:           proto.String(cached.URL),
-			DirectPath:    proto.String(cached.DirectPath),
-			MediaKey:      cached.MediaKey,
-			Mimetype:      proto.String("image/webp"),
-			FileSHA256:    cached.FileSHA256,
-			FileEncSHA256: cached.FileEncSHA256,
-			FileLength:    proto.Uint64(cached.FileLength),
-		},
-	}
-
-	var err error
-	if s.queue != nil {
-		err = s.queue.SendInteractiveSync(ctx, jid, msg, nil)
-	} else if s.client != nil {
-		_, err = s.client.SendMessage(ctx, jid, msg)
-	}
-
-	if err != nil {
-		log.Printf("[SENDER ERROR] Gagal mengirim stiker ke %s: %v", jid.String(), err)
-		return err
-	}
-	log.Printf("[SENDER OK] Stiker terkirim ke %s", jid.String())
+	log.Printf("[SENDER OK] Pesan tombol resmi berhasil terkirim ke %s", MaskJID(jid.String()))
 	return nil
 }
 
@@ -272,11 +207,6 @@ func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, 
 		data, err := io.ReadAll(limitedReader)
 		if err != nil {
 			return fmt.Errorf("read image body: %w", err)
-		}
-
-		mimeType := resp.Header.Get("Content-Type")
-		if mimeType == "" {
-			mimeType = "image/jpeg"
 		}
 
 		uploaded, err := s.client.Upload(ctx, data, whatsmeow.MediaImage)
@@ -387,9 +317,9 @@ func (s *Sender) SendVideoFromFile(ctx context.Context, jid types.JID, filePath,
 	}
 
 	if err != nil {
-		log.Printf("[SENDER ERROR] Gagal mengirim video ke %s: %v", jid.String(), err)
+		log.Printf("[SENDER ERROR] Gagal mengirim video ke %s: %v", MaskJID(jid.String()), err)
 		return err
 	}
-	log.Printf("[SENDER OK] Video berhasil terkirim ke %s (%s)", jid.String(), filePath)
+	log.Printf("[SENDER OK] Video berhasil terkirim ke %s (%s)", MaskJID(jid.String()), filePath)
 	return nil
 }

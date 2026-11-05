@@ -109,7 +109,7 @@ type DataProvider interface {
 	GetAllStrategicIndicators(ctx context.Context) ([]StrategicIndicator, Freshness, error)
 	GetLayananDataCategories(ctx context.Context) ([]DataCategory, Freshness, error)
 	GetLayananDataCategory(ctx context.Context, categorySlug string) (*DataCategory, Freshness, error)
-	GetLayananDataTopic(ctx context.Context, categorySlug, topicIdOrSlug string) (*DataTopic, Freshness, error)
+	GetLayananDataTopic(ctx context.Context, categorySlug, topicIDOrSlug string) (*DataTopic, Freshness, error)
 	GetExpertContacts(ctx context.Context) ([]ExpertContact, error)
 	GetExpertContact(ctx context.Context, bidangID int) (*ExpertContact, error)
 	UpdateExpertContact(ctx context.Context, bidangID int, name, phone string) error

@@ -119,7 +119,7 @@ func fetchGAS(client *http.Client, url string, target any) error {
 
 	trimmedBody := strings.TrimSpace(string(body))
 	if strings.HasPrefix(trimmedBody, "<") {
-		return fmt.Errorf("Google Apps Script mengembalikan halaman HTML/Login. Pastikan deployment GAS disetel ke 'Who has access: Anyone (Siapa saja)'")
+		return fmt.Errorf("google Apps Script mengembalikan halaman HTML/Login; pastikan deployment GAS disetel ke 'Who has access: Anyone (Siapa saja)'")
 	}
 
 	var res standardGASResponse
@@ -156,21 +156,6 @@ func (c *Client) FetchLayananDataRaw() ([]LayananDataItem, error) {
 	return items, nil
 }
 
-func (c *Client) GetLayananData(no string) (string, error) {
-	items, err := c.FetchLayananDataRaw()
-	if err != nil {
-		return "", err
-	}
-
-	var sb strings.Builder
-	for _, item := range items {
-		if item.No.String() == no {
-			sb.WriteString(fmt.Sprintf("*Data* : \n%s\n\n*Link* : \n%s\n◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n\n", item.Judul, item.Link))
-		}
-	}
-	return sb.String(), nil
-}
-
 // -------------------------------------------------------------
 // 2. Indikator Strategis
 // -------------------------------------------------------------
@@ -194,27 +179,6 @@ func (c *Client) FetchIndikatorRaw() ([]IndikatorItem, error) {
 
 	c.setCached(key, items)
 	return items, nil
-}
-
-func (c *Client) GetIndikator(no, preferredYear string) (string, string, error) {
-	items, err := c.FetchIndikatorRaw()
-	if err != nil {
-		return "", "", err
-	}
-
-	var sb strings.Builder
-	var imgUrl string
-	for _, item := range items {
-		if item.No.String() == no {
-			nilai := item.GetNilai(preferredYear)
-			penjelasan := item.GetPenjelasan(preferredYear)
-			sb.WriteString(fmt.Sprintf("*%s*\n\n_*%s*_\n\n%s\n◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉◎◉\n\n", item.Indikator, nilai, penjelasan))
-			if imgUrl == "" && item.Infografis != "" {
-				imgUrl = item.Infografis
-			}
-		}
-	}
-	return sb.String(), imgUrl, nil
 }
 
 // -------------------------------------------------------------
@@ -242,21 +206,6 @@ func (c *Client) FetchVideoRaw() ([]VideoItem, error) {
 	return items, nil
 }
 
-func (c *Client) GetVideoStat(no string) (string, error) {
-	items, err := c.FetchVideoRaw()
-	if err != nil {
-		return "", err
-	}
-
-	var sb strings.Builder
-	for _, item := range items {
-		if item.No.String() == no {
-			sb.WriteString(fmt.Sprintf("*%s*\n\n*Link* : \n%s\n\n%s\n\n-----------\n\n", item.Judul, item.Link, item.Penjelasan))
-		}
-	}
-	return sb.String(), nil
-}
-
 // -------------------------------------------------------------
 // 4. Infografik
 // -------------------------------------------------------------
@@ -280,23 +229,6 @@ func (c *Client) FetchInfografikRaw() ([]InfografikItem, error) {
 
 	c.setCached(key, items)
 	return items, nil
-}
-
-func (c *Client) GetInfografik(no string) ([]string, []string, error) {
-	items, err := c.FetchInfografikRaw()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var titles []string
-	var urls []string
-	for _, item := range items {
-		if item.No.String() == no {
-			titles = append(titles, item.Judul)
-			urls = append(urls, item.Link)
-		}
-	}
-	return titles, urls, nil
 }
 
 // -------------------------------------------------------------
@@ -324,25 +256,6 @@ func (c *Client) FetchPakarRaw() ([]PakarItem, error) {
 	return items, nil
 }
 
-func (c *Client) GetPakar(no string) (pakarText, pakarImg, piketText, piketImg string, err error) {
-	items, err := c.FetchPakarRaw()
-	if err != nil {
-		return "", "", "", "", err
-	}
-
-	for _, element := range items {
-		if element.No.String() == no {
-			pakarText = fmt.Sprintf("Perkenalkan Sahabat Data, ini adalah %s\n\n%s\n\nBeliau akan membantu menjawab pertanyaan Sahabat Data.\n\nMohon diingat untuk menghubungi beliau hanya pada waktu kerja dan hari kerja yah sobat data \n\n Silakan klik link berikut.\n\n%s", element.Nama, element.Penjelasan, element.Link)
-			pakarImg = element.Foto
-
-			piketText = fmt.Sprintf("Perkenalkan Sahabat Data, ini adalah %s\n\nDia yang akan membantu menjawab pertanyaan Sahabat terkait Data dan Statistik.\n\nDimohon untuk menghubungi petugas hanya pada waktu kerja dan hari kerja yah sobat data \n\n Silakan klik link berikut.\n\n%s", element.PetugasPiket, element.LinkPetugas)
-			piketImg = element.FotoPetugas
-			break
-		}
-	}
-	return
-}
-
 // -------------------------------------------------------------
 // 6. FAQs
 // -------------------------------------------------------------
@@ -366,23 +279,4 @@ func (c *Client) FetchFAQRaw() ([]FAQItem, error) {
 
 	c.setCached(key, items)
 	return items, nil
-}
-
-func (c *Client) GetFAQs(no string) (string, error) {
-	items, err := c.FetchFAQRaw()
-	if err != nil {
-		return "", err
-	}
-
-	var sb strings.Builder
-	for _, element := range items {
-		if element.No.String() == no || element.DisplayNo.String() == no {
-			disp := element.DisplayNo.String()
-			if disp == "" {
-				disp = element.No.String()
-			}
-			sb.WriteString(fmt.Sprintf("*%s* *: %s*\n\n : %s\n◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n\n", disp, element.Pertanyaan, element.Jawaban))
-		}
-	}
-	return sb.String(), nil
 }

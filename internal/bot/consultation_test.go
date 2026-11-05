@@ -33,7 +33,7 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 
 	cfg := &config.Config{
 		InternalPSTGroupJID:   "120363999999999999@g.us",
-		AdminWhitelistNumbers: []string{"6283843607098"},
+		AdminWhitelistNumbers: []string{"6281234567890"},
 		IdleTimeoutMinutes:    30,
 	}
 
@@ -41,7 +41,7 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 	router := NewBotRouter(cfg, sender, nil)
 	router.SetScraper(provider)
 
-	userJID := types.NewJID("6283843607098", types.DefaultUserServer)
+	userJID := types.NewJID("6281234567890", types.DefaultUserServer)
 	session := router.sessions.GetOrCreate(userJID, nil)
 
 	// 1. User opens Menu 6
@@ -60,14 +60,14 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 		Text: "1",
 	}
 	router.Dispatch(context.Background(), pOption1)
-	if session.CurrentState != StateMenu6_Booking {
-		t.Fatalf("expected state %s, got %s", StateMenu6_Booking, session.CurrentState)
+	if session.CurrentState != StateMenu6Booking {
+		t.Fatalf("expected state %s, got %s", StateMenu6Booking, session.CurrentState)
 	}
 
 	// 3. User submits consultation booking format
 	bookingInput := "Nama: Budi Santoso\n" +
 		"Instansi: Dinas Pertanian Bangka Barat\n" +
-		"No. WhatsApp: 083843607098\n" +
+		"No. WhatsApp: 081234567890\n" +
 		"Topik: Data Produksi Kelapa Sawit 2024\n" +
 		"Rencana Hari / Jam: Kamis, 29 Okt jam 10.00 WIB"
 
@@ -109,7 +109,7 @@ Silakan kirimkan data permohonan konsultasi Sahabat dengan membalas pesan ini me
 
 Nama: Fadil
 Instansi / Asal: Bps
-No. WhatsApp / HP:083843607098
+No. WhatsApp / HP:081234567890
 Topik / Kebutuhan Data:Data Kemiskinan 
 Rencana Hari / Jam: Kamus, 29 Oktober 2026, 10.00 WIB
 
@@ -132,8 +132,8 @@ Ketik *0* untuk batal dan kembali ke Menu Utama._`
 	if details.Instansi != "Bps" {
 		t.Errorf("expected Instansi 'Bps', got '%s'", details.Instansi)
 	}
-	if details.Phone != "6283843607098" {
-		t.Errorf("expected Phone '6283843607098', got '%s'", details.Phone)
+	if details.Phone != "6281234567890" {
+		t.Errorf("expected Phone '6281234567890', got '%s'", details.Phone)
 	}
 	if details.Topic != "Data Kemiskinan" {
 		t.Errorf("expected Topic 'Data Kemiskinan', got '%s'", details.Topic)

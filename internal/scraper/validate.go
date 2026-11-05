@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	ErrInvalidItem           = errors.New("validate: item tidak valid")
-	ErrAnomalyLayoutChanged  = errors.New("validate: layout berubah (0 item ditemukan)")
-	ErrAnomalyCountDrop      = errors.New("validate: penurunan jumlah item drastis (>50%)")
-	ErrAnomalyFieldLoss      = errors.New("validate: kehilangan field wajib (>30%)")
-	ErrAnomalyMarkerMissing  = errors.New("validate: required marker halaman BPS tidak ditemukan")
+	ErrInvalidItem          = errors.New("validate: item tidak valid")
+	ErrAnomalyLayoutChanged = errors.New("validate: layout berubah (0 item ditemukan)")
+	ErrAnomalyCountDrop     = errors.New("validate: penurunan jumlah item drastis (>50%)")
+	ErrAnomalyFieldLoss     = errors.New("validate: kehilangan field wajib (>30%)")
+	ErrAnomalyMarkerMissing = errors.New("validate: required marker halaman BPS tidak ditemukan")
 )
 
 var (
@@ -114,14 +114,14 @@ func ValidateItem(it *Item, allowedHosts []string, appEnv string) error {
 	}
 	u, err := url.Parse(it.URL)
 	if err != nil {
-		return fmt.Errorf("%w: invalid url: %v", ErrInvalidItem, err)
+		return fmt.Errorf("%w: invalid url: %w", ErrInvalidItem, err)
 	}
 	if appEnv != "test" && u.Scheme != "https" {
 		return fmt.Errorf("%w: url scheme must be https", ErrInvalidItem)
 	}
 	if appEnv != "test" {
 		if err := checkIPAntiSSRF(u.Hostname()); err != nil {
-			return fmt.Errorf("%w: %v", ErrInvalidItem, err)
+			return fmt.Errorf("%w: %w", ErrInvalidItem, err)
 		}
 	}
 

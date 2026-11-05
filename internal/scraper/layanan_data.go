@@ -177,20 +177,20 @@ func (p *Provider) GetLayananDataCategory(ctx context.Context, categorySlug stri
 }
 
 // GetLayananDataTopic returns detail of 1 specific topic under a category.
-func (p *Provider) GetLayananDataTopic(ctx context.Context, categorySlug, topicIdOrSlug string) (*DataTopic, Freshness, error) {
+func (p *Provider) GetLayananDataTopic(ctx context.Context, categorySlug, topicIDOrSlug string) (*DataTopic, Freshness, error) {
 	cat, freshness, err := p.GetLayananDataCategory(ctx, categorySlug)
 	if err != nil {
 		return nil, Freshness{}, err
 	}
 
-	query := strings.ToLower(strings.TrimSpace(topicIdOrSlug))
+	query := strings.ToLower(strings.TrimSpace(topicIDOrSlug))
 	for _, t := range cat.Topics {
 		if strconv.Itoa(t.ID) == query || t.Slug == query || strings.Contains(strings.ToLower(t.Title), query) {
 			return &t, freshness, nil
 		}
 	}
 
-	return nil, Freshness{}, fmt.Errorf("topik %q tidak ditemukan pada kategori %q", topicIdOrSlug, categorySlug)
+	return nil, Freshness{}, fmt.Errorf("topik %q tidak ditemukan pada kategori %q", topicIDOrSlug, categorySlug)
 }
 
 func (p *Provider) enrichTopic(ctx context.Context, d topicDef) *DataTopic {
