@@ -83,22 +83,35 @@ func (r *BotRouter) HandleMenu6BookingPrompt(ctx context.Context, s *UserSession
 	prompt := "*PENGAJUAN JADWAL KONSULTASI*\n" +
 		"_PST BPS Kabupaten Bangka Barat_\n" +
 		"────────────\n\n" +
-		"Silakan kirimkan data permohonan konsultasi Sahabat dengan format berikut:\n\n" +
+		"Silakan salin dan lengkapi formulir permohonan konsultasi berikut:\n\n" +
 		"Nama: \n" +
 		"Instansi / Asal: \n" +
 		"No. WhatsApp / HP: \n" +
 		"Topik / Kebutuhan Data: \n" +
-		"Rencana Hari / Jam: \n\n" +
-		"_(Atau ketik informasi kebutuhan data Sahabat secara bebas)_\n\n" +
+		"Rencana Jadwal (Hari, Tanggal, Jam): \n\n" +
+		"*Contoh Pengisian:*\n" +
+		"Nama: Ahmad Fauzi\n" +
+		"Instansi / Asal: Dinas Pertanian Bangka Barat\n" +
+		"No. WhatsApp / HP: 082164302643\n" +
+		"Topik / Kebutuhan Data: Data Produksi Padi & Sawit 2025\n" +
+		"Rencana Jadwal (Hari, Tanggal, Jam): Kamis, 12 Nov 2026, Pukul 10.00 WIB\n\n" +
+		"_Catatan: Jam layanan PST Senin–Kamis (08.00–15.30 WIB) & Jumat (08.00–15.00 WIB)._\n\n" +
 		"────────────\n" +
+		"• Ketik *99* untuk Kembali ke Menu Konsultasi\n" +
 		"• Ketik *0* untuk Batal & Menu Utama"
 
 	return r.sender.SendTextMessage(ctx, p.JID, prompt)
 }
 
 func isPhoneKey(key string) bool {
-	if strings.Contains(key, "wa") ||
+	if isScheduleKey(key) {
+		return false
+	}
+	if key == "wa" ||
 		strings.Contains(key, "whatsapp") ||
+		strings.Contains(key, "no. wa") ||
+		strings.Contains(key, "no wa") ||
+		strings.Contains(key, "nomor wa") ||
 		strings.Contains(key, "hp") ||
 		strings.Contains(key, "telepon") ||
 		strings.Contains(key, "telp") ||
@@ -109,6 +122,99 @@ func isPhoneKey(key string) bool {
 		return true
 	}
 	return false
+}
+
+func isScheduleKey(key string) bool {
+	return strings.Contains(key, "rencana") ||
+		strings.Contains(key, "hari") ||
+		strings.Contains(key, "jam") ||
+		strings.Contains(key, "jadwal") ||
+		strings.Contains(key, "waktu") ||
+		strings.Contains(key, "tanggal") ||
+		strings.Contains(key, "tgl") ||
+		strings.Contains(key, "pukul")
+}
+
+func shouldStopBookingParse(cleanLower string) bool {
+	return strings.Contains(cleanLower, "contoh") ||
+		strings.Contains(cleanLower, "catatan:") ||
+		strings.Contains(cleanLower, "jam layanan pst") ||
+		strings.Contains(cleanLower, "ketik 0") ||
+		strings.Contains(cleanLower, "ketik *0*") ||
+		strings.Contains(cleanLower, "ketik 99") ||
+		strings.Contains(cleanLower, "ketik *99*") ||
+		strings.Contains(cleanLower, "batal dan kembali") ||
+		strings.Contains(cleanLower, "batal & menu utama") ||
+		strings.Contains(cleanLower, "kembali ke menu konsultasi") ||
+		strings.Contains(cleanLower, "menu utama") ||
+		strings.Contains(cleanLower, "secara bebas")
+}
+
+func shouldSkipBookingLine(cleanTrimmed, cleanLower string) bool {
+	return strings.Contains(cleanTrimmed, "───") ||
+		strings.Contains(cleanTrimmed, "━━━") ||
+		strings.Contains(cleanLower, "pst bps kabupaten bangka barat") ||
+		strings.Contains(cleanLower, "pengajuan jadwal konsultasi") ||
+		strings.Contains(cleanLower, "silakan kirimkan data") ||
+		strings.Contains(cleanLower, "silakan salin dan lengkapi") ||
+		strings.Contains(cleanLower, "formulir permohonan") ||
+		strings.Contains(cleanLower, "permohonan konsultasi") ||
+		strings.Contains(cleanLower, "membalas pesan ini") ||
+		strings.Contains(cleanLower, "format berikut") ||
+		strings.Contains(cleanLower, "menggunakan format") ||
+		strings.Contains(cleanLower, "cukup ketik") ||
+		cleanLower == "```"
+}
+
+func normalizeBookingKey(rawKey string) string {
+	key := strings.ToLower(strings.TrimSpace(rawKey))
+	key = strings.TrimLeft(key, "0123456789.-)•* \t[]_`~")
+	key = strings.Trim(key, "*_`~ \t-•[]()")
+	return key
+}
+
+func isKnownBookingKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	if strings.HasPrefix(key, "nama") || key == "pemohon" || key == "klien" {
+		return true
+	}
+	if strings.HasPrefix(key, "instansi") || strings.HasPrefix(key, "asal") || key == "lembaga" || key == "dinas" || key == "kantor" || key == "perusahaan" || key == "kampus" || key == "universitas" || key == "sekolah" || key == "pekerjaan" || key == "profesi" {
+		return true
+	}
+	if isPhoneKey(key) {
+		return true
+	}
+	if strings.HasPrefix(key, "topik") || strings.HasPrefix(key, "kebutuhan") || strings.HasPrefix(key, "keperluan") || strings.HasPrefix(key, "perihal") || strings.HasPrefix(key, "judul") || strings.HasPrefix(key, "konsultasi") || key == "data" {
+		return true
+	}
+	return isScheduleKey(key)
+}
+
+func isBookingFormKeyLine(line string) bool {
+	parts := strings.SplitN(line, ":", 2)
+	if len(parts) != 2 {
+		return false
+	}
+	return isKnownBookingKey(normalizeBookingKey(parts[0]))
+}
+
+func formatPreferredSchedule(raw string) string {
+	s := strings.TrimSpace(raw)
+	s = strings.Trim(s, "*_`~ \t-•,;|")
+	fields := strings.Fields(s)
+	for i, f := range fields {
+		// Normalize HH:MM time notation (e.g. "10:00") to Indonesian standard "10.00"
+		if len(f) == 5 && f[2] == ':' &&
+			f[0] >= '0' && f[0] <= '2' &&
+			f[1] >= '0' && f[1] <= '9' &&
+			f[3] >= '0' && f[3] <= '5' &&
+			f[4] >= '0' && f[4] <= '9' {
+			fields[i] = f[:2] + "." + f[3:]
+		}
+	}
+	return strings.Join(fields, " ")
 }
 
 type BookingDetails struct {
@@ -134,100 +240,82 @@ func parseConsultationBookingInput(input string) BookingDetails {
 		cleanTrimmed := strings.Trim(rawTrimmed, "*_`~ \t-•")
 		cleanLower := strings.ToLower(cleanTrimmed)
 
-		// 1. Detect stop markers (contoh pengisian, petunjuk pembatalan)
-		// Users frequently copy/quote the whole bot template including "*Contoh Pengisian*:"
-		// We must stop parsing immediately to prevent example names/topics from leaking or overwriting user data.
-		if strings.Contains(cleanLower, "contoh") ||
-			strings.Contains(cleanLower, "ketik 0") ||
-			strings.Contains(cleanLower, "ketik *0*") ||
-			strings.Contains(cleanLower, "batal dan kembali") ||
-			strings.Contains(cleanLower, "menu utama") ||
-			strings.Contains(cleanLower, "secara bebas") {
+		// 1. Detect stop markers (contoh pengisian, catatan, petunjuk navigasi)
+		if shouldStopBookingParse(cleanLower) {
 			break
 		}
 
-		// 2. Skip template headers/instructions if copied by user
-		if strings.Contains(cleanLower, "pengajuan jadwal konsultasi") ||
-			strings.Contains(cleanLower, "silakan kirimkan data") ||
-			strings.Contains(cleanLower, "permohonan konsultasi") ||
-			strings.Contains(cleanLower, "membalas pesan ini") ||
-			strings.Contains(cleanLower, "format berikut") ||
-			strings.Contains(cleanLower, "menggunakan format") ||
-			strings.Contains(cleanLower, "cukup ketik") ||
-			cleanLower == "```" {
+		// 2. Skip template headers/instructions/dividers if copied by user
+		if shouldSkipBookingLine(cleanTrimmed, cleanLower) {
 			continue
 		}
 
 		// 3. Key-Value parsing
 		parts := strings.SplitN(cleanTrimmed, ":", 2)
 		if len(parts) == 2 {
-			key := strings.ToLower(strings.TrimSpace(parts[0]))
-			key = strings.TrimLeft(key, "0123456789.-)•* \t[]_`~")
-			key = strings.Trim(key, "*_`~ \t-•[]()")
-
+			key := normalizeBookingKey(parts[0])
 			val := strings.TrimSpace(parts[1])
 			val = strings.Trim(val, "*_`~ \t")
 
-			// If val is empty on this line, check if value is provided on the next line
-			if val == "" && i+1 < len(lines) {
-				nextTrimmed := strings.TrimSpace(lines[i+1])
-				nextClean := strings.Trim(nextTrimmed, "*_`~ \t-•")
-				nextLower := strings.ToLower(nextClean)
-				if nextClean != "" && !strings.Contains(nextClean, ":") &&
-					!strings.Contains(nextLower, "contoh") &&
-					!strings.Contains(nextLower, "ketik 0") {
-					val = nextClean
-					rawTrimmed = rawTrimmed + " " + nextTrimmed
-					i++
+			if isKnownBookingKey(key) {
+				// If val is empty on this line, check if value is provided on the next line
+				if val == "" && i+1 < len(lines) {
+					nextTrimmed := strings.TrimSpace(lines[i+1])
+					nextClean := strings.Trim(nextTrimmed, "*_`~ \t-•")
+					nextLower := strings.ToLower(nextClean)
+					if nextClean != "" &&
+						!shouldStopBookingParse(nextLower) &&
+						!shouldSkipBookingLine(nextClean, nextLower) &&
+						!isBookingFormKeyLine(nextClean) {
+						val = nextClean
+						rawTrimmed = rawTrimmed + " " + nextTrimmed
+						i++
+					}
 				}
-			}
 
-			isHandledKey := false
-
-			// Match Name (handles "Nama:", "Nama Pemohon:", "Nama Lengkap:", "Pemohon:", etc.)
-			switch {
-			case strings.HasPrefix(key, "nama") || key == "pemohon" || key == "klien":
-				if b.Name == "" && val != "" {
-					b.Name = val
-				}
-				isHandledKey = true
-			case strings.HasPrefix(key, "instansi") || strings.HasPrefix(key, "asal") || key == "lembaga" || key == "dinas" || key == "kantor" || key == "perusahaan" || key == "kampus" || key == "universitas" || key == "sekolah" || key == "pekerjaan" || key == "profesi":
-				if b.Instansi == "" && val != "" {
-					b.Instansi = val
-				}
-				isHandledKey = true
-			case isPhoneKey(key):
-				if b.Phone == "" && val != "" {
-					b.Phone = normalizePhone(val)
-				}
-				isHandledKey = true
-			case strings.HasPrefix(key, "topik") || strings.HasPrefix(key, "kebutuhan") || strings.HasPrefix(key, "keperluan") || strings.HasPrefix(key, "perihal") || strings.HasPrefix(key, "judul") || strings.HasPrefix(key, "konsultasi") || key == "data":
-				if b.Topic == "" && val != "" {
-					b.Topic = val
-				}
-				isHandledKey = true
-			case strings.Contains(key, "hari") || strings.Contains(key, "jam") || strings.Contains(key, "jadwal") || strings.Contains(key, "waktu") || strings.Contains(key, "tanggal") || strings.Contains(key, "tgl"):
-				if b.PreferredTime == "" && val != "" {
-					// Check if next line contains time info continuation (e.g. "10.00 WIB")
-					if i+1 < len(lines) {
-						nextTrimmed := strings.TrimSpace(lines[i+1])
-						nextClean := strings.Trim(nextTrimmed, "*_`~ \t-•")
-						nextLower := strings.ToLower(nextClean)
-						if nextClean != "" && !strings.Contains(nextClean, ":") &&
-							!strings.Contains(nextLower, "contoh") &&
-							!strings.Contains(nextLower, "ketik 0") &&
-							(strings.Contains(nextLower, "wib") || strings.Contains(nextLower, "jam") || strings.Contains(nextLower, ".")) {
-							val = val + " " + nextClean
-							rawTrimmed = rawTrimmed + " " + nextTrimmed
-							i++
+				switch {
+				case strings.HasPrefix(key, "nama") || key == "pemohon" || key == "klien":
+					if b.Name == "" && val != "" {
+						b.Name = val
+					}
+				case strings.HasPrefix(key, "instansi") || strings.HasPrefix(key, "asal") || key == "lembaga" || key == "dinas" || key == "kantor" || key == "perusahaan" || key == "kampus" || key == "universitas" || key == "sekolah" || key == "pekerjaan" || key == "profesi":
+					if b.Instansi == "" && val != "" {
+						b.Instansi = val
+					}
+				case isPhoneKey(key):
+					if b.Phone == "" && val != "" {
+						b.Phone = normalizePhone(val)
+					}
+				case strings.HasPrefix(key, "topik") || strings.HasPrefix(key, "kebutuhan") || strings.HasPrefix(key, "keperluan") || strings.HasPrefix(key, "perihal") || strings.HasPrefix(key, "judul") || strings.HasPrefix(key, "konsultasi") || key == "data":
+					if b.Topic == "" && val != "" {
+						b.Topic = val
+					}
+				case isScheduleKey(key):
+					if val != "" {
+						// Check if next line contains time info continuation (e.g. "10.00 WIB" or "10:00 WIB")
+						if i+1 < len(lines) {
+							nextTrimmed := strings.TrimSpace(lines[i+1])
+							nextClean := strings.Trim(nextTrimmed, "*_`~ \t-•")
+							nextLower := strings.ToLower(nextClean)
+							if nextClean != "" &&
+								!shouldStopBookingParse(nextLower) &&
+								!shouldSkipBookingLine(nextClean, nextLower) &&
+								!isBookingFormKeyLine(nextClean) &&
+								(strings.Contains(nextLower, "wib") || strings.Contains(nextLower, "jam") || strings.Contains(nextLower, "pukul") || strings.Contains(nextLower, ".") || strings.Contains(nextLower, ":")) {
+								val = val + " " + nextClean
+								rawTrimmed = rawTrimmed + " " + nextTrimmed
+								i++
+							}
+						}
+						formattedSched := formatPreferredSchedule(val)
+						if b.PreferredTime == "" {
+							b.PreferredTime = formattedSched
+						} else if !strings.Contains(strings.ToLower(b.PreferredTime), strings.ToLower(formattedSched)) {
+							b.PreferredTime = b.PreferredTime + ", " + formattedSched
 						}
 					}
-					b.PreferredTime = val
 				}
-				isHandledKey = true
-			}
 
-			if isHandledKey {
 				if val != "" {
 					meaningfulLines = append(meaningfulLines, rawTrimmed)
 				}
@@ -255,68 +343,91 @@ func parseConsultationBookingInput(input string) BookingDetails {
 	return b
 }
 
-// HandleProcessBooking processes user booking input, stores to SQLite, notifies user, and alerts office group
+func isMeaningfulBookingValue(val string, minRunes int) bool {
+	clean := strings.Trim(val, "*_`~ \t-•,.:;/|\\()[]{}")
+	if len([]rune(clean)) < minRunes {
+		return false
+	}
+	hasLetter := false
+	for _, r := range clean {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+			hasLetter = true
+			break
+		}
+	}
+	return hasLetter
+}
+
+func validateBookingDetails(b BookingDetails) []string {
+	var missing []string
+	if !isMeaningfulBookingValue(b.Name, 2) {
+		missing = append(missing, "Nama Lengkap")
+	}
+	if !isMeaningfulBookingValue(b.Instansi, 2) {
+		missing = append(missing, "Instansi / Asal")
+	}
+	if len(b.Phone) < 9 {
+		missing = append(missing, "No. WhatsApp / HP")
+	}
+	if !isMeaningfulBookingValue(b.Topic, 3) {
+		missing = append(missing, "Topik / Kebutuhan Data")
+	}
+	if !isMeaningfulBookingValue(b.PreferredTime, 4) {
+		missing = append(missing, "Rencana Jadwal (Hari, Tanggal, Jam)")
+	}
+	return missing
+}
+
+// HandleProcessBooking processes user booking input, validates required form fields, stores to SQLite, notifies user, and alerts office group
 func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	input := strings.TrimSpace(p.Text)
 	if input == "" {
-		return r.sender.SendTextMessage(ctx, p.JID, "Mohon ketikkan data permohonan konsultasi Sahabat, atau ketik *0* untuk kembali.")
+		return r.sender.SendTextMessage(ctx, p.JID, "Mohon lengkapi formulir permohonan konsultasi Sahabat, atau ketik *0* untuk kembali ke Menu Utama.")
 	}
 
 	details := parseConsultationBookingInput(input)
+	missingFields := validateBookingDetails(details)
+	if len(missingFields) > 0 {
+		var sb strings.Builder
+		sb.WriteString("*FORMAT PENGAJUAN BELUM SESUAI*\n")
+		sb.WriteString("_PST BPS Kabupaten Bangka Barat_\n")
+		sb.WriteString("────────────\n\n")
+		sb.WriteString("Mohon maaf Sahabat Data, format pengajuan jadwal konsultasi yang dikirimkan belum lengkap atau belum sesuai format formulir.\n\n")
+		sb.WriteString("*Data yang belum lengkap / sesuai:*\n")
+		for _, field := range missingFields {
+			fmt.Fprintf(&sb, "• %s\n", field)
+		}
+		sb.WriteString("\nSilakan salin dan lengkapi seluruh isian formulir berikut:\n\n")
+		sb.WriteString("Nama: \n")
+		sb.WriteString("Instansi / Asal: \n")
+		sb.WriteString("No. WhatsApp / HP: \n")
+		sb.WriteString("Topik / Kebutuhan Data: \n")
+		sb.WriteString("Rencana Jadwal (Hari, Tanggal, Jam): \n\n")
+		sb.WriteString("*Contoh Format Rencana Jadwal:*\n")
+		sb.WriteString("Kamis, 12 Nov 2026, Pukul 10.00 WIB\n\n")
+		sb.WriteString("────────────\n")
+		sb.WriteString("• Ketik *99* untuk Kembali ke Menu Konsultasi\n")
+		sb.WriteString("• Ketik *0* untuk Batal & Menu Utama")
+		return r.sender.SendTextMessage(ctx, p.JID, sb.String())
+	}
+
 	name := details.Name
 	instansi := details.Instansi
-	phoneInput := details.Phone
+	phone := details.Phone
 	topic := details.Topic
-	preferredTime := details.PreferredTime
+	preferredTime := formatPreferredSchedule(details.PreferredTime)
 
-	// Fallback if user submitted freeform text without structured labels
-	if name == "" {
-		if p.Name != "" && !strings.Contains(strings.ToLower(p.Name), "ahmad fauzi") {
-			name = p.Name
-		} else {
-			name = "Sahabat Data"
-		}
-	}
-	if instansi == "" {
-		instansi = "Masyarakat / Umum"
-	}
-	if topic == "" {
-		if details.CleanNotes != "" {
-			topic = details.CleanNotes
-		} else {
-			topic = "Konsultasi Data Statistik PST"
-		}
-	}
-	if preferredTime == "" {
-		preferredTime = "Hari & jam kerja PST (08.00 - 15.30 WIB)"
-	}
-
-	// Clean notes for group notification and database
-	notes := details.CleanNotes
-	if notes == "" {
-		notes = fmt.Sprintf("Nama: %s\nInstansi: %s\nTopik: %s\nRencana Jadwal: %s", name, instansi, topic, preferredTime)
-	}
-
-	// Determine final phone number:
-	// Priority 1: User typed in the booking message
-	// Priority 2: Parsed Phone Number from WhatsApp (SenderAlt / Phone JID)
-	// Priority 3: Fallback if JID is phone number
-	phone := phoneInput
-	if phone == "" && p.PhoneNumber != "" {
-		phone = normalizePhone(p.PhoneNumber)
-	}
-	if phone == "" && p.JID.Server == "s.whatsapp.net" {
-		phone = normalizePhone(p.JID.User)
-	}
+	// Clean structured notes for group notification and database
+	notes := fmt.Sprintf("Nama: %s\nInstansi / Asal: %s\nNo. WhatsApp / HP: %s\nTopik / Kebutuhan Data: %s\nRencana Jadwal: %s",
+		name, instansi, formatPhoneDisplay(phone), topic, preferredTime)
 
 	var waContact string
 	switch {
 	case phone != "" && strings.HasPrefix(phone, "62"):
-		waContact = fmt.Sprintf("https://wa.me/%s", phone)
+		waContact = fmt.Sprintf("%s (https://wa.me/%s)", formatPhoneDisplay(phone), phone)
 	case phone != "":
 		waContact = fmt.Sprintf("+%s (https://wa.me/%s)", phone, phone)
 	default:
-		// In case user is on WhatsApp LID addressing without visible phone number
 		waContact = fmt.Sprintf("%s (Akun WhatsApp Pengirim)", p.JID.User)
 	}
 
@@ -349,12 +460,13 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 		"*1. No. Tiket*: `%s`\n"+
 		"*2. Nama*: %s\n"+
 		"*3. Instansi*: %s\n"+
-		"*4. Topik Data*: %s\n"+
-		"*5. Rencana Jadwal*: %s\n\n"+
+		"*4. No. WhatsApp*: %s\n"+
+		"*5. Topik Data*: %s\n"+
+		"*6. Rencana Jadwal*: %s\n\n"+
 		"Petugas PST atau pakar terkait akan segera menghubungi Sahabat via WhatsApp.\n\n"+
 		"────────────\n"+
 		"• Ketik *0* untuk kembali ke Menu Utama",
-		name, ticketNo, name, instansi, topic, preferredTime)
+		name, ticketNo, name, instansi, formatPhoneDisplay(phone), topic, preferredTime)
 
 	_ = r.sender.SendTextMessage(ctx, p.JID, userReply)
 
@@ -372,9 +484,8 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 				"*5. Bidang / Topik*: %s\n"+
 				"*6. Rencana Jadwal*: %s\n"+
 				"*7. Waktu Masuk*: %s WIB\n\n"+
-				"*Pesan Lengkap*:\n%s\n\n"+
 				"_Dimohon petugas piket PST dan pakar terkait untuk menindaklanjuti. Terima kasih!_",
-				ticketNo, name, instansi, waContact, topic, preferredTime, time.Now().Format("02 Jan 2006 15:04"), notes)
+				ticketNo, name, instansi, waContact, topic, preferredTime, time.Now().Format("02 Jan 2006 15:04"))
 
 			if sendErr := r.sender.SendTextMessage(ctx, groupJID, groupMsg); sendErr != nil {
 				log.Printf("[PST GROUP] Gagal mengirim notifikasi ke grup %s: %v", r.cfg.InternalPSTGroupJID, sendErr)

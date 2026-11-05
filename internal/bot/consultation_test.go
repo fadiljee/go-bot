@@ -307,3 +307,88 @@ func TestFormatPhoneDisplayAndSupportMenus(t *testing.T) {
 		t.Errorf("expected ARC schedule FAQ to contain scraped ARC item, got: %s", arcMsg)
 	}
 }
+
+func TestConsultationBookingValidationAndScheduleFormat(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "pst_booking_validation_test_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "scraper.db")
+	store, err := scraper.NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create scraper store: %v", err)
+	}
+	defer store.Close()
+
+	provider := scraper.NewProvider(store, 24)
+	cfg := &config.Config{
+		InternalPSTGroupJID:   "120363999999999999@g.us",
+		AdminWhitelistNumbers: []string{"6281234567890"},
+		IdleTimeoutMinutes:    30,
+	}
+
+	sender := whatsapp.NewSender(nil, nil)
+	router := NewBotRouter(cfg, sender, nil)
+	router.SetScraper(provider)
+
+	userJID := types.NewJID("6281234567890", types.DefaultUserServer)
+	session := router.sessions.GetOrCreate(userJID, nil)
+
+	// Open Menu 6 -> Submenu 1 (StateMenu6Booking)
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{JID: userJID, Text: "6"})
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{JID: userJID, Text: "1"})
+	if session.CurrentState != StateMenu6Booking {
+		t.Fatalf("expected state %s, got %s", StateMenu6Booking, session.CurrentState)
+	}
+
+	// Case 1: User sends "2" (invalid non-form input, not 0 or 99) -> MUST remain in StateMenu6Booking and NOT forward to group
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{JID: userJID, Text: "2"})
+	if session.CurrentState != StateMenu6Booking {
+		t.Fatalf("expected session to remain in %s after invalid input '2', got %s", StateMenu6Booking, session.CurrentState)
+	}
+
+	// Case 2: User copies blank form template and appends "2" -> MUST be rejected (all 5 fields missing)
+	blankTemplateWith2 := `*PENGAJUAN JADWAL KONSULTASI*
+_PST BPS Kabupaten Bangka Barat_
+────────────
+
+Nama: 
+Instansi / Asal: 
+No. WhatsApp / HP: 
+Topik / Kebutuhan Data: 
+Rencana Jadwal (Hari, Tanggal, Jam): 
+────────────
+2`
+	parsedBlank := parseConsultationBookingInput(blankTemplateWith2)
+	missing := validateBookingDetails(parsedBlank)
+	if len(missing) != 5 {
+		t.Fatalf("expected all 5 fields missing for blank template + '2', got %d missing: %v (parsed=%+v)", len(missing), missing, parsedBlank)
+	}
+
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{JID: userJID, Text: blankTemplateWith2})
+	if session.CurrentState != StateMenu6Booking {
+		t.Fatalf("expected session to remain in %s after blank template + '2', got %s", StateMenu6Booking, session.CurrentState)
+	}
+
+	// Case 3: Valid submission with new "Rencana Jadwal (Hari, Tanggal, Jam):" format -> succeeds and resets to StateRoot
+	validForm := `Nama: Siti Rahmawati
+Instansi / Asal: Bappeda Bangka Barat
+No. WhatsApp / HP: 081298765432
+Topik / Kebutuhan Data: Konsultasi Indikator Makro Daerah 2025
+Rencana Jadwal (Hari, Tanggal, Jam): Kamis, 12 Nov 2026, Pukul 10:00 WIB`
+
+	parsedValid := parseConsultationBookingInput(validForm)
+	if len(validateBookingDetails(parsedValid)) != 0 {
+		t.Fatalf("expected valid form to have 0 missing fields, got %v", validateBookingDetails(parsedValid))
+	}
+	if parsedValid.PreferredTime != "Kamis, 12 Nov 2026, Pukul 10.00 WIB" {
+		t.Errorf("expected formatted PreferredTime 'Kamis, 12 Nov 2026, Pukul 10.00 WIB', got %q", parsedValid.PreferredTime)
+	}
+
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{JID: userJID, Text: validForm})
+	if session.CurrentState != StateRoot {
+		t.Fatalf("expected state %s after valid booking, got %s", StateRoot, session.CurrentState)
+	}
+}

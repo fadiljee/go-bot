@@ -476,7 +476,7 @@ func (r *BotRouter) HandleInfografikDetail(ctx context.Context, s *UserSession, 
 func (r *BotRouter) HandleMenu11TentangBPS(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu11About)
 
-	videoPath := "storage/videos/menu11_TentangBPS.mp4"
+	videoPath := "storage/videos/perkenalan-bps.mp4"
 	if _, err := os.Stat(videoPath); err == nil {
 		_ = r.sender.SendTextMessage(ctx, p.JID, "*Menyiapkan video profil resmi BPS Bangka Barat...*\nMohon tunggu beberapa detik, video akan terkirim dan bisa langsung diputar di WhatsApp.")
 		caption := "*Mengenal BPS Lebih Dekat*\n_Badan Pusat Statistik Kabupaten Bangka Barat_\n\nKomplek Perkantoran Pemerintah Daerah Terpadu Bangka Barat"
