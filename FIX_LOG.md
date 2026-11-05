@@ -181,3 +181,20 @@ go build -o bot-istimewa cmd/server/main.go
   - `arc`: `status=success, found=22, new=22` (22 jadwal rilis BRS & Publikasi tersimpan di `storage/scraper.db`).
   - `pressrelease`: `status=success, found=35, updated=35`.
   - Total data aktif di `storage/scraper.db`: `statictable: 100`, `infographic: 114`, `publication: 50`, `news: 50`, `pressrelease: 35`, `arc: 22`.
+
+---
+
+## 8. Standarisasi Layout Teks Responsif & Sejajar Lintas Perangkat (5 November 2026)
+
+### Penyebab Teks Berantakan di Beberapa Perangkat:
+1. **Garis Pembatas Terlalu Panjang (`━━━━━━━━━━━━━━━━━━`)**: 18 karakter Unicode tebal (`U+2501`) patah menjadi 2 baris pada layar ponsel sempit atau pengaturan ukuran font besar.
+2. **Indentasi Spasi Gantung (`   • ...` dan `   ...`)**: Di WhatsApp (font proporsional tanpa *hanging indent*), spasi di awal kalimat panjang hanya menggeser baris pertama, sedangkan baris ke-2 dan seterusnya saat membungkus (*wrap*) kembali rata kiri mentok, membuat daftar terlihat zig-zag.
+3. **Reset Otomatis `<ol>` WhatsApp pada Daftar Bernomor (`1. `)**: Parser Markdown WhatsApp terbaru mengubah `1. ` menjadi ordered list native yang me-reset nomor urut (`4.` kembali jadi `1.`) ketika terpotong subjudul kategori.
+4. **Duplikasi Header di `ExtractTextFromMessage`**: Pesan memiliki 2 judul bertumpuk di bagian atas karena `header` ditambahkan lagi di atas `body` yang sudah memiliki judul `*...*`.
+5. **Kotak Kode 3-Backtick (```` ```Statistik Bermakna, Statistik Berdampak``` ````)**: Dirender sebagai *code block* abu-abu kaku dengan font monospace lebar yang terpotong menjadi 2 baris di layar HP.
+
+### Solusi yang Diterapkan:
+1. **Pemisah Responsif (`────────────`)**: Mengganti seluruh garis pembatas menjadi 12 karakter `─` (`whatsapp.Divider`) yang muat 1 baris di **100% ukuran layar dan ukuran font**.
+2. **Penomoran Tebal Anti-Reset (`*1.*`, `*2.*`, dst.)**: Menggunakan format `*1.* Judul Menu` satu baris bersih di [`BuildBodyText`](file:///home/fadil/fadil/go-bot/internal/whatsapp/interactive.go#L183-L202) dan [`buildWelcomeMenuBody`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_main.go#L49-L74), serta menyederhanakan nama topik panjang di [`locales/id_ID.json`](file:///home/fadil/fadil/go-bot/locales/id_ID.json) agar setiap opsi menu muat tepat 1 baris.
+3. **Rata Kiri Lurus Tanpa Spasi Gantung**: Menghapus seluruh indentasi `   • ` dan `> • ` pada halaman detail (BRS, Publikasi, Indikator, Jadwal ARC, Pakar, Pengaduan, Admin) sehingga saat paragraf membungkus (*wrap*) di layar kecil maupun besar, tepi kirinya tetap lurus sejajar.
+4. **Pencegahan Judul Ganda & Footer Miring Proporsional**: Memperbarui [`ExtractTextFromMessage`](file:///home/fadil/fadil/go-bot/internal/whatsapp/interactive.go#L204-L270) agar tidak menduplikasi header apabila `body` sudah diawali `*...*`, dan mengganti blok kode 3-backtick menjadi teks miring `_Statistik Bermakna, Statistik Berdampak_`.

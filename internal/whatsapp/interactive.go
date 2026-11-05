@@ -173,40 +173,31 @@ func UnpackInteractiveMessage(msg *waE2E.Message) *waE2E.InteractiveMessage {
 	return nil
 }
 
-// NumberToEmoji formats numeric IDs to clean numbered format without emojis
+// Divider is a compact 12-character horizontal separator that never wraps on narrow mobile screens.
+const Divider = "────────────"
+
+// NumberToEmoji formats numeric IDs to clean bold numbered format without emojis
 func NumberToEmoji(id string) string {
-	return fmt.Sprintf("%s.", id)
+	return fmt.Sprintf("*%s.*", id)
 }
 
-func isRedundantDesc(title, desc string) bool {
-	t := strings.ToLower(strings.TrimSpace(title))
-	d := strings.ToLower(strings.TrimSpace(desc))
-	if t == d || strings.Contains(t, d) || strings.Contains(d, t) {
-		return true
-	}
-	return false
-}
-
-// BuildBodyText formats text body with clean numbered list
+// BuildBodyText formats text body with a clean, single-line aligned numbered list
+// that stays left-aligned and responsive across all screen sizes and font settings.
 func BuildBodyText(intro string, rows []ListRow, footer string) string {
 	var sb strings.Builder
 
 	if intro != "" {
-		sb.WriteString(intro)
+		sb.WriteString(strings.TrimSpace(intro))
 		sb.WriteString("\n\n")
 	}
 
 	for _, r := range rows {
-		fmt.Fprintf(&sb, "%s  %s\n", NumberToEmoji(r.ID), strings.TrimSpace(r.Title))
-		desc := strings.TrimSpace(r.Description)
-		if desc != "" && !isRedundantDesc(r.Title, desc) {
-			fmt.Fprintf(&sb, "   • %s\n", desc)
-		}
+		fmt.Fprintf(&sb, "%s %s\n", NumberToEmoji(r.ID), strings.TrimSpace(r.Title))
 	}
 
 	if footer != "" {
 		sb.WriteString("\n")
-		sb.WriteString(footer)
+		sb.WriteString(strings.TrimSpace(footer))
 	}
 
 	return strings.TrimSpace(sb.String())
@@ -233,9 +224,10 @@ func ExtractTextFromMessage(msg *waE2E.Message) string {
 			bodyText = strings.TrimSpace(inter.GetBody().GetText())
 		}
 
+		// Only prepend header if bodyText does not already begin with its own bold title (*...*)
 		if header := inter.GetHeader(); header != nil && header.GetTitle() != "" {
 			hTitle := strings.TrimSpace(header.GetTitle())
-			if !strings.Contains(strings.ToLower(bodyText), strings.ToLower(hTitle)) {
+			if !strings.HasPrefix(bodyText, "*") && !strings.Contains(strings.ToLower(bodyText), strings.ToLower(hTitle)) {
 				parts = append(parts, fmt.Sprintf("*%s*", hTitle))
 			}
 		}
@@ -261,7 +253,7 @@ func ExtractTextFromMessage(msg *waE2E.Message) string {
 				}
 			}
 			if len(buttonTexts) > 0 {
-				parts = append(parts, "*Pilihan Navigasi:*\n"+strings.Join(buttonTexts, "\n"))
+				parts = append(parts, Divider+"\n"+strings.Join(buttonTexts, "\n"))
 			}
 		}
 
@@ -269,7 +261,7 @@ func ExtractTextFromMessage(msg *waE2E.Message) string {
 			fText := strings.TrimSpace(footer.GetText())
 			if !strings.Contains(bodyText, fText) && !strings.Contains(bodyText, "Statistik Bermakna") {
 				if fText == "PST BPS Kabupaten Bangka Barat" {
-					parts = append(parts, "```Statistik Bermakna, Statistik Berdampak```")
+					parts = append(parts, "_Statistik Bermakna, Statistik Berdampak_")
 				} else {
 					parts = append(parts, fText)
 				}
