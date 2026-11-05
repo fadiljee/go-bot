@@ -61,6 +61,21 @@ func normalizePhone(raw string) string {
 	return d
 }
 
+func formatPhoneDisplay(raw string) string {
+	norm := normalizePhone(raw)
+	local := norm
+	if strings.HasPrefix(norm, "62") {
+		local = "0" + norm[2:]
+	}
+	if len(local) >= 10 {
+		p1 := local[:4]
+		p2 := local[4:8]
+		p3 := local[8:]
+		return fmt.Sprintf("%s-%s-%s (+62 %s-%s-%s)", p1, p2, p3, local[1:4], p2, p3)
+	}
+	return local
+}
+
 // HandleMenu6BookingPrompt prompts user to submit consultation booking details
 func (r *BotRouter) HandleMenu6BookingPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu6Booking)
@@ -376,19 +391,23 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 }
 
 func (r *BotRouter) HandleKonsultasiUmum(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	piketText := "*JAM LAYANAN PST BPS BANGKA BARAT*\nPelayanan Statistik Terpadu\n\n" +
-		"Petugas PST kami siap melayani pertanyaan Sahabat seputar data, publikasi, dan rujukan statistik:\n\n" +
-		"━━━━━━━━━━━━━━━━━━\n" +
-		"1. *Jadwal Layanan*:\n" +
-		"• Senin – Kamis: 08.00 – 15.30 WIB\n" +
-		"• Jumat: 08.00 – 15.00 WIB\n\n" +
-		"2. *WhatsApp Petugas PST*:\n" +
-		"https://wa.me/6282164302643?text=Halo%20Petugas%20PST%20BPS%20Bangka%20Barat\n" +
-		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"Silakan hubungi kami pada jam operasional kerja kedinasan."
+	pstPhone := "6282164302643"
+	formattedPhone := formatPhoneDisplay(pstPhone)
+	piketText := fmt.Sprintf("*INFORMASI PST & JAM LAYANAN*\nPelayanan Statistik Terpadu BPS Kabupaten Bangka Barat\n\n"+
+		"Petugas PST kami siap melayani pertanyaan Sahabat seputar data, publikasi, dan rujukan statistik:\n\n"+
+		"━━━━━━━━━━━━━━━━━━\n"+
+		"1. *Jadwal Layanan*:\n"+
+		"• Senin – Kamis: 08.00 – 15.30 WIB\n"+
+		"• Jumat: 08.00 – 15.00 WIB\n\n"+
+		"2. *WhatsApp Petugas PST*:\n"+
+		"• Nomor: %s\n"+
+		"• Tautan Chat: https://wa.me/%s?text=Halo%%20Petugas%%20PST%%20BPS%%20Bangka%%20Barat\n"+
+		"━━━━━━━━━━━━━━━━━━\n\n"+
+		"Silakan hubungi kami pada jam operasional kerja kedinasan.",
+		formattedPhone, pstPhone)
 
 	msg := whatsapp.BuildQuickReplyButtons(
-		"Petugas Konsultasi Umum",
+		"Informasi PST & Jam Layanan",
 		piketText,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
@@ -463,6 +482,7 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 		phone = "6282164302643"
 	}
 	cleanPhone := normalizePhone(phone)
+	displayPhone := formatPhoneDisplay(cleanPhone)
 
 	waLink := fmt.Sprintf("https://wa.me/%s?text=Halo%%20%s,%%20saya%%20ingin%%20konsultasi%%20seputar%%20data%%20statistik%%20Bangka%%20Barat.", cleanPhone, strings.ReplaceAll(pakarName, " ", "%20"))
 
@@ -470,12 +490,12 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 		"━━━━━━━━━━━━━━━━━━\n"+
 		"1. *Bidang*: %s\n"+
 		"2. *Pakar*: %s\n"+
-		"3. *No. WhatsApp*: +%s\n"+
+		"3. *No. WhatsApp*: %s\n"+
 		"4. *Cakupan*: %s\n"+
 		"━━━━━━━━━━━━━━━━━━\n\n"+
 		"*Hubungi via WhatsApp*:\n%s\n\n"+
 		"Mohon menghubungi beliau pada hari dan jam kerja dinas (Senin - Jumat, 08.00 - 15.30 WIB). Terima kasih!",
-		bidangTitle, pakarName, cleanPhone, desc, waLink)
+		bidangTitle, pakarName, displayPhone, desc, waLink)
 
 	msg := whatsapp.BuildQuickReplyButtons(
 		"Profil Pakar Statistik",
@@ -490,18 +510,17 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleMenu7Berlangganan renders subscription menu
+// HandleMenu7Berlangganan renders Channel WhatsApp BPS Bangka Barat menu (currently unavailable)
 func (r *BotRouter) HandleMenu7Berlangganan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "*LANGGANAN PUBLIKASI GRATIS*\nBPS Kabupaten Bangka Barat\n\n" +
-		"Dapatkan pemberitahuan rilis publikasi terbaru, Berita Resmi Statistik (BRS), dan ringkasan data strategis Kabupaten Bangka Barat langsung ke nomor WhatsApp Sahabat!\n\n" +
+	text := "*CHANNEL WHATSAPP BPS BANGKA BARAT*\nBPS Kabupaten Bangka Barat\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
-		"*Formulir Berlangganan*:\n" +
-		"https://s.bps.go.id/LanggananDataBabar\n" +
+		"Mohon maaf Sahabat Data, fitur *Channel WhatsApp BPS Kabupaten Bangka Barat* saat ini *belum tersedia* dan sedang dalam tahap pengembangan.\n\n" +
+		"Untuk sementara, Sahabat Data tetap dapat memantau rilis publikasi, Berita Resmi Statistik (BRS), dan infografis terbaru melalui menu utama Bot ISTIMEWA atau portal resmi https://bangkabaratkab.bps.go.id.\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
-		"Kerahasiaan nomor Sahabat dijamin oleh Undang-Undang No. 16 Tahun 1997 tentang Statistik."
+		"```Statistik Bermakna, Statistik Berdampak```"
 
 	msg := whatsapp.BuildQuickReplyButtons(
-		"Layanan Berlangganan",
+		"Channel WhatsApp BPS Bangka Barat",
 		text,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
@@ -514,20 +533,24 @@ func (r *BotRouter) HandleMenu7Berlangganan(ctx context.Context, s *UserSession,
 
 // HandleMenu8Pengaduan renders complaint & aspiration channels
 func (r *BotRouter) HandleMenu8Pengaduan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	text := "*PENGADUAN & KOTAK SARAN*\nBPS Kabupaten Bangka Barat\n\n" +
-		"BPS Kabupaten Bangka Barat berkomitmen memberikan pelayanan prima yang bersih, transparan, dan bebas dari pungutan liar (Zona Integritas WBK/WBBM).\n\n" +
+	text := "*PENGADUAN & SARAN*\nBPS Kabupaten Bangka Barat\n\n" +
+		"BPS Kabupaten Bangka Barat berkomitmen memberikan pelayanan prima yang bersih, transparan, dan bebas dari pungutan liar (Zona Integritas WBK/WBBM). Sampaikan pengaduan dan saran Sahabat melalui saluran berikut:\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
-		"1. *Portal SP4N-LAPOR!*:\n" +
-		"https://www.lapor.go.id/\n\n" +
-		"2. *Email Pengaduan*:\n" +
-		"bps1903@bps.go.id\n\n" +
-		"3. *Kotak Pengaduan Fisik*:\n" +
-		"Ruang PST BPS Kabupaten Bangka Barat\n" +
+		"1. *Tatap Muka*:\n" +
+		"   Pelayanan Statistik Terpadu (PST) BPS Kabupaten Bangka Barat (Komplek Perkantoran Pemda Terpadu Bangka Barat)\n\n" +
+		"2. *Kotak Pengaduan*:\n" +
+		"   Kotak Pengaduan & Saran di Ruang Layanan PST BPS Kabupaten Bangka Barat\n\n" +
+		"3. *SP4N-LAPOR*:\n" +
+		"   https://www.lapor.go.id\n\n" +
+		"4. *Email*:\n" +
+		"   bps1903@bps.go.id\n\n" +
+		"5. *Link Google Form*:\n" +
+		"   https://forms.gle/ContohLinkPengaduanBPS1903\n" +
 		"━━━━━━━━━━━━━━━━━━\n\n" +
 		"Setiap aspirasi & laporan yang masuk akan ditindaklanjuti secara profesional dan rahasia."
 
 	msg := whatsapp.BuildQuickReplyButtons(
-		"Layanan Pengaduan",
+		"Pengaduan & Saran",
 		text,
 		"PST BPS Kabupaten Bangka Barat",
 		[]whatsapp.QuickReplyButton{
@@ -547,11 +570,12 @@ func (r *BotRouter) HandleMenu10FAQ(ctx context.Context, s *UserSession, p *what
 		{ID: "2", Title: "Biaya Layanan Data", Description: "Informasi tarif PST BPS"},
 		{ID: "3", Title: "Data Tingkat Desa/Kelurahan", Description: "Ketersediaan data level mikro"},
 		{ID: "4", Title: "Permohonan Rekomendasi Kegiatan", Description: "Rekomendasi statistik sektoral"},
-		{ID: "5", Title: "Jadwal Rilis Data", Description: "Kalender rilis publikasi BPS"},
+		{ID: "5", Title: "Jadwal Rilis Data", Description: "Kalender rilis ARC BPS Bangka Barat"},
+		{ID: "6", Title: "Bagaimana Data BPS Dihasilkan", Description: "Proses bisnis statistik (GSBPM) BPS"},
 	}
 
 	introText := "*BANTUAN & FAQ*\nBPS Kabupaten Bangka Barat\n\nBerikut beberapa pertanyaan yang sering diajukan seputar layanan BPS Bangka Barat:\n━━━━━━━━━━━━━━━━━━"
-	footerText := "━━━━━━━━━━━━━━━━━━\nBalas dengan *angka menu*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
+	footerText := "━━━━━━━━━━━━━━━━━━\nBalas dengan *angka menu (1 - 6)*\n• Ketik *0* untuk Menu Utama\n```Statistik Bermakna, Statistik Berdampak```"
 	body := whatsapp.BuildBodyText(introText, items, footerText)
 
 	msg := whatsapp.BuildInteractiveList(
@@ -567,7 +591,101 @@ func (r *BotRouter) HandleMenu10FAQ(ctx context.Context, s *UserSession, p *what
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
+func (r *BotRouter) buildARCScheduleFAQ(ctx context.Context) string {
+	var sb strings.Builder
+	sb.WriteString("*BANTUAN & FAQ #5*\n")
+	sb.WriteString("BPS Kabupaten Bangka Barat\n\n")
+	sb.WriteString("*Jadwal Rilis Data (Advance Release Calendar / ARC)*\n\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━\n")
+
+	if r.scraper != nil {
+		arcItems, fresh, err := r.scraper.LatestARCSchedule(ctx, "id", 50)
+		if err == nil && len(arcItems) > 0 {
+			var pubs, brsList []scraper.Item
+			for _, it := range arcItems {
+				if strings.Contains(strings.ToLower(it.Subject), "publikasi") {
+					pubs = append(pubs, it)
+				} else {
+					brsList = append(brsList, it)
+				}
+			}
+
+			if len(pubs) > 0 {
+				sb.WriteString("*A. Jadwal Rilis Publikasi Statistik*:\n")
+				maxPub := len(pubs)
+				if maxPub > 10 {
+					maxPub = 10
+				}
+				for i := 0; i < maxPub; i++ {
+					it := pubs[i]
+					dateStr := "-"
+					if it.ReleaseDate != nil {
+						dateStr = it.ReleaseDate.Format("02 Jan 2006")
+					}
+					statusStr := it.Abstract
+					if statusStr == "" {
+						statusStr = "Terjadwal"
+					}
+					fmt.Fprintf(&sb, "%d. *%s*\n   • Jadwal: %s | Status: %s\n", i+1, it.Title, dateStr, statusStr)
+				}
+				sb.WriteString("\n")
+			}
+
+			if len(brsList) > 0 {
+				sb.WriteString("*B. Jadwal Rilis Berita Resmi Statistik (BRS)*:\n")
+				maxBRS := len(brsList)
+				if maxBRS > 6 {
+					maxBRS = 6
+				}
+				for i := 0; i < maxBRS; i++ {
+					it := brsList[i]
+					dateStr := "-"
+					if it.ReleaseDate != nil {
+						dateStr = it.ReleaseDate.Format("02 Jan 2006")
+					}
+					statusStr := it.Abstract
+					if statusStr == "" {
+						statusStr = "Terjadwal"
+					}
+					fmt.Fprintf(&sb, "%d. *%s*\n   • Jadwal: %s | Status: %s\n", i+1, it.Title, dateStr, statusStr)
+				}
+				sb.WriteString("\n")
+			}
+
+			if fresh.UpdatedAt.Year() > 2000 {
+				fmt.Fprintf(&sb, "Diperbarui: %s WIB\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
+			}
+			sb.WriteString("Portal ARC Resmi: https://bangkabaratkab.bps.go.id/id/arc\n")
+			sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+			sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
+			return sb.String()
+		}
+	}
+
+	sb.WriteString("*Penjelasan*:\n")
+	sb.WriteString("Jadwal rilis publikasi dan Berita Resmi Statistik (BRS) BPS Kabupaten Bangka Barat disusun dalam Advance Release Calendar (ARC).\n\n")
+	sb.WriteString("Lihat kalender jadwal rilis selengkapnya di:\n")
+	sb.WriteString("https://bangkabaratkab.bps.go.id/id/arc\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
+	sb.WriteString("```Statistik Bermakna, Statistik Berdampak```")
+	return sb.String()
+}
+
 func (r *BotRouter) HandleFAQDetail(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage, idx int) error {
+	if idx == 5 {
+		faqText := r.buildARCScheduleFAQ(ctx)
+		msg := whatsapp.BuildQuickReplyButtons(
+			"Jadwal Rilis Data (ARC)",
+			faqText,
+			"PST BPS Kabupaten Bangka Barat",
+			[]whatsapp.QuickReplyButton{
+				{ID: "99", DisplayText: "Pertanyaan Lain (99)"},
+				{ID: "0", DisplayText: "Menu Utama (0)"},
+			},
+		)
+		return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
+	}
+
 	faqs := []struct {
 		Q string
 		A string
@@ -582,7 +700,7 @@ func (r *BotRouter) HandleFAQDetail(ctx context.Context, s *UserSession, p *what
 		},
 		{
 			Q: "Apakah BPS menyediakan data tingkat Desa atau Kelurahan?",
-			A: "Ya! BPS menerbitkan publikasi 'Kecamatan Dalam Angka' setiap tahun yang memuat data rinci hingga tingkat desa/kelurahan untuk seluruh 6 kecamatan di Bangka Barat (Muntok, Simpang Teritip, Jebus, Kelapa, Tempilang, Parittiga).",
+			A: "Ya! BPS menerbitkan publikasi 'Kecamatan Dalam Angka' setiap tahun yang memuat data rinci hingga tingkat desa/kelurahan untuk seluruh 6 kecamatan di Bangka Barat (Mentok, Simpang Teritip, Jebus, Kelapa, Tempilang, Parittiga).",
 		},
 		{
 			Q: "Bagaimana cara mengajukan Rekomendasi Kegiatan Statistik (ROMANTIK)?",
@@ -590,7 +708,11 @@ func (r *BotRouter) HandleFAQDetail(ctx context.Context, s *UserSession, p *what
 		},
 		{
 			Q: "Kapan jadwal rilis data terbaru BPS Bangka Barat?",
-			A: "Jadwal rilis publikasi dan Berita Resmi Statistik (BRS) dirilis berkala sesuai ARC (Advance Release Calendar). BRS inflasi/ekonomi umumnya dirilis setiap awal bulan, dan publikasi 'Bangka Barat Dalam Angka' dirilis setiap akhir Februari.",
+			A: "Jadwal rilis publikasi dan Berita Resmi Statistik (BRS) dirilis berkala sesuai ARC (Advance Release Calendar) di https://bangkabaratkab.bps.go.id/id/arc.",
+		},
+		{
+			Q: "Bagaimana data BPS dihasilkan?",
+			A: "Data BPS secara umum dihasilkan melalui proses panjang yang terstruktur melalui GSBPM (Generic Statistical Business Process Model), sebuah standar internasional dalam menghasilkan data resmi. Mulai dari tahap perencanaan, perancangan, pembangunan, pengumpulan, pengolahan, penyajian, hingga evaluasi. Setiap langkah dilakukan secara cermat dengan melibatkan ekspertis di bidangnya agar data yang dihasilkan dapat terjaga kualitasnya.\n\nBPS menghasilkan banyak data dari ratusan pendataan yang dilakukan di seluruh Indonesia yang dikelola oleh beberapa direktorat di BPS. Statmin mengajak Sahabat Data untuk melihat gambaran proses bisnis yang ada di salah satu survei di BPS. Simak videonya di YouTube BPS Statistics.",
 		},
 	}
 

@@ -113,7 +113,7 @@ func (r *BotRouter) HandleIndikatorDetail(ctx context.Context, s *UserSession, p
 			textData = "*INDIKATOR PERTANIAN & PERKEBUNAN*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n" +
 				"*Capaian Angka & Metrik Resmi*:\n" +
 				"> • *Kelapa Sawit*: Luas > 60.000 Ha, Produksi > 350.000 Ton\n" +
-				"> • *Lada Muntok White Pepper*: Luas > 4.500 Ha (Indikasi Geografis)\n" +
+				"> • *Lada Mentok White Pepper*: Luas > 4.500 Ha (Indikasi Geografis)\n" +
 				"> • *Karet*: Luas areal > 18.000 Ha\n" +
 				"> • *Perikanan Laut*: Produksi tangkap > 28.000 Ton/tahun\n\n" +
 				"━━━━━━━━━━━━━━━━━━\n" +

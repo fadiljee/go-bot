@@ -70,7 +70,7 @@ func (s *Store) migrate() error {
 	schema := `
 	CREATE TABLE IF NOT EXISTS scraped_items (
 		id              INTEGER PRIMARY KEY AUTOINCREMENT,
-		kind            TEXT    NOT NULL CHECK (kind IN ('pressrelease','publication','infographic','statictable','news')),
+		kind            TEXT    NOT NULL CHECK (kind IN ('pressrelease','publication','infographic','statictable','news','arc')),
 		lang            TEXT    NOT NULL DEFAULT 'id' CHECK (lang IN ('id','en')),
 		source_key      TEXT    NOT NULL,
 		title           TEXT    NOT NULL,
@@ -155,9 +155,56 @@ func (s *Store) migrate() error {
 		return err
 	}
 
+	if err := s.migrateKindARCConstraint(); err != nil {
+		return err
+	}
+
 	_ = s.sanitizeExistingItems()
 
 	return s.seedDefaultExpertContacts()
+}
+
+func (s *Store) migrateKindARCConstraint() error {
+	var tableSQL string
+	err := s.db.QueryRow("SELECT sql FROM sqlite_master WHERE type='table' AND name='scraped_items'").Scan(&tableSQL)
+	if err != nil || strings.Contains(tableSQL, "'arc'") {
+		return nil
+	}
+
+	migSQL := `
+	BEGIN TRANSACTION;
+	CREATE TABLE scraped_items_new (
+		id              INTEGER PRIMARY KEY AUTOINCREMENT,
+		kind            TEXT    NOT NULL CHECK (kind IN ('pressrelease','publication','infographic','statictable','news','arc')),
+		lang            TEXT    NOT NULL DEFAULT 'id' CHECK (lang IN ('id','en')),
+		source_key      TEXT    NOT NULL,
+		title           TEXT    NOT NULL,
+		url             TEXT    NOT NULL,
+		release_date    TEXT,
+		abstract        TEXT,
+		file_url        TEXT,
+		file_type       TEXT,
+		file_size_text  TEXT,
+		thumbnail_url   TEXT,
+		image_url       TEXT,
+		subject         TEXT,
+		content_hash    TEXT    NOT NULL,
+		is_active       INTEGER NOT NULL DEFAULT 1,
+		missed_runs     INTEGER NOT NULL DEFAULT 0,
+		first_seen_at   TEXT    NOT NULL,
+		last_seen_at    TEXT    NOT NULL,
+		last_changed_at TEXT    NOT NULL,
+		UNIQUE (kind, lang, source_key)
+	);
+	INSERT INTO scraped_items_new SELECT * FROM scraped_items;
+	DROP TABLE scraped_items;
+	ALTER TABLE scraped_items_new RENAME TO scraped_items;
+	CREATE INDEX IF NOT EXISTS idx_items_kind_date ON scraped_items(kind, lang, is_active, release_date DESC);
+	CREATE INDEX IF NOT EXISTS idx_items_title     ON scraped_items(kind, title COLLATE NOCASE);
+	COMMIT;
+	`
+	_, execErr := s.db.Exec(migSQL)
+	return execErr
 }
 
 func (s *Store) sanitizeExistingItems() error {
@@ -198,7 +245,7 @@ func (s *Store) seedDefaultExpertContacts() error {
 		description string
 	}{
 		{1, "Statistik Sosial Kependudukan", "Pakar Sosial Kependudukan BPS", "6282164302643", "Konsultasi data kependudukan, kemiskinan, ketenagakerjaan, pendidikan, dan kesehatan."},
-		{2, "Statistik Pertanian", "Pakar Pertanian & Perkebunan BPS", "6282164302643", "Konsultasi data komoditas kelapa sawit, lada Muntok White Pepper, karet, dan perikanan."},
+		{2, "Statistik Pertanian", "Pakar Pertanian & Perkebunan BPS", "6282164302643", "Konsultasi data komoditas kelapa sawit, lada Mentok White Pepper, karet, dan perikanan."},
 		{3, "Statistik Ekonomi & PDRB", "Pakar Neraca Ekonomi & PDRB BPS", "6282164302643", "Konsultasi data Produk Domestik Regional Bruto (PDRB), pertumbuhan ekonomi daerah, dan industri."},
 		{4, "Distribusi, Harga & KTIP", "Pakar Distribusi & Inflasi BPS", "6282164302643", "Konsultasi data inflasi, Indeks Harga Konsumen (IHK), pariwisata, perdagangan, dan transportasi."},
 		{5, "Statistik Sektoral", "Pakar Statistik Sektoral BPS", "6282164302643", "Konsultasi data sektoral OPD, Satu Data Indonesia (SDI), dan Rekomendasi Statistik (ROMANTIK)."},

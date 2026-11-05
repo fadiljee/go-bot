@@ -290,6 +290,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 					fmt.Fprintf(&sb, "• Berita Resmi (BRS): %d item\n", counts[string(scraper.KindPressRelease)])
 					fmt.Fprintf(&sb, "• Infografis: %d item\n", counts[string(scraper.KindInfographic)])
 					fmt.Fprintf(&sb, "• Berita Kegiatan: %d item\n", counts[string(scraper.KindNews)])
+					fmt.Fprintf(&sb, "• Jadwal Rilis (ARC): %d item\n", counts[string(scraper.KindARC)])
 				}
 
 				lastRun, err := st.GetLastRun(ctx)

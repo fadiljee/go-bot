@@ -131,3 +131,53 @@ go build -o bot-istimewa cmd/server/main.go
    - Menambahkan `case StateAdminLoggedIn, StateAdminManagePakar:` pada `HandleBack()` untuk memastikan jika `HandleBack()` terpanggil, admin tetap dikembalikan ke `SendAdminDashboard()`.
 4. **Unit Test Baru (`internal/bot/admin_test.go`)**:
    - Menambahkan test `TestAdminSessionBackAndExit` yang memvalidasi navigasi `99` dan `0` pada sesi admin berjalan 100% benar.
+
+---
+
+## 7. Log Task Revisi Fitur Menu & Perbaikan Mesin Scraper (5 November 2026)
+
+**Tanggal:** 5 November 2026  
+**Status:** [OK] Selesai, Lulus Audit Linter/Test & Teruji Live Scraping 100%
+
+### Ringkasan 7 Poin Revisi yang Dikerjakan:
+
+1. **Menu 7 — Channel WhatsApp BPS Bangka Barat**:
+   - Mengubah nama Menu 7 dari *Langganan Publikasi* menjadi **Channel WhatsApp BPS Bangka Barat** pada [`internal/bot/handlers_main.go`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_main.go) dan [`locales/id_ID.json`](file:///home/fadil/fadil/go-bot/locales/id_ID.json).
+   - Memperbarui [`HandleMenu7Berlangganan`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_support.go) agar menampilkan pemberitahuan kepada pengguna bahwa fitur **Channel WhatsApp BPS Bangka Barat** saat ini belum tersedia (*fitur ini belum tersedia*).
+
+2. **Menu 8 — Pengaduan & Saran**:
+   - Memperbarui [`HandleMenu8Pengaduan`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_support.go) sehingga daftar saluran pengaduan & saran ditampilkan secara berurutan menjadi 5 poin:
+     1. **Tatap Muka** (Layanan langsung di Ruang PST BPS Kabupaten Bangka Barat)
+     2. **Kotak Pengaduan** (Kotak pengaduan dan saran di Ruang PST)
+     3. **SP4N-LAPOR!** (`https://www.lapor.go.id`)
+     4. **Email** (`bps1903@bps.go.id`)
+     5. **Link Google Form** (`https://forms.gle/ContohLinkPengaduanBPS1903` — link contoh sementara)
+
+3. **Menu 9 — Bantuan & FAQ (Penambahan Submenu 6)**:
+   - Menambahkan submenu nomor **6. Bagaimana Data BPS Dihasilkan** pada [`HandleMenu10FAQ`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_support.go) dan [`HandleFAQDetail`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_support.go) dengan penjelasan tahapan GSBPM (*Generic Statistical Business Process Model*).
+   - Memperbarui navigasi kembali (`99`) pada [`HandleBack`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_main.go) agar dari detail FAQ kembali ke daftar pertanyaan Menu 9 (`StateMenu10`).
+
+4. **Menu 9 — Submenu 5 Jadwal Rilis Data (Scraping ARC `https://bangkabaratkab.bps.go.id/id/arc`)**:
+   - Menambahkan kind baru `KindARC` (`arc`) pada [`internal/scraper/model.go`](file:///home/fadil/fadil/go-bot/internal/scraper/model.go), [`configs/scraper_selectors.yaml`](file:///home/fadil/fadil/go-bot/configs/scraper_selectors.yaml), [`internal/scraper/store.go`](file:///home/fadil/fadil/go-bot/internal/scraper/store.go) (termasuk migrasi otomatis constraint tabel `scraped_items`), [`internal/scraper/provider.go`](file:///home/fadil/fadil/go-bot/internal/scraper/provider.go), dan [`internal/scraper/runner.go`](file:///home/fadil/fadil/go-bot/internal/scraper/runner.go) (`scrapeARC` & `parseARCJSON` untuk mengambil jadwal rilis BRS dan Publikasi dari `/id/arc`).
+   - Menghubungkan Submenu 5 FAQ (`buildARCScheduleFAQ`) ke hasil scraping ARC di SQLite, serta menampilkan jumlah item Jadwal Rilis (ARC) di Dashboard Admin Menu 2 (`Status Scraper & Database`).
+
+5. **Menu 10 — Tentang BPS (Pembaruan Link Video Profil)**:
+   - Mengubah tautan video profil YouTube pada [`internal/config/config.go`](file:///home/fadil/fadil/go-bot/internal/config/config.go), [`.env`](file:///home/fadil/fadil/go-bot/.env), [`locales/id_ID.json`](file:///home/fadil/fadil/go-bot/locales/id_ID.json), dan [`internal/bot/video_test.go`](file:///home/fadil/fadil/go-bot/internal/bot/video_test.go) menjadi `https://youtu.be/q9BYxUJ-4z4`.
+
+6. **Menu 6 — Tanya Pakar -> Submenu 3 Informasi PST dan Jam Layanan (Format Nomor WhatsApp)**:
+   - Menambahkan helper [`formatPhoneDisplay`](file:///home/fadil/fadil/go-bot/internal/bot/handlers_support.go) sehingga nomor WhatsApp ditampilkan dalam format rapi yang mudah dibaca (`0821-6430-2643 (+62 821-6430-2643)`) disertai tautan `https://wa.me/6282164302643` pada Submenu 3 (`HandleKonsultasiUmum`) maupun detail pakar (`HandlePakarDetail`).
+
+7. **Perbaikan Mesin Scraper (`0 item ditemukan` / `HTTP 409 Server Action unavailable`)**:
+   - **Akar Masalah**: Portal web `bangkabaratkab.bps.go.id` melakukan pembaruan build Next.js (Turbopack) yang mengganti seluruh hash `Next-Action` (42 karakter hex), sehingga request POST dengan ID lama ditolak dengan `HTTP/2 409 Server Action unavailable.`. Selain itu, `Fetcher.Get` dan `Fetcher.PostAction` sebelumnya memakai header `User-Agent` yang berbeda saat melewati proteksi cookie Cloudflare (`__cf_bm`).
+   - **Solusi Permanen**:
+     - Memperbarui seluruh `Next-Action` ID di [`internal/scraper/runner.go`](file:///home/fadil/fadil/go-bot/internal/scraper/runner.go) ke ID terbaru (`pressrelease`, `publication`, `infographic`, `statictable`, `news`, dan `arc`).
+     - Menambahkan mekanisme **Auto-Discovery Next.js Server Action ID** (`postActionWithDiscovery` & `discoverActionIDFromHTML`) yang otomatis memindai bundle `/_next/static/chunks/*.js` untuk menemukan hash `createServerReference` terbaru apabila portal BPS melakukan *redeploy* di masa mendatang.
+     - Menyamakan `User-Agent` (`effectiveUserAgent()`) antara `Get`, `GetAsset`, dan `PostAction` pada [`internal/scraper/fetcher.go`](file:///home/fadil/fadil/go-bot/internal/scraper/fetcher.go).
+
+### Hasil Verifikasi & Live Scraping:
+- **Linter & Static Analysis**: `golangci-lint run`, `staticcheck ./...`, `go vet ./...`, dan `deadcode -test ./...` lulus dengan **0 issue**.
+- **Unit Test**: `go test -race -cover ./...` lulus **100%**.
+- **Live Scraping (`./scraper-cli`)**:
+  - `arc`: `status=success, found=22, new=22` (22 jadwal rilis BRS & Publikasi tersimpan di `storage/scraper.db`).
+  - `pressrelease`: `status=success, found=35, updated=35`.
+  - Total data aktif di `storage/scraper.db`: `statictable: 100`, `infographic: 114`, `publication: 50`, `news: 50`, `pressrelease: 35`, `arc: 22`.

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	kindFlag := flag.String("kind", "all", "Kind to scrape: all, pressrelease, publication, infographic, statictable, news")
+	kindFlag := flag.String("kind", "all", "Kind to scrape: all, pressrelease, publication, infographic, statictable, news, arc")
 	flag.Parse()
 
 	cfg := config.LoadConfig()

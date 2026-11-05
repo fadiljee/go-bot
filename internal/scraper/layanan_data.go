@@ -59,13 +59,13 @@ var ekonomiTopicDefs = []topicDef{
 	{5, "upah", "Biaya Tenaga Kerja & Upah", "upah", "Upah minimum kabupaten (UMK) dan rata-rata upah pekerja.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=534"},
 	{6, "energi", "Statistik Energi & Kelistrikan", "listrik", "Daya terpasang, produksi listrik, dan konsumsi energi daerah.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=535"},
 	{7, "pertambangan", "Pertambangan, Manufaktur & Konstruksi", "tambang", "Produksi timah, pasir kuarsa, industri pengolahan, dan Indeks Kemahalan Konstruksi (IKK).", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=536"},
-	{8, "transportasi", "Transportasi & Pergudangan", "transportasi", "Arus lalu lintas pelabuhan Tanjung Kalian Muntok, angkutan jalan, dan kendaraan bermotor.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=537"},
+	{8, "transportasi", "Transportasi & Pergudangan", "transportasi", "Arus lalu lintas pelabuhan Tanjung Kalian Mentok, angkutan jalan, dan kendaraan bermotor.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=537"},
 	{9, "pariwisata", "Pariwisata & Akomodasi", "hotel", "Kunjungan wisatawan, jumlah hotel/penginapan, dan Tingkat Penghunian Kamar (TPK).", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=538"},
 	{10, "keuangan-finansial", "Perbankan, Asuransi & Finansial", "bank", "Lembaga keuangan bank, koperasi, dan penyaluran kredit perbankan.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=539"},
 }
 
 var pertanianTopicDefs = []topicDef{
-	{1, "tanaman-perkebunan", "Pertanian, Perkebunan & Peternakan", "pertanian", "Komoditas kelapa sawit, lada (Muntok White Pepper), karet, padi, dan populasi ternak.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=540"},
+	{1, "tanaman-perkebunan", "Pertanian, Perkebunan & Peternakan", "pertanian", "Komoditas kelapa sawit, lada (Mentok White Pepper), karet, padi, dan populasi ternak.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=540"},
 	{2, "perikanan-lingkungan", "Perikanan, Kehutanan & Lingkungan", "lingkungan", "Perikanan tangkap laut pesisir, budidaya tambak, hutan lindung, dan lingkungan hidup.", "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=541"},
 }
 
@@ -141,7 +141,7 @@ func (p *Provider) GetLayananDataCategory(ctx context.Context, categorySlug stri
 			ID:          "3",
 			Slug:        "pertanian",
 			Title:       "Statistik Pertanian",
-			Description: "Data komoditas unggulan perkebunan kelapa sawit, lada Muntok White Pepper, karet, dan perikanan tangkap laut.",
+			Description: "Data komoditas unggulan perkebunan kelapa sawit, lada Mentok White Pepper, karet, dan perikanan tangkap laut.",
 		}
 		defs = pertanianTopicDefs
 	case "sektoral", "opd", "4":

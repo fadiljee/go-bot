@@ -147,9 +147,9 @@ func (p *Provider) buildPertanian(ctx context.Context) *StrategicIndicator {
 		UpdatedAt:   "2026-10-12",
 		Metrics: []IndicatorMetric{
 			{Key: "kelapa_sawit", Label: "Kelapa Sawit", Value: "Luas areal > 60.000 Ha", Note: "Komoditas perkebunan utama"},
-			{Key: "lada", Label: "Lada (Muntok White Pepper)", Value: "Komoditas Unggulan", Note: "Khas Bangka Barat dengan pasar ekspor"},
+			{Key: "lada", Label: "Lada (Mentok White Pepper)", Value: "Komoditas Unggulan", Note: "Khas Bangka Barat dengan pasar ekspor"},
 			{Key: "karet", Label: "Karet", Value: "Komoditas Penyokong", Note: "Perkebunan rakyat"},
-			{Key: "perikanan_laut", Label: "Perikanan Tangkap Laut", Value: "Sentra Muntok, Jebus, Tempilang"},
+			{Key: "perikanan_laut", Label: "Perikanan Tangkap Laut", Value: "Sentra Mentok, Jebus, Tempilang"},
 		},
 	}
 

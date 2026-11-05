@@ -62,7 +62,7 @@ func DefaultTopicsCatalog() []SearchResultItem {
 		{
 			Category:    "Layanan Data - Sosial Kependudukan",
 			Title:       "Statistik Regional dan Area Kecil",
-			Description: "Profil kecamatan di Bangka Barat (Muntok, Simpang Teritip, Jebus, Kelapa, Tempilang, Parittiga).",
+			Description: "Profil kecamatan di Bangka Barat (Mentok, Simpang Teritip, Jebus, Kelapa, Tempilang, Parittiga).",
 			Link:        "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=540",
 		},
 		{
@@ -124,7 +124,7 @@ func DefaultTopicsCatalog() []SearchResultItem {
 		{
 			Category:    "Layanan Data - Ekonomi",
 			Title:       "Statistik Transportasi & Pelabuhan Tanjung Kalian",
-			Description: "Arus kapal, kendaraan logistik, penumpang feri Pelabuhan Tanjung Kalian Muntok, dan armada jalan.",
+			Description: "Arus kapal, kendaraan logistik, penumpang feri Pelabuhan Tanjung Kalian Mentok, dan armada jalan.",
 			Link:        "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=560",
 		},
 		{
@@ -144,7 +144,7 @@ func DefaultTopicsCatalog() []SearchResultItem {
 		{
 			Category:    "Layanan Data - Pertanian",
 			Title:       "Statistik Pertanian, Perkebunan & Perikanan",
-			Description: "Produksi kelapa sawit, lada putih (Muntok White Pepper), karet, padi sawah, dan hasil perikanan tangkap.",
+			Description: "Produksi kelapa sawit, lada putih (Mentok White Pepper), karet, padi sawah, dan hasil perikanan tangkap.",
 			Link:        "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=557",
 		},
 		{
@@ -194,7 +194,7 @@ func DefaultTopicsCatalog() []SearchResultItem {
 		{
 			Category:    "Indikator Strategis",
 			Title:       "Indikator Sektor Pertanian & Komoditas Unggulan",
-			Description: "Produktivitas komoditas perkebunan sawit dan lada putih Muntok White Pepper.",
+			Description: "Produktivitas komoditas perkebunan sawit dan lada putih Mentok White Pepper.",
 			Link:        "http://s.bps.go.id/IndikatorStrategisBabar",
 		},
 
@@ -239,10 +239,10 @@ func DefaultIndikators() []IndikatorItem {
 			Indikator:      "Sektor Pertanian & Perkebunan",
 			Nilai:          "Komoditas Kelapa Sawit & Lada Putih",
 			Nilai2024:      "Perkebunan menjadi penopang utama PDRB",
-			Nilai2025:      "Muntok White Pepper terus didorong sebagai komoditas ekspor bernilai tinggi",
+			Nilai2025:      "Mentok White Pepper terus didorong sebagai komoditas ekspor bernilai tinggi",
 			Penjelasan:     "Sektor pertanian, kehutanan, dan perikanan merupakan salah satu sektor penggerak utama perekonomian masyarakat Bangka Barat.",
 			Penjelasan2024: "Produksi perkebunan kelapa sawit dan lada putih tetap stabil menjadi sumber mata pencaharian utama warga.",
-			Penjelasan2025: "Program hilirisasi dan sertifikasi indikasi geografis Muntok White Pepper terus ditingkatkan.",
+			Penjelasan2025: "Program hilirisasi dan sertifikasi indikasi geografis Mentok White Pepper terus ditingkatkan.",
 			Infografis:     "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=557",
 		},
 		{
@@ -325,7 +325,7 @@ func DefaultLayananData() []LayananDataItem {
 		{No: "125", Judul: "Statistik Upah dan Biaya Tenaga Kerja", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=537"},
 		{No: "126", Judul: "Statistik Pasokan dan Konsumsi Listrik/Energi", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=558"},
 		{No: "127", Judul: "Statistik Pertambangan Timah dan Industri Pengolahan", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=559"},
-		{No: "128", Judul: "Statistik Transportasi & Pelabuhan Tanjung Kalian Muntok", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=560"},
+		{No: "128", Judul: "Statistik Transportasi & Pelabuhan Tanjung Kalian Mentok", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=560"},
 		{No: "129", Judul: "Statistik Pariwisata dan Perhotelan Bangka Barat", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=561"},
 		{No: "1210", Judul: "Statistik Perbankan dan Kredit Daerah", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=562"},
 		{No: "131", Judul: "Statistik Pertanian, Perkebunan Sawit, Karet, Lada & Perikanan", Link: "https://bangkabaratkab.bps.go.id/id/statistics-table?subject=557"},

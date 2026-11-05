@@ -20,7 +20,7 @@ func getRootMenuItems() []whatsapp.ListRow {
 		{ID: "4", Title: "Video Edukasi Literasi", Description: "Video edukasi dan literasi statistik"},
 		{ID: "5", Title: "Galeri Infografis Daerah", Description: "Visualisasi ringkas data BPS Bangka Barat"},
 		{ID: "6", Title: "Tanya Pakar", Description: "Konsultasi online dengan pakar BPS"},
-		{ID: "7", Title: "Langganan Publikasi", Description: "Langganan rilis berkala gratis"},
+		{ID: "7", Title: "Channel WhatsApp BPS Bangka Barat", Description: "Saluran informasi resmi BPS Bangka Barat"},
 		{ID: "8", Title: "Pengaduan & Saran", Description: "Sampaikan kritik dan saran layanan"},
 		{ID: "9", Title: "Bantuan & FAQ", Description: "Pertanyaan yang sering diajukan"},
 		{ID: "10", Title: "Tentang BPS", Description: "Profil BPS Kabupaten Bangka Barat"},
@@ -62,7 +62,7 @@ func buildWelcomeMenuBody(greetingLine, introSubtitle string) string {
 	sb.WriteString("5. Galeri Infografis Daerah\n\n")
 	sb.WriteString("*KONSULTASI DAN LAYANAN*\n")
 	sb.WriteString("6. Tanya Pakar\n")
-	sb.WriteString("7. Langganan Publikasi\n")
+	sb.WriteString("7. Channel WhatsApp BPS Bangka Barat\n")
 	sb.WriteString("8. Pengaduan & Saran\n\n")
 	sb.WriteString("*INFORMASI*\n")
 	sb.WriteString("9. Bantuan & FAQ\n")
@@ -191,6 +191,8 @@ func (r *BotRouter) HandleBack(ctx context.Context, s *UserSession, p *whatsapp.
 		return r.HandleMenu6Konsultasi(ctx, s, p)
 	case StateMenu6Pakar:
 		return r.HandleKonsultasiPakarList(ctx, s, p)
+	case StateMenu10:
+		return r.HandleMenu10FAQ(ctx, s, p)
 	default:
 		return r.HandleWelcomeShort(ctx, s, p)
 	}

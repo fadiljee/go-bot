@@ -142,6 +142,22 @@ func (p *Provider) LatestInfographicsBySubject(ctx context.Context, subjectKeywo
 	return items, f, nil
 }
 
+func (p *Provider) LatestARCSchedule(ctx context.Context, lang string, limit int) ([]Item, Freshness, error) {
+	cacheKey := fmt.Sprintf("arc:%s:%d", lang, limit)
+	if items, f, ok := p.getCached(cacheKey); ok {
+		return items, f, nil
+	}
+
+	items, err := p.store.GetLatestItems(ctx, KindARC, lang, limit)
+	if err != nil {
+		return nil, Freshness{}, err
+	}
+
+	f := p.calculateFreshness(ctx, items)
+	p.setCached(cacheKey, items, f)
+	return items, f, nil
+}
+
 func (p *Provider) SearchStaticTables(ctx context.Context, keyword string, limit int) ([]Item, Freshness, error) {
 	// Keyword search is dynamic; can query Store directly
 	items, err := p.store.SearchItems(ctx, KindStaticTable, keyword, limit)
