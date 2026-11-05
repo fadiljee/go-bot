@@ -8,7 +8,7 @@ Migrasi penuh ke arsitektur native **Golang** menggunakan `go.mau.fi/whatsmeow`,
 ## Fitur Utama & Keunggulan
 
 1. **Mandiri Tanpa Ketergantungan Eksternal (Zero-GAS Dependency)**:
-   - Seluruh data publikasi, Berita Resmi Statistik (BRS), berita kegiatan, tabel statistik statis, dan indikator strategis dilayani langsung oleh **mesin scraper internal** dan database SQLite lokal ([`storage/scraper.db`](file:///home/fadil/fadil/go-bot/storage/scraper.db)).
+   - Seluruh data publikasi, Berita Resmi Statistik (BRS), berita kegiatan, tabel statistik statis, dan indikator strategis dilayani langsung oleh **mesin scraper internal** dan database SQLite lokal (`storage/scraper.db`).
    - Tidak lagi bergantung pada kuota atau latensi Google Apps Script / Google Sheets.
 
 2. **REST API Layanan Data Statistik (Menu 1 Terintegrasi)**:

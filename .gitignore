@@ -4,16 +4,20 @@
 
 # 1. Environment & Kredensial / Secret Keys (JANGAN DI-PUSH!)
 .env
-.env.local
-.env.*.local
-*.env
+.env.*
 !.env.example
+*.env
 *.pem
 *.key
 *.cert
 *.crt
+*.p12
+*.pfx
+*.secret
+*.credentials
 credentials*.json
 service-account*.json
+client_secret*.json
 
 # 2. Database & Sesi WhatsApp (Berisi Kunci Enkripsi & Chat Session)
 storage/
@@ -24,9 +28,10 @@ state/
 *.sqlite
 *.sqlite-*
 
-# 3. Compiled Go Binaries & Executables
+# 3. Compiled Go Binaries, Test Coverage & Executables
 bot-istimewa
 scraper-cli
+scraper-seed
 /bin/
 /dist/
 *.exe
@@ -36,10 +41,14 @@ scraper-cli
 *.dylib
 *.test
 *.out
+coverage.html
 
-# 4. Logs & Debugging
+# 4. Logs, Backup & Debugging
 *.log
 *.log.*
+*.bak
+*.tmp
+*.orig
 
 # 5. Media Video Berukuran Besar (Private / Heavy Assets)
 VideoliterasiStatistik/
@@ -49,22 +58,32 @@ VideoliterasiStatistik/
 *.avi
 *.mov
 
-# 6. Editor, IDE & Agent Settings
+# 6. Editor, IDE & Agent Settings (Private)
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 .antigravity*
+.agent
 .agent/
+.claude/
+.cursor/
+.goroot
 .goroot/
 
-# 7. OS Metadata
+# 7. OS & Build Cache Metadata
 .DS_Store
 Thumbs.db
 desktop.ini
+.gocache
 .gocache/
 
-# 8. Dokumentasi Internal & PRD (Private)
+# 8. Dokumentasi Internal, Catatan Task & PRD (Private)
 prd/
+FIX_LOG.md
+TASK_LOG.md
+*_LOG.md
+NOTES.md
+TODO.md
 
