@@ -56,16 +56,6 @@ func NewMessageQueue(cli *whatsmeow.Client, minInter, maxInter, minBlast, maxBla
 	return mq
 }
 
-// EnqueueInteractive queues interactive response with high priority
-func (mq *MessageQueue) EnqueueInteractive(jid types.JID, msg *waE2E.Message, extra *whatsmeow.SendRequestExtra) {
-	mq.interactiveQueue <- OutboundJob{
-		JID:          jid,
-		Message:      msg,
-		Extra:        extra,
-		SimulateType: true,
-	}
-}
-
 // EnqueueBlast queues broadcast messages with low priority
 func (mq *MessageQueue) EnqueueBlast(jid types.JID, msg *waE2E.Message, extra *whatsmeow.SendRequestExtra) {
 	mq.blastQueue <- OutboundJob{
@@ -150,6 +140,6 @@ func (mq *MessageQueue) sendWithJitter(job OutboundJob, minMs, maxMs int) {
 	}
 
 	if err != nil {
-		slog.Error("Gagal mengirim pesan WA dari antrean", "jid", job.JID.String(), "error", err)
+		slog.Error("Gagal mengirim pesan WA dari antrean", "jid", MaskJID(job.JID.String()), "error", err)
 	}
 }

@@ -146,19 +146,19 @@ func FormatSearchResults(query string, results []SearchResultItem) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Hasil pencarian untuk kata kunci *\"%s\"* (%d hasil ditemukan):\n\n", query, len(results)))
+	fmt.Fprintf(&sb, "Hasil pencarian untuk kata kunci *\"%s\"* (%d hasil ditemukan):\n\n", query, len(results))
 
 	for i, r := range results {
-		sb.WriteString(fmt.Sprintf("*%d. [%s] %s*\n", i+1, r.Category, r.Title))
+		fmt.Fprintf(&sb, "*%d. [%s] %s*\n", i+1, r.Category, r.Title)
 		if r.Description != "" {
 			desc := r.Description
 			if len(desc) > 140 {
 				desc = desc[:137] + "..."
 			}
-			sb.WriteString(fmt.Sprintf("   _%s_\n", desc))
+			fmt.Fprintf(&sb, "   _%s_\n", desc)
 		}
 		if r.Link != "" {
-			sb.WriteString(fmt.Sprintf("   %s\n", r.Link))
+			fmt.Fprintf(&sb, "   %s\n", r.Link)
 		}
 		sb.WriteString("◪◩◪◩◪◩◪◩◪◩◪◩◪◩◪◩\n\n")
 	}

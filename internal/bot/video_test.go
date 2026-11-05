@@ -21,7 +21,7 @@ func TestVideoLiterasiNavigationAndDelivery(t *testing.T) {
 	sender := whatsapp.NewSender(nil, nil)
 	router := NewBotRouter(cfg, sender, nil)
 
-	userJID := types.NewJID("6283843607098", types.DefaultUserServer)
+	userJID := types.NewJID("6281234567890", types.DefaultUserServer)
 	session := router.sessions.GetOrCreate(userJID, nil)
 
 	// 1. Open Menu 4 (Video Literasi)
@@ -40,8 +40,8 @@ func TestVideoLiterasiNavigationAndDelivery(t *testing.T) {
 		Text: "1",
 	}
 	router.Dispatch(context.Background(), pSosduk)
-	if session.CurrentState != StateMenu4_Sosduk {
-		t.Fatalf("expected state %s, got %s", StateMenu4_Sosduk, session.CurrentState)
+	if session.CurrentState != StateMenu4Sosduk {
+		t.Fatalf("expected state %s, got %s", StateMenu4Sosduk, session.CurrentState)
 	}
 
 	// 3. Select Option 1 in Sosduk (Garis Kemiskinan video)
@@ -67,8 +67,8 @@ func TestVideoLiterasiNavigationAndDelivery(t *testing.T) {
 		Text: "3",
 	}
 	router.Dispatch(context.Background(), pEkonomi)
-	if session.CurrentState != StateMenu4_Ekonomi {
-		t.Fatalf("expected state %s, got %s", StateMenu4_Ekonomi, session.CurrentState)
+	if session.CurrentState != StateMenu4Ekonomi {
+		t.Fatalf("expected state %s, got %s", StateMenu4Ekonomi, session.CurrentState)
 	}
 
 	// 6. Select Option 3 in Ekonomi (Memaknai Data Inflasi video)
@@ -85,7 +85,7 @@ func TestVideoLiterasiNavigationAndDelivery(t *testing.T) {
 		Text: "11",
 	}
 	router.Dispatch(context.Background(), pMenu11)
-	if session.CurrentState != StateMenu11_About {
-		t.Fatalf("expected state %s, got %s", StateMenu11_About, session.CurrentState)
+	if session.CurrentState != StateMenu11About {
+		t.Fatalf("expected state %s, got %s", StateMenu11About, session.CurrentState)
 	}
 }

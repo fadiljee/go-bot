@@ -50,13 +50,13 @@ type Response struct {
 
 // Fetcher performs polite, rate-limited HTTP GET requests with SSRF & anti-bot protection (§7).
 type Fetcher struct {
-	cfg        *Config
-	client     *http.Client
-	robots     *RobotsManager
+	cfg          *Config
+	client       *http.Client
+	robots       *RobotsManager
 	requestCount int
-	countMu    sync.Mutex
-	lastReqMu  sync.Mutex
-	lastReqTime time.Time
+	countMu      sync.Mutex
+	lastReqMu    sync.Mutex
+	lastReqTime  time.Time
 }
 
 // NewFetcher creates a Fetcher with polite defaults and custom transport.
@@ -126,7 +126,7 @@ func (f *Fetcher) RequestCount() int {
 func (f *Fetcher) ValidateURL(rawURL string) (*url.URL, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("%w: invalid URL %v", ErrSSRF, err)
+		return nil, fmt.Errorf("%w: invalid URL %w", ErrSSRF, err)
 	}
 
 	if f.cfg.AppEnv != "test" && u.Scheme != "https" {
@@ -302,9 +302,9 @@ func (f *Fetcher) applyRateLimit(ctx context.Context) {
 	f.lastReqMu.Lock()
 	defer f.lastReqMu.Unlock()
 
-	delay := time.Duration(f.cfg.MinDelayMs)*time.Millisecond
+	delay := time.Duration(f.cfg.MinDelayMs) * time.Millisecond
 	if f.cfg.JitterMs > 0 {
-		delay += time.Duration(rand.Intn(f.cfg.JitterMs))*time.Millisecond
+		delay += time.Duration(rand.Intn(f.cfg.JitterMs)) * time.Millisecond
 	}
 
 	if !f.lastReqTime.IsZero() {
@@ -346,14 +346,14 @@ func (f *Fetcher) doWithRetry(req *http.Request) (*http.Response, error) {
 		if resp.StatusCode == http.StatusServiceUnavailable {
 			// HTTP 503: retry 1 time only (§7.3)
 			if attempt == 0 {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 				sleepBackoff(0)
 				continue
 			}
 			return resp, nil
 		}
 		if resp.StatusCode == 500 || resp.StatusCode == 502 || resp.StatusCode == 504 {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
 			if attempt < maxRetries {
 				sleepBackoff(attempt)

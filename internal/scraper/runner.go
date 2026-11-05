@@ -26,17 +26,17 @@ type AdminNotifier interface {
 
 // Runner coordinates scrape runs across kinds with lock, timeout, and anomaly detection (§10.4, Lampiran A).
 type Runner struct {
-	cfg         *Config
-	store       *Store
-	fetcher     *Fetcher
-	breaker     *CircuitBreaker
-	selectors   *SelectorsConfig
-	parsers     map[Kind]Parser
-	notifier    AdminNotifier
-	provider    *Provider
+	cfg       *Config
+	store     *Store
+	fetcher   *Fetcher
+	breaker   *CircuitBreaker
+	selectors *SelectorsConfig
+	parsers   map[Kind]Parser
+	notifier  AdminNotifier
+	provider  *Provider
 
-	mu          sync.Mutex
-	lastManual  time.Time
+	mu         sync.Mutex
+	lastManual time.Time
 }
 
 // NewRunner creates a new scraper runner.
@@ -117,7 +117,7 @@ func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error)
 			slog.Error("scraper panic recovered", "panic", rec, "stack", stack)
 			run.Status = "error"
 			run.ErrorMessage = fmt.Sprintf("panic: %v", rec)
-			_ = r.store.FinishRun(context.Background(), run)
+			_ = r.store.FinishRun(context.WithoutCancel(ctx), run)
 		}
 	}()
 
@@ -138,7 +138,7 @@ func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error)
 		case <-ctx.Done():
 			run.Status = "timeout"
 			run.ErrorMessage = "run timed out"
-			_ = r.store.FinishRun(context.Background(), run)
+			_ = r.store.FinishRun(context.WithoutCancel(ctx), run)
 			return run, ctx.Err()
 		default:
 		}
@@ -153,8 +153,9 @@ func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error)
 
 		if err != nil {
 			slog.Warn("scraper.kind_failed", "kind", kind, "error", err)
-			if errors.Is(err, ErrBlocked) || errors.Is(err, ErrRateLimited) {
-				cooldown := r.breaker.Trip(err.Error())
+			switch {
+			case errors.Is(err, ErrBlocked) || errors.Is(err, ErrRateLimited):
+				cooldown := r.breaker.Trip(ctx, err.Error())
 				run.Status = "blocked"
 				if errors.Is(err, ErrRateLimited) {
 					run.Status = "rate_limited"
@@ -162,17 +163,17 @@ func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error)
 				run.ErrorMessage = err.Error()
 				r.sendAdminNotification(ctx, fmt.Sprintf("Scraper BPS Bangka Barat: %v. Cooldown %v. Bot beralih ke data cadangan.", err, cooldown))
 				allKindsSuccess = false
-				break // Halt cycle immediately (§10.4)
-			} else if errors.Is(err, ErrAnomalyLayoutChanged) || errors.Is(err, ErrAnomalyCountDrop) || errors.Is(err, ErrAnomalyMarkerMissing) {
+			case errors.Is(err, ErrAnomalyLayoutChanged) || errors.Is(err, ErrAnomalyCountDrop) || errors.Is(err, ErrAnomalyMarkerMissing):
 				hasPartial = true
 				allKindsSuccess = false
 				r.sendAdminNotification(ctx, fmt.Sprintf("Scraper BPS Bangka Barat anomali: %v. Data lama tetap dipertahankan.", err))
 				continue
-			} else {
+			default:
 				hasPartial = true
 				allKindsSuccess = false
 				continue
 			}
+			break // Halt cycle immediately (§10.4)
 		}
 
 		// Save items in transaction
@@ -191,7 +192,7 @@ func (r *Runner) RunAll(ctx context.Context, trigger string) (*RunResult, error)
 	run.Requests = r.fetcher.RequestCount()
 
 	if allKindsSuccess {
-		r.breaker.Reset()
+		r.breaker.Reset(ctx)
 		run.Status = "success"
 	} else if hasPartial {
 		run.Status = "partial"

@@ -10,8 +10,8 @@ import (
 	"bot-istimewa/internal/whatsapp"
 )
 
-// HandleMenu1_LayananData renders 5 categories of Layanan Data
-func (r *BotRouter) HandleMenu1_LayananData(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu1LayananData renders 5 categories of Layanan Data
+func (r *BotRouter) HandleMenu1LayananData(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu1)
 
 	items := []whatsapp.ListRow{
@@ -40,8 +40,8 @@ func (r *BotRouter) HandleMenu1_LayananData(ctx context.Context, s *UserSession,
 }
 
 // Submenu 1.1: Sosduk (12 Topics)
-func (r *BotRouter) HandleLayananSub_Sosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu1_Sosduk)
+func (r *BotRouter) HandleLayananSubSosduk(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu1Sosduk)
 
 	items := []whatsapp.ListRow{
 		{ID: "1", Title: locale.T("menu111Sosduk")},
@@ -76,8 +76,8 @@ func (r *BotRouter) HandleLayananSub_Sosduk(ctx context.Context, s *UserSession,
 }
 
 // Submenu 1.2: Ekonomi (10 Topics)
-func (r *BotRouter) HandleLayananSub_Ekonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu1_Ekonomi)
+func (r *BotRouter) HandleLayananSubEkonomi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu1Ekonomi)
 
 	items := []whatsapp.ListRow{
 		{ID: "1", Title: locale.T("menu121Ekonomi")},
@@ -110,8 +110,8 @@ func (r *BotRouter) HandleLayananSub_Ekonomi(ctx context.Context, s *UserSession
 }
 
 // Submenu 1.3: Pertanian (2 Topics)
-func (r *BotRouter) HandleLayananSub_Pertanian(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu1_Pertanian)
+func (r *BotRouter) HandleLayananSubPertanian(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu1Pertanian)
 
 	items := []whatsapp.ListRow{
 		{ID: "1", Title: locale.T("menu131Pertanian")},
@@ -136,7 +136,7 @@ func (r *BotRouter) HandleLayananSub_Pertanian(ctx context.Context, s *UserSessi
 }
 
 // Submenu 1.4: Sektoral (Resolves Stub U-01)
-func (r *BotRouter) HandleLayananSub_Sektoral(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+func (r *BotRouter) HandleLayananSubSektoral(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	text := "*STATISTIK SEKTORAL BANGKA BARAT*\nBPS Kabupaten Bangka Barat\n\n" +
 		"Data statistik sektoral dikumpulkan dan dikelola oleh Organisasi Perangkat Daerah (OPD) di lingkungan Pemerintah Kabupaten Bangka Barat bekerja sama dengan BPS sebagai Pembina Data.\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
@@ -161,8 +161,8 @@ func (r *BotRouter) HandleLayananSub_Sektoral(ctx context.Context, s *UserSessio
 }
 
 // Submenu 1.5: Search Prompt (Resolves Stub U-01)
-func (r *BotRouter) HandleLayananSub_SearchPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu1_Search)
+func (r *BotRouter) HandleLayananSubSearchPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu1Search)
 
 	text := "*PENCARIAN DATA STATISTIK*\nBPS Kabupaten Bangka Barat\n\n" +
 		"Silakan ketik kata kunci data yang ingin Sahabat cari:\n\n" +
@@ -193,10 +193,10 @@ func (r *BotRouter) fetchBPSTablesForTopic(ctx context.Context, keyword string) 
 		sb.WriteString("*Tabel Statistik Terkait (Database BPS)*:\n")
 		for i, table := range tables {
 			cleanTitle := scraper.CleanHTML(table.Title)
-			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
+			fmt.Fprintf(&sb, "%d. %s\n", i+1, cleanTitle)
 		}
 		if fresh.UpdatedAt.Year() > 2000 {
-			sb.WriteString(fmt.Sprintf("Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+			fmt.Fprintf(&sb, "Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
 		}
 		return sb.String()
 	}
@@ -217,7 +217,7 @@ func (r *BotRouter) fetchScraperItemsForTopic(ctx context.Context, keyword strin
 	sb.WriteString("*Publikasi & Dokumen Rujukan Resmi*:\n")
 	for i, it := range items {
 		cleanTitle := scraper.CleanHTML(it.Title)
-		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
+		fmt.Fprintf(&sb, "%d. %s\n", i+1, cleanTitle)
 	}
 	sb.WriteString("\n")
 	return sb.String()
@@ -236,10 +236,10 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 		tables, _, _ := r.scraper.SearchStaticTables(ctx, query, 3)
 		if len(tables) > 0 {
 			liveFound = true
-			sb.WriteString(fmt.Sprintf("*Tabel Statistik untuk \"%s\"*:\n", query))
+			fmt.Fprintf(&sb, "*Tabel Statistik untuk \"%s\"*:\n", query)
 			for i, t := range tables {
 				cleanTitle := scraper.CleanHTML(t.Title)
-				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
+				fmt.Fprintf(&sb, "%d. %s\n", i+1, cleanTitle)
 			}
 			sb.WriteString("\n")
 		}
@@ -254,17 +254,17 @@ func (r *BotRouter) HandleSearchKeyword(ctx context.Context, s *UserSession, p *
 				if it.ReleaseDate != nil {
 					dateStr = fmt.Sprintf(" (%s)", it.ReleaseDate.Format("02 Jan 2006"))
 				}
-				sb.WriteString(fmt.Sprintf("%d. %s%s\n", i+1, cleanTitle, dateStr))
+				fmt.Fprintf(&sb, "%d. %s%s\n", i+1, cleanTitle, dateStr)
 			}
 			sb.WriteString("\n")
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				fmt.Fprintf(&sb, "Pembaruan: %s WIB\n\n", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
 			}
 		}
 	}
 
 	if !liveFound {
-		sb.WriteString(fmt.Sprintf("Kata kunci *\"%s\"* belum ditemukan di database BPS Bangka Barat.\n\n*Saran Pencarian*:\nCoba gunakan kata kunci umum seperti *inflasi*, *kemiskinan*, *penduduk*, *sawit*, atau *pdrb*.\n", query))
+		fmt.Fprintf(&sb, "Kata kunci *\"%s\"* belum ditemukan di database BPS Bangka Barat.\n\n*Saran Pencarian*:\nCoba gunakan kata kunci umum seperti *inflasi*, *kemiskinan*, *penduduk*, *sawit*, atau *pdrb*.\n", query)
 	} else {
 		sb.WriteString("Untuk unduh berkas lengkap (Excel/PDF), Sahabat dapat berkonsultasi di *Menu 6* (Layanan Konsultasi PST).\n")
 	}
@@ -289,7 +289,6 @@ func (r *BotRouter) HandleSosdukTopic(ctx context.Context, s *UserSession, p *wh
 	bodyText := r.buildTopicBody(ctx, "sosduk", topicIdx,
 		locale.T(fmt.Sprintf("menu11%dSosduk", topicIdx)),
 		locale.T(fmt.Sprintf("Cakupmenu11%dSosduk", topicIdx)),
-		locale.T(fmt.Sprintf("Linkmenu11%dSosduk", topicIdx)),
 		"penduduk",
 	)
 
@@ -311,7 +310,6 @@ func (r *BotRouter) HandleEkonomiTopic(ctx context.Context, s *UserSession, p *w
 	bodyText := r.buildTopicBody(ctx, "ekonomi", topicIdx,
 		locale.T(fmt.Sprintf("menu12%dEkonomi", topicIdx)),
 		locale.T(fmt.Sprintf("Cakupmenu12%dEkonomi", topicIdx)),
-		locale.T(fmt.Sprintf("Linkmenu12%dEkonomi", topicIdx)),
 		"pdrb",
 	)
 
@@ -333,7 +331,6 @@ func (r *BotRouter) HandlePertanianTopic(ctx context.Context, s *UserSession, p 
 	bodyText := r.buildTopicBody(ctx, "pertanian", topicIdx,
 		locale.T(fmt.Sprintf("menu13%dPertanian", topicIdx)),
 		locale.T(fmt.Sprintf("Cakupmenu13%dPertanian", topicIdx)),
-		locale.T(fmt.Sprintf("Linkmenu13%dPertanian", topicIdx)),
 		"pertanian",
 	)
 
@@ -350,23 +347,23 @@ func (r *BotRouter) HandlePertanianTopic(ctx context.Context, s *UserSession, p 
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, topicIdx int, defaultTitle, defaultCakupan, defaultLink, defaultKeyword string) string {
+func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, topicIdx int, defaultTitle, defaultCakupan, defaultKeyword string) string {
 	var sb strings.Builder
 
 	// 1. Cek Data Provider Scraper
 	if r.scraper != nil {
 		topic, fresh, err := r.scraper.GetLayananDataTopic(ctx, categorySlug, fmt.Sprintf("%d", topicIdx))
 		if err == nil && topic != nil {
-			sb.WriteString(fmt.Sprintf("*%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", topic.Title))
+			fmt.Fprintf(&sb, "*%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", topic.Title)
 
 			if topic.Description != "" {
-				sb.WriteString(fmt.Sprintf("*Cakupan Data*:\n%s\n\n", topic.Description))
+				fmt.Fprintf(&sb, "*Cakupan Data*:\n%s\n\n", topic.Description)
 			}
 
 			// Ringkasan Angka Indikator Terkini Langsung di Bot
 			figures := getTopicDirectFigures(categorySlug, topicIdx)
 			if figures != "" {
-				sb.WriteString(fmt.Sprintf("*Ringkasan Angka Terkini*:\n%s\n\n", figures))
+				fmt.Fprintf(&sb, "*Ringkasan Angka Terkini*:\n%s\n\n", figures)
 			}
 
 			// Tabel statistik hasil scraping (tanpa link rusak)
@@ -383,7 +380,7 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 						yearStr = fmt.Sprintf(" (%s)", t.ReleaseDate.Format("2006"))
 					}
 					cleanTitle := scraper.CleanHTML(t.Title)
-					sb.WriteString(fmt.Sprintf("%d. %s%s\n", i+1, cleanTitle, yearStr))
+					fmt.Fprintf(&sb, "%d. %s%s\n", i+1, cleanTitle, yearStr)
 				}
 				sb.WriteString("\n")
 			}
@@ -398,7 +395,7 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 				for i := 0; i < limit; i++ {
 					it := topic.Items[i]
 					cleanTitle := scraper.CleanHTML(it.Title)
-					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, cleanTitle))
+					fmt.Fprintf(&sb, "%d. %s\n", i+1, cleanTitle)
 				}
 				sb.WriteString("\n")
 			}
@@ -407,21 +404,21 @@ func (r *BotRouter) buildTopicBody(ctx context.Context, categorySlug string, top
 			sb.WriteString("Untuk permohonan data mentah (Excel/CSV), silakan hubungi Layanan Konsultasi di Menu *6*.\n\n")
 
 			if fresh.UpdatedAt.Year() > 2000 {
-				sb.WriteString(fmt.Sprintf("Sumber: Database BPS Bangka Barat · diperbarui %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04")))
+				fmt.Fprintf(&sb, "Sumber: Database BPS Bangka Barat · diperbarui %s WIB", fresh.UpdatedAt.Format("02 Jan 2006 15:04"))
 			}
 			return sb.String()
 		}
 	}
 
 	// 2. Fallback
-	sb.WriteString(fmt.Sprintf("*%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", defaultTitle))
+	fmt.Fprintf(&sb, "*%s*\nBPS Kabupaten Bangka Barat\n━━━━━━━━━━━━━━━━━━\n\n", defaultTitle)
 	if defaultCakupan != "" && !strings.HasPrefix(defaultCakupan, "Cakupmenu") {
-		sb.WriteString(fmt.Sprintf("*Cakupan Data*:\n%s\n\n", defaultCakupan))
+		fmt.Fprintf(&sb, "*Cakupan Data*:\n%s\n\n", defaultCakupan)
 	}
 
 	figures := getTopicDirectFigures(categorySlug, topicIdx)
 	if figures != "" {
-		sb.WriteString(fmt.Sprintf("*Ringkasan Angka Terkini*:\n%s\n\n", figures))
+		fmt.Fprintf(&sb, "*Ringkasan Angka Terkini*:\n%s\n\n", figures)
 	}
 
 	tables := r.fetchBPSTablesForTopic(ctx, defaultKeyword)

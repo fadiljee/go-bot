@@ -37,7 +37,7 @@ func TestCircuitBreaker_Escalation(t *testing.T) {
 	}
 
 	for i, expected := range expectedCooldowns {
-		dur := cb.Trip("test block")
+		dur := cb.Trip(context.Background(), "test block")
 		if dur != expected {
 			t.Errorf("trip #%d: expected cooldown %v, got %v", i+1, expected, dur)
 		}
@@ -51,7 +51,7 @@ func TestCircuitBreaker_Escalation(t *testing.T) {
 	}
 
 	// Test Reset
-	cb.Reset()
+	cb.Reset(context.Background())
 	isOpen, until := cb.IsOpen()
 	if isOpen || until != nil {
 		t.Errorf("expected breaker to be closed after reset")

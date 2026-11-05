@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	wibLocation *time.Location
+	wibLocation  *time.Location
 	cleanSpaceRe = regexp.MustCompile(`[\s\x{00a0}]+`)
 	urlDateRe    = regexp.MustCompile(`/(\d{4})/(\d{1,2})/(\d{1,2})/`)
 )

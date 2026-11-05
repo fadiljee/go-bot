@@ -69,6 +69,7 @@ func TestAPILayananData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respNoAuth.Body.Close() }()
 	if respNoAuth.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", respNoAuth.StatusCode)
 	}
@@ -80,6 +81,7 @@ func TestAPILayananData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respAuth.Body.Close() }()
 	if respAuth.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", respAuth.StatusCode)
 	}
@@ -103,6 +105,7 @@ func TestAPILayananData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respSosduk.Body.Close() }()
 	if respSosduk.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for sosduk category, got %d", respSosduk.StatusCode)
 	}
@@ -125,6 +128,7 @@ func TestAPILayananData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respTopic.Body.Close() }()
 	if respTopic.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for kemiskinan topic, got %d", respTopic.StatusCode)
 	}
@@ -147,6 +151,7 @@ func TestAPILayananData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respSearch.Body.Close() }()
 	if respSearch.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for search query, got %d", respSearch.StatusCode)
 	}
@@ -172,6 +177,7 @@ func TestAPILayananData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respText.Body.Close() }()
 	if respText.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for plaintext format, got %d", respText.StatusCode)
 	}

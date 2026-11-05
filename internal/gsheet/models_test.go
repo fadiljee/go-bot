@@ -28,10 +28,10 @@ func TestFlexStringUnmarshaling(t *testing.T) {
 
 func TestIndikatorDynamicYear(t *testing.T) {
 	item := IndikatorItem{
-		Indikator:  "Kemiskinan",
-		Nilai2025:  "4.41",
-		Nilai2024:  "4.56",
-		Nilai:      "4.50",
+		Indikator: "Kemiskinan",
+		Nilai2025: "4.41",
+		Nilai2024: "4.56",
+		Nilai:     "4.50",
 	}
 
 	if val := item.GetNilai("2025"); val != "4.41" {

@@ -19,10 +19,10 @@ type RobotsManager struct {
 	userAgent string
 	respect   bool
 
-	mu        sync.RWMutex
-	cachedAt  time.Time
-	data      *robotstxt.RobotsData
-	fetchErr  error
+	mu       sync.RWMutex
+	cachedAt time.Time
+	data     *robotstxt.RobotsData
+	fetchErr error
 }
 
 // NewRobotsManager creates a new robots.txt evaluator.
@@ -33,20 +33,6 @@ func NewRobotsManager(client *http.Client, baseURL, userAgent string, respect bo
 		userAgent: userAgent,
 		respect:   respect,
 	}
-}
-
-// SetStaticData allows setting mock or fixture robots.txt data for tests.
-func (r *RobotsManager) SetStaticData(body []byte) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	data, err := robotstxt.FromBytes(body)
-	if err != nil {
-		return err
-	}
-	r.data = data
-	r.cachedAt = time.Now()
-	r.fetchErr = nil
-	return nil
 }
 
 // Allowed evaluates if a given URL path is allowed for this scraper's user-agent.

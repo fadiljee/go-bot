@@ -18,7 +18,7 @@ Allow: /id/pressrelease.html
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(robotsContent))
+			_, _ = w.Write([]byte(robotsContent))
 			return
 		}
 		http.NotFound(w, r)

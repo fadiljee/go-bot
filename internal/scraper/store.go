@@ -3,6 +3,7 @@ package scraper
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,11 +36,11 @@ func NewStore(dbPath string) (*Store, error) {
 
 	s := &Store{db: db}
 	if err := s.initPragmas(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 	if err := s.migrate(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 
@@ -178,7 +179,7 @@ func (s *Store) sanitizeExistingItems() error {
 			items = append(items, it)
 		}
 	}
-	rows.Close()
+	_ = rows.Close()
 
 	for _, it := range items {
 		cleanT := CleanHTML(it.title)
@@ -227,7 +228,7 @@ func (s *Store) ApplyItems(ctx context.Context, kind Kind, lang string, items []
 	if err != nil {
 		return 0, 0, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	nowStr := time.Now().UTC().Format(time.RFC3339)
 	seenKeys := make(map[string]bool)
@@ -247,7 +248,8 @@ func (s *Store) ApplyItems(ctx context.Context, kind Kind, lang string, items []
 		)
 		err := row.Scan(&existingID, &existingHash)
 
-		if err == sql.ErrNoRows {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
 			// INSERT
 			_, err = tx.ExecContext(ctx, `
 				INSERT INTO scraped_items (
@@ -263,7 +265,7 @@ func (s *Store) ApplyItems(ctx context.Context, kind Kind, lang string, items []
 				return 0, 0, fmt.Errorf("store insert failed: %w", err)
 			}
 			newCount++
-		} else if err == nil {
+		case err == nil:
 			// Exists
 			if existingHash == it.ContentHash {
 				// No change, just refresh last_seen_at
@@ -290,7 +292,7 @@ func (s *Store) ApplyItems(ctx context.Context, kind Kind, lang string, items []
 			if err != nil {
 				return 0, 0, fmt.Errorf("store update failed: %w", err)
 			}
-		} else {
+		default:
 			return 0, 0, err
 		}
 	}
@@ -318,7 +320,7 @@ func (s *Store) ApplyItems(ctx context.Context, kind Kind, lang string, items []
 					}
 				}
 			}
-			rows.Close()
+			_ = rows.Close()
 
 			for _, u := range unobservedList {
 				isActive := 1
@@ -788,4 +790,3 @@ func (s *Store) UpdateExpertContact(ctx context.Context, bidangID int, name, pho
 	}
 	return nil
 }
-

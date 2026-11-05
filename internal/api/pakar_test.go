@@ -46,6 +46,7 @@ func TestAPIPakar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respNoAuth.Body.Close() }()
 	if respNoAuth.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", respNoAuth.StatusCode)
 	}
@@ -57,6 +58,7 @@ func TestAPIPakar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respList.Body.Close() }()
 	if respList.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", respList.StatusCode)
 	}
@@ -79,6 +81,7 @@ func TestAPIPakar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respOne.Body.Close() }()
 	if respOne.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", respOne.StatusCode)
 	}
@@ -105,6 +108,7 @@ func TestAPIPakar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respUpdate.Body.Close() }()
 	if respUpdate.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", respUpdate.StatusCode)
 	}
@@ -116,6 +120,7 @@ func TestAPIPakar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respAlias.Body.Close() }()
 	var aliasData struct {
 		Success bool                  `json:"success"`
 		Data    scraper.ExpertContact `json:"data"`

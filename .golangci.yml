@@ -1,0 +1,39 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - unparam
+    - errorlint
+    - gocritic
+    - revive
+    - bodyclose
+    - contextcheck
+    - gosec
+    - prealloc
+    - copyloopvar
+    - nolintlint
+  settings:
+    revive:
+      rules:
+        - name: var-naming
+        - name: unreachable-code
+        - name: indent-error-flow
+    gosec:
+      excludes:
+        - G404   # math/rand untuk jitter delay, bukan kriptografi
+  exclusions:
+    presets:
+      - comments              # buang keluhan "exported ... should have comment"
+      - common-false-positives
+      - std-error-handling    # buang errcheck untuk Close/Remove/Flush
+formatters:
+  enable:
+    - gofmt
+    - goimports

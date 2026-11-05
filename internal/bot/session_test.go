@@ -27,9 +27,9 @@ func TestSessionManager(t *testing.T) {
 		t.Errorf("expected state %s, got %s", StateMenu1, s.CurrentState)
 	}
 
-	s.PushState(StateMenu1_Sosduk)
-	if s.CurrentState != StateMenu1_Sosduk {
-		t.Errorf("expected state %s, got %s", StateMenu1_Sosduk, s.CurrentState)
+	s.PushState(StateMenu1Sosduk)
+	if s.CurrentState != StateMenu1Sosduk {
+		t.Errorf("expected state %s, got %s", StateMenu1Sosduk, s.CurrentState)
 	}
 
 	// Test PopState

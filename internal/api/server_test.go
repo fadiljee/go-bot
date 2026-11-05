@@ -27,6 +27,7 @@ func TestAPIServerSecurity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("health test error: %v", err)
 	}
+	defer func() { _ = respHealth.Body.Close() }()
 	if respHealth.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK for /health, got %d", respHealth.StatusCode)
 	}
@@ -37,6 +38,7 @@ func TestAPIServerSecurity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("qr test error: %v", err)
 	}
+	defer func() { _ = respQR.Body.Close() }()
 	if respQR.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden for /qr when logged in, got %d", respQR.StatusCode)
 	}
@@ -47,6 +49,7 @@ func TestAPIServerSecurity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("api test error: %v", err)
 	}
+	defer func() { _ = respAPI.Body.Close() }()
 	if respAPI.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 Unauthorized for /api without key, got %d", respAPI.StatusCode)
 	}
@@ -58,6 +61,7 @@ func TestAPIServerSecurity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("api test error: %v", err)
 	}
+	defer func() { _ = respBadKey.Body.Close() }()
 	if respBadKey.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 Unauthorized with bad key, got %d", respBadKey.StatusCode)
 	}
@@ -69,6 +73,7 @@ func TestAPIServerSecurity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("api qr test error: %v", err)
 	}
+	defer func() { _ = respAPIQR.Body.Close() }()
 	if respAPIQR.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden for /api/v1/qr when logged in, got %d", respAPIQR.StatusCode)
 	}
@@ -90,6 +95,7 @@ func TestAPIServerScraperRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unauth error: %v", err)
 	}
+	defer func() { _ = respUnauth.Body.Close() }()
 	if respUnauth.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 Unauthorized for /api/v1/scraper/status, got %d", respUnauth.StatusCode)
 	}
@@ -100,6 +106,5 @@ func TestAPIServerScraperRoutes(t *testing.T) {
 	if err != nil || respHealth.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK for /health, got %d", respHealth.StatusCode)
 	}
+	defer func() { _ = respHealth.Body.Close() }()
 }
-
-

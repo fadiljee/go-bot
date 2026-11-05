@@ -29,21 +29,21 @@ type BRSItem struct {
 }
 
 type PubItem struct {
-	ID        string `json:"pub_id"`
-	Title     string `json:"title"`
-	Abstract  string `json:"abstract"`
-	Date      string `json:"rl_date"`
-	Cover     string `json:"cover"`
-	PDF       string `json:"pdf"`
-	Size      string `json:"size"`
+	ID       string `json:"pub_id"`
+	Title    string `json:"title"`
+	Abstract string `json:"abstract"`
+	Date     string `json:"rl_date"`
+	Cover    string `json:"cover"`
+	PDF      string `json:"pdf"`
+	Size     string `json:"size"`
 }
 
 type NewsItem struct {
-	ID        int    `json:"news_id"`
-	Title     string `json:"title"`
-	News      string `json:"news"`
-	Date      string `json:"rl_date"`
-	Picture   string `json:"picture"`
+	ID      int    `json:"news_id"`
+	Title   string `json:"title"`
+	News    string `json:"news"`
+	Date    string `json:"rl_date"`
+	Picture string `json:"picture"`
 }
 
 func main() {
@@ -120,7 +120,7 @@ func scrapeBRS(ctx context.Context, client *http.Client, store *scraper.Store) {
 	req, _ := http.NewRequestWithContext(ctx, "GET", "https://bangkabaratkab.bps.go.id/id/pressrelease", nil)
 	req.Header.Set("User-Agent", browserUA)
 	if resp, err := client.Do(req); err == nil && resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	postReq, _ := http.NewRequestWithContext(ctx, "POST", "https://bangkabaratkab.bps.go.id/id/pressrelease", strings.NewReader(`["id",{"page":1}]`))
@@ -182,7 +182,7 @@ func scrapePubs(ctx context.Context, client *http.Client, store *scraper.Store) 
 	req, _ := http.NewRequestWithContext(ctx, "GET", "https://bangkabaratkab.bps.go.id/id/publication", nil)
 	req.Header.Set("User-Agent", browserUA)
 	if resp, err := client.Do(req); err == nil && resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	postReq, _ := http.NewRequestWithContext(ctx, "POST", "https://bangkabaratkab.bps.go.id/id/publication", strings.NewReader(`["id",{"page":1}]`))
@@ -244,7 +244,7 @@ func scrapeNews(ctx context.Context, client *http.Client, store *scraper.Store) 
 	req, _ := http.NewRequestWithContext(ctx, "GET", "https://bangkabaratkab.bps.go.id/id/news", nil)
 	req.Header.Set("User-Agent", browserUA)
 	if resp, err := client.Do(req); err == nil && resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	postReq, _ := http.NewRequestWithContext(ctx, "POST", "https://bangkabaratkab.bps.go.id/id/news", strings.NewReader(`["id",{"page":1}]`))
@@ -314,7 +314,7 @@ func scrapeInfographics(ctx context.Context, client *http.Client, store *scraper
 	req, _ := http.NewRequestWithContext(ctx, "GET", "https://bangkabaratkab.bps.go.id/id/infographic", nil)
 	req.Header.Set("User-Agent", browserUA)
 	if resp, err := client.Do(req); err == nil && resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	categories := []struct {
@@ -341,7 +341,7 @@ func scrapeInfographics(ctx context.Context, client *http.Client, store *scraper
 		}
 
 		body, _ := io.ReadAll(pResp.Body)
-		pResp.Body.Close()
+		_ = pResp.Body.Close()
 
 		jsonBlock := extractJSONBlock(string(body), `[{"inf_id":`)
 		if jsonBlock == nil {

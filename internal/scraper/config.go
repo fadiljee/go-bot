@@ -13,30 +13,30 @@ import (
 
 // Config holds the configuration for the BPS scraper (§13).
 type Config struct {
-	Enabled                bool          `json:"enabled"`
-	BaseURL                string        `json:"base_url"`
-	AllowedHosts           []string      `json:"allowed_hosts"`
-	UserAgent              string        `json:"user_agent"`
-	DBPath                 string        `json:"db_path"`
-	SelectorsPath          string        `json:"selectors_path"`
-	CronSpec               string        `json:"cron_spec"`
-	Timezone               string        `json:"timezone"`
-	RunTimeout             time.Duration `json:"run_timeout"`
-	StartupCatchupHours    int           `json:"startup_catchup_hours"`
-	ManualCooldownMinutes  int           `json:"manual_cooldown_minutes"`
-	EnabledKinds           []Kind        `json:"enabled_kinds"`
-	MinDelayMs             int           `json:"min_delay_ms"`
-	JitterMs               int           `json:"jitter_ms"`
-	HTTPTimeoutSeconds     int           `json:"http_timeout_seconds"`
-	MaxPageBytes           int64         `json:"max_page_bytes"`
-	MaxListPages           int           `json:"max_list_pages"`
-	MaxRequestsPerRun      int           `json:"max_requests_per_run"`
-	RespectRobots          bool          `json:"respect_robots"`
-	MaxStaleHours          int           `json:"max_stale_hours"`
-	DataSourceOrder        []string      `json:"data_source_order"`
-	NotifyAdmin            bool          `json:"notify_admin"`
-	NotifyAfterFailures    int           `json:"notify_after_failures"`
-	AppEnv                 string        `json:"app_env"`
+	Enabled               bool          `json:"enabled"`
+	BaseURL               string        `json:"base_url"`
+	AllowedHosts          []string      `json:"allowed_hosts"`
+	UserAgent             string        `json:"user_agent"`
+	DBPath                string        `json:"db_path"`
+	SelectorsPath         string        `json:"selectors_path"`
+	CronSpec              string        `json:"cron_spec"`
+	Timezone              string        `json:"timezone"`
+	RunTimeout            time.Duration `json:"run_timeout"`
+	StartupCatchupHours   int           `json:"startup_catchup_hours"`
+	ManualCooldownMinutes int           `json:"manual_cooldown_minutes"`
+	EnabledKinds          []Kind        `json:"enabled_kinds"`
+	MinDelayMs            int           `json:"min_delay_ms"`
+	JitterMs              int           `json:"jitter_ms"`
+	HTTPTimeoutSeconds    int           `json:"http_timeout_seconds"`
+	MaxPageBytes          int64         `json:"max_page_bytes"`
+	MaxListPages          int           `json:"max_list_pages"`
+	MaxRequestsPerRun     int           `json:"max_requests_per_run"`
+	RespectRobots         bool          `json:"respect_robots"`
+	MaxStaleHours         int           `json:"max_stale_hours"`
+	DataSourceOrder       []string      `json:"data_source_order"`
+	NotifyAdmin           bool          `json:"notify_admin"`
+	NotifyAfterFailures   int           `json:"notify_after_failures"`
+	AppEnv                string        `json:"app_env"`
 }
 
 // DefaultConfig returns the production-safe default config (§13).

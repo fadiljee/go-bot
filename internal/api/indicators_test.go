@@ -62,6 +62,7 @@ func TestAPIIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respNoAuth.Body.Close() }()
 	if respNoAuth.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", respNoAuth.StatusCode)
 	}
@@ -73,6 +74,7 @@ func TestAPIIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respAuth.Body.Close() }()
 	if respAuth.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", respAuth.StatusCode)
 	}
@@ -96,6 +98,7 @@ func TestAPIIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respInflasi.Body.Close() }()
 	if respInflasi.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for inflasi, got %d", respInflasi.StatusCode)
 	}
@@ -118,6 +121,7 @@ func TestAPIIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respAlias.Body.Close() }()
 	if respAlias.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for alias /api/v1/indikator/1, got %d", respAlias.StatusCode)
 	}
@@ -129,6 +133,7 @@ func TestAPIIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respText.Body.Close() }()
 	if respText.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", respText.StatusCode)
 	}
@@ -140,6 +145,7 @@ func TestAPIIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
+	defer func() { _ = respNotFound.Body.Close() }()
 	if respNotFound.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404 for unknown indicator, got %d", respNotFound.StatusCode)
 	}

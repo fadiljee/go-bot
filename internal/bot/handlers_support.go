@@ -16,8 +16,8 @@ import (
 	"bot-istimewa/internal/whatsapp"
 )
 
-// HandleMenu6_Konsultasi renders Konsultasi Statistik menu
-func (r *BotRouter) HandleMenu6_Konsultasi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu6Konsultasi renders Konsultasi Statistik menu
+func (r *BotRouter) HandleMenu6Konsultasi(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu6)
 
 	items := []whatsapp.ListRow{
@@ -61,9 +61,9 @@ func normalizePhone(raw string) string {
 	return d
 }
 
-// HandleMenu6_BookingPrompt prompts user to submit consultation booking details
-func (r *BotRouter) HandleMenu6_BookingPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu6_Booking)
+// HandleMenu6BookingPrompt prompts user to submit consultation booking details
+func (r *BotRouter) HandleMenu6BookingPrompt(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+	s.PushState(StateMenu6Booking)
 
 	prompt := "*PENGAJUAN JADWAL KONSULTASI*\nPST BPS Kabupaten Bangka Barat\n\n" +
 		"Silakan kirimkan data permohonan konsultasi Sahabat dengan format berikut:\n\n" +
@@ -169,27 +169,28 @@ func parseConsultationBookingInput(input string) BookingDetails {
 			isHandledKey := false
 
 			// Match Name (handles "Nama:", "Nama Pemohon:", "Nama Lengkap:", "Pemohon:", etc.)
-			if strings.HasPrefix(key, "nama") || key == "pemohon" || key == "klien" {
+			switch {
+			case strings.HasPrefix(key, "nama") || key == "pemohon" || key == "klien":
 				if b.Name == "" && val != "" {
 					b.Name = val
 				}
 				isHandledKey = true
-			} else if strings.HasPrefix(key, "instansi") || strings.HasPrefix(key, "asal") || key == "lembaga" || key == "dinas" || key == "kantor" || key == "perusahaan" || key == "kampus" || key == "universitas" || key == "sekolah" || key == "pekerjaan" || key == "profesi" {
+			case strings.HasPrefix(key, "instansi") || strings.HasPrefix(key, "asal") || key == "lembaga" || key == "dinas" || key == "kantor" || key == "perusahaan" || key == "kampus" || key == "universitas" || key == "sekolah" || key == "pekerjaan" || key == "profesi":
 				if b.Instansi == "" && val != "" {
 					b.Instansi = val
 				}
 				isHandledKey = true
-			} else if isPhoneKey(key) {
+			case isPhoneKey(key):
 				if b.Phone == "" && val != "" {
 					b.Phone = normalizePhone(val)
 				}
 				isHandledKey = true
-			} else if strings.HasPrefix(key, "topik") || strings.HasPrefix(key, "kebutuhan") || strings.HasPrefix(key, "keperluan") || strings.HasPrefix(key, "perihal") || strings.HasPrefix(key, "judul") || strings.HasPrefix(key, "konsultasi") || key == "data" {
+			case strings.HasPrefix(key, "topik") || strings.HasPrefix(key, "kebutuhan") || strings.HasPrefix(key, "keperluan") || strings.HasPrefix(key, "perihal") || strings.HasPrefix(key, "judul") || strings.HasPrefix(key, "konsultasi") || key == "data":
 				if b.Topic == "" && val != "" {
 					b.Topic = val
 				}
 				isHandledKey = true
-			} else if strings.Contains(key, "hari") || strings.Contains(key, "jam") || strings.Contains(key, "jadwal") || strings.Contains(key, "waktu") || strings.Contains(key, "tanggal") || strings.Contains(key, "tgl") {
+			case strings.Contains(key, "hari") || strings.Contains(key, "jam") || strings.Contains(key, "jadwal") || strings.Contains(key, "waktu") || strings.Contains(key, "tanggal") || strings.Contains(key, "tgl"):
 				if b.PreferredTime == "" && val != "" {
 					// Check if next line contains time info continuation (e.g. "10.00 WIB")
 					if i+1 < len(lines) {
@@ -293,11 +294,12 @@ func (r *BotRouter) HandleProcessBooking(ctx context.Context, s *UserSession, p 
 	}
 
 	var waContact string
-	if phone != "" && strings.HasPrefix(phone, "62") {
+	switch {
+	case phone != "" && strings.HasPrefix(phone, "62"):
 		waContact = fmt.Sprintf("https://wa.me/%s", phone)
-	} else if phone != "" {
+	case phone != "":
 		waContact = fmt.Sprintf("+%s (https://wa.me/%s)", phone, phone)
-	} else {
+	default:
 		// In case user is on WhatsApp LID addressing without visible phone number
 		waContact = fmt.Sprintf("%s (Akun WhatsApp Pengirim)", p.JID.User)
 	}
@@ -399,7 +401,7 @@ func (r *BotRouter) HandleKonsultasiUmum(ctx context.Context, s *UserSession, p 
 }
 
 func (r *BotRouter) HandleKonsultasiPakarList(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	s.PushState(StateMenu6_Pakar)
+	s.PushState(StateMenu6Pakar)
 
 	items := []whatsapp.ListRow{
 		{ID: "1", Title: "Statistik Sosial Kependudukan", Description: "Kependudukan, Kemiskinan, Pendidikan, Kesehatan"},
@@ -488,8 +490,8 @@ func (r *BotRouter) HandlePakarDetail(ctx context.Context, s *UserSession, p *wh
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleMenu7_Berlangganan renders subscription menu
-func (r *BotRouter) HandleMenu7_Berlangganan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu7Berlangganan renders subscription menu
+func (r *BotRouter) HandleMenu7Berlangganan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	text := "*LANGGANAN PUBLIKASI GRATIS*\nBPS Kabupaten Bangka Barat\n\n" +
 		"Dapatkan pemberitahuan rilis publikasi terbaru, Berita Resmi Statistik (BRS), dan ringkasan data strategis Kabupaten Bangka Barat langsung ke nomor WhatsApp Sahabat!\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
@@ -510,8 +512,8 @@ func (r *BotRouter) HandleMenu7_Berlangganan(ctx context.Context, s *UserSession
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleMenu8_Pengaduan renders complaint & aspiration channels
-func (r *BotRouter) HandleMenu8_Pengaduan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu8Pengaduan renders complaint & aspiration channels
+func (r *BotRouter) HandleMenu8Pengaduan(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	text := "*PENGADUAN & KOTAK SARAN*\nBPS Kabupaten Bangka Barat\n\n" +
 		"BPS Kabupaten Bangka Barat berkomitmen memberikan pelayanan prima yang bersih, transparan, dan bebas dari pungutan liar (Zona Integritas WBK/WBBM).\n\n" +
 		"━━━━━━━━━━━━━━━━━━\n" +
@@ -536,8 +538,8 @@ func (r *BotRouter) HandleMenu8_Pengaduan(ctx context.Context, s *UserSession, p
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleMenu10_FAQ renders FAQ menu (Resolves TD-08)
-func (r *BotRouter) HandleMenu10_FAQ(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
+// HandleMenu10FAQ renders FAQ menu (Resolves TD-08)
+func (r *BotRouter) HandleMenu10FAQ(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
 	s.PushState(StateMenu10)
 
 	items := []whatsapp.ListRow{

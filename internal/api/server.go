@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -19,8 +20,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	waBinary "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow"
+	waBinary "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow/types"
 )
 
@@ -41,6 +42,10 @@ func NewAPIServer(cfg *config.Config, clientMgr *whatsapp.ClientManager, gsheetC
 	app := fiber.New(fiber.Config{
 		AppName:               "BOT ISTIMEWA v3.0 (Go Edition)",
 		DisableStartupMessage: true,
+		ReadTimeout:           15 * time.Second,
+		WriteTimeout:          15 * time.Second,
+		IdleTimeout:           60 * time.Second,
+		BodyLimit:             10 * 1024 * 1024,
 	})
 
 	app.Use(recover.New())
@@ -60,8 +65,10 @@ func NewAPIServer(cfg *config.Config, clientMgr *whatsapp.ClientManager, gsheetC
 }
 
 func (s *APIServer) setupRoutes() {
-	// Public Health Check
+	// Public Health & Readiness Checks
 	s.app.Get("/health", s.handleHealth)
+	s.app.Get("/healthz", s.handleHealth)
+	s.app.Get("/readyz", s.handleReadyz)
 
 	// Web Browser QR Scanner (Auto-Locks when logged in)
 	s.app.Get("/qr", s.handleQRPage)
@@ -156,7 +163,7 @@ func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
 		apiKey = c.Query("key")
 	}
 
-	if apiKey != s.cfg.APISecretKey {
+	if s.cfg.APISecretKey == "" || subtle.ConstantTimeCompare([]byte(apiKey), []byte(s.cfg.APISecretKey)) != 1 {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"error":   "Unauthorized: Invalid or missing API key",
@@ -164,6 +171,20 @@ func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
 	}
 
 	return c.Next()
+}
+
+func (s *APIServer) handleReadyz(c *fiber.Ctx) error {
+	waReady := s.clientMgr != nil && s.clientMgr.IsLoggedIn
+	if !waReady {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"status":   "not_ready",
+			"whatsapp": false,
+		})
+	}
+	return c.JSON(fiber.Map{
+		"status":   "ready",
+		"whatsapp": true,
+	})
 }
 
 func (s *APIServer) handleHealth(c *fiber.Ctx) error {
@@ -325,11 +346,11 @@ func (s *APIServer) handleBlast(c *fiber.Ctx) error {
 				Tag: "biz",
 				Content: []waBinary.Node{
 					{
-						Tag: "interactive",
+						Tag:   "interactive",
 						Attrs: waBinary.Attrs{"type": "native_flow", "v": "1"},
 						Content: []waBinary.Node{
 							{
-								Tag: "native_flow",
+								Tag:   "native_flow",
 								Attrs: waBinary.Attrs{"v": "9", "name": "mixed"},
 							},
 						},
@@ -523,7 +544,7 @@ func (s *APIServer) handleScraperBreakerReset(c *fiber.Ctx) error {
 		})
 	}
 
-	s.scraperBreaker.Reset()
+	s.scraperBreaker.Reset(c.UserContext())
 	log.Println("[SCRAPER] Circuit breaker manually reset by admin via REST API")
 
 	return c.JSON(fiber.Map{
@@ -567,18 +588,18 @@ func (s *APIServer) handleGetIndicators(c *fiber.Ctx) error {
 		var sb strings.Builder
 		sb.WriteString("=== INDIKATOR STRATEGIS BPS KABUPATEN BANGKA BARAT ===\n\n")
 		for _, ind := range indicators {
-			sb.WriteString(fmt.Sprintf("[%d] %s (%s)\n", ind.ID, ind.Title, ind.Category))
+			fmt.Fprintf(&sb, "[%d] %s (%s)\n", ind.ID, ind.Title, ind.Category)
 			for _, m := range ind.Metrics {
-				sb.WriteString(fmt.Sprintf("  • %s: %s", m.Label, m.Value))
+				fmt.Fprintf(&sb, "  • %s: %s", m.Label, m.Value)
 				if m.Note != "" {
-					sb.WriteString(fmt.Sprintf(" (%s)", m.Note))
+					fmt.Fprintf(&sb, " (%s)", m.Note)
 				}
 				sb.WriteString("\n")
 			}
 			if len(ind.Items) > 0 {
-				sb.WriteString(fmt.Sprintf("  Dokumen: %s\n", ind.Items[0].Title))
+				fmt.Fprintf(&sb, "  Dokumen: %s\n", ind.Items[0].Title)
 				if ind.Items[0].FileURL != "" {
-					sb.WriteString(fmt.Sprintf("  Unduh: %s\n", ind.Items[0].FileURL))
+					fmt.Fprintf(&sb, "  Unduh: %s\n", ind.Items[0].FileURL)
 				}
 			}
 			sb.WriteString("\n")
@@ -616,19 +637,19 @@ func (s *APIServer) handleGetIndicatorByID(c *fiber.Ctx) error {
 	format := strings.ToLower(c.Query("format"))
 	if format == "text" {
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("*%s*\n\n", ind.Title))
+		fmt.Fprintf(&sb, "*%s*\n\n", ind.Title)
 		for _, m := range ind.Metrics {
-			sb.WriteString(fmt.Sprintf("• *%s*: %s", m.Label, m.Value))
+			fmt.Fprintf(&sb, "• *%s*: %s", m.Label, m.Value)
 			if m.Note != "" {
-				sb.WriteString(fmt.Sprintf(" (%s)", m.Note))
+				fmt.Fprintf(&sb, " (%s)", m.Note)
 			}
 			sb.WriteString("\n")
 		}
-		sb.WriteString(fmt.Sprintf("\n*Sumber*: %s\n", ind.Source))
+		fmt.Fprintf(&sb, "\n*Sumber*: %s\n", ind.Source)
 		if len(ind.Items) > 0 {
-			sb.WriteString(fmt.Sprintf("*Dokumen Resmi*: %s\n", ind.Items[0].Title))
+			fmt.Fprintf(&sb, "*Dokumen Resmi*: %s\n", ind.Items[0].Title)
 			if ind.Items[0].FileURL != "" {
-				sb.WriteString(fmt.Sprintf("*Unduh PDF*: %s\n", ind.Items[0].FileURL))
+				fmt.Fprintf(&sb, "*Unduh PDF*: %s\n", ind.Items[0].FileURL)
 			}
 		}
 		return c.Type("text").SendString(sb.String())
@@ -689,10 +710,10 @@ func (s *APIServer) handleGetLayananData(c *fiber.Ctx) error {
 		var sb strings.Builder
 		sb.WriteString("=== LAYANAN DATA BPS KABUPATEN BANGKA BARAT (MENU 1) ===\n\n")
 		for _, cat := range categories {
-			sb.WriteString(fmt.Sprintf("*[%s] %s*\n", cat.ID, cat.Title))
+			fmt.Fprintf(&sb, "*[%s] %s*\n", cat.ID, cat.Title)
 			sb.WriteString(cat.Description + "\n")
 			for _, top := range cat.Topics {
-				sb.WriteString(fmt.Sprintf("  • %d. %s (%d tabel, %d dokumen)\n", top.ID, top.Title, len(top.Tables), len(top.Items)))
+				fmt.Fprintf(&sb, "  • %d. %s (%d tabel, %d dokumen)\n", top.ID, top.Title, len(top.Tables), len(top.Items))
 			}
 			sb.WriteString("\n")
 		}
@@ -729,19 +750,19 @@ func (s *APIServer) handleGetLayananCategory(c *fiber.Ctx) error {
 	format := strings.ToLower(c.Query("format"))
 	if format == "text" {
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("*%s*\n\n", cat.Title))
+		fmt.Fprintf(&sb, "*%s*\n\n", cat.Title)
 		sb.WriteString(cat.Description + "\n\n")
 		sb.WriteString("*Daftar Topik Statistik*:\n")
 		for _, top := range cat.Topics {
-			sb.WriteString(fmt.Sprintf("%d. *%s*\n", top.ID, top.Title))
+			fmt.Fprintf(&sb, "%d. *%s*\n", top.ID, top.Title)
 			if top.Description != "" {
-				sb.WriteString(fmt.Sprintf("   %s\n", top.Description))
+				fmt.Fprintf(&sb, "   %s\n", top.Description)
 			}
 			if len(top.Tables) > 0 {
-				sb.WriteString(fmt.Sprintf("   Tabel Utama: %s\n", top.Tables[0].Title))
+				fmt.Fprintf(&sb, "   Tabel Utama: %s\n", top.Tables[0].Title)
 			}
 			if len(top.Items) > 0 {
-				sb.WriteString(fmt.Sprintf("   Dokumen: %s\n", top.Items[0].Title))
+				fmt.Fprintf(&sb, "   Dokumen: %s\n", top.Items[0].Title)
 			}
 			sb.WriteString("\n")
 		}
@@ -758,7 +779,7 @@ func (s *APIServer) handleGetLayananCategory(c *fiber.Ctx) error {
 // handleGetLayananTopic handles GET /api/v1/layanan-data/:category/:topic
 func (s *APIServer) handleGetLayananTopic(c *fiber.Ctx) error {
 	catSlug := c.Params("category")
-	topicIdOrSlug := c.Params("topic")
+	topicIDOrSlug := c.Params("topic")
 	prov := s.getProvider()
 	if prov == nil {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
@@ -767,7 +788,7 @@ func (s *APIServer) handleGetLayananTopic(c *fiber.Ctx) error {
 		})
 	}
 
-	topic, freshness, err := prov.GetLayananDataTopic(c.Context(), catSlug, topicIdOrSlug)
+	topic, freshness, err := prov.GetLayananDataTopic(c.Context(), catSlug, topicIDOrSlug)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
@@ -778,19 +799,19 @@ func (s *APIServer) handleGetLayananTopic(c *fiber.Ctx) error {
 	format := strings.ToLower(c.Query("format"))
 	if format == "text" {
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("*%s*\n\n", topic.Title))
+		fmt.Fprintf(&sb, "*%s*\n\n", topic.Title)
 		if topic.Description != "" {
 			sb.WriteString(topic.Description + "\n\n")
 		}
 		if topic.SubjectURL != "" {
-			sb.WriteString(fmt.Sprintf("*Portal BPS*: %s\n\n", topic.SubjectURL))
+			fmt.Fprintf(&sb, "*Portal BPS*: %s\n\n", topic.SubjectURL)
 		}
 		if len(topic.Tables) > 0 {
 			sb.WriteString("*Tabel Statistik Terkait*:\n")
 			for i, t := range topic.Tables {
-				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, t.Title))
+				fmt.Fprintf(&sb, "%d. %s\n", i+1, t.Title)
 				if t.URL != "" {
-					sb.WriteString(fmt.Sprintf("   Lihat: %s\n", t.URL))
+					fmt.Fprintf(&sb, "   Lihat: %s\n", t.URL)
 				}
 			}
 			sb.WriteString("\n")
@@ -798,17 +819,17 @@ func (s *APIServer) handleGetLayananTopic(c *fiber.Ctx) error {
 		if len(topic.Items) > 0 {
 			sb.WriteString("*Publikasi & Dokumen Terkait*:\n")
 			for i, it := range topic.Items {
-				sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Title))
+				fmt.Fprintf(&sb, "%d. %s\n", i+1, it.Title)
 				if it.FileURL != "" {
-					sb.WriteString(fmt.Sprintf("   Unduh: %s\n", it.FileURL))
+					fmt.Fprintf(&sb, "   Unduh: %s\n", it.FileURL)
 				} else if it.URL != "" {
-					sb.WriteString(fmt.Sprintf("   Link: %s\n", it.URL))
+					fmt.Fprintf(&sb, "   Link: %s\n", it.URL)
 				}
 			}
 			sb.WriteString("\n")
 		}
 		if freshness.UpdatedAt.Year() > 2000 {
-			sb.WriteString(fmt.Sprintf("Sumber: Database Scraper BPS · diperbarui %s WIB", freshness.UpdatedAt.Format("02 Jan 2006 15:04")))
+			fmt.Fprintf(&sb, "Sumber: Database Scraper BPS · diperbarui %s WIB", freshness.UpdatedAt.Format("02 Jan 2006 15:04"))
 		}
 		return c.Type("text").SendString(sb.String())
 	}
@@ -923,4 +944,3 @@ func (s *APIServer) Listen(addr string) error {
 func (s *APIServer) Shutdown() error {
 	return s.app.Shutdown()
 }
-
