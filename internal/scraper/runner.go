@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -287,46 +288,136 @@ func (r *Runner) scrapeKind(ctx context.Context, kind Kind, parser Parser, baseP
 type serverActionDef struct {
 	path        string
 	actionID    string
+	funcName    string
 	arrayPrefix string
 }
 
-var serverActions = map[Kind]serverActionDef{
-	KindPressRelease: {
-		path:        "/id/pressrelease",
-		actionID:    "60faa5fc36a0363681ae70a99e757ca04fc85e382f",
-		arrayPrefix: `[{"brs_id":`,
-	},
-	KindPublication: {
-		path:        "/id/publication",
-		actionID:    "60624e3a7c825a0b98392f2120a4870bd26b8f90f2",
-		arrayPrefix: `[{"pub_id":`,
-	},
-	KindNews: {
-		path:        "/id/news",
-		actionID:    "608404231d97eefc336168319bc8c592791e348afc",
-		arrayPrefix: `[{"news_id":`,
-	},
-	KindStaticTable: {
-		path:        "/id/statistics-table",
-		actionID:    "40043348a3c6d33ba8e1e4554e4e5c37b872433488",
-		arrayPrefix: `[{"id":`,
-	},
-	KindInfographic: {
-		path:        "/id/infographic",
-		actionID:    "70c3f2a8f6c0d8df36f160469c19147a0bdfa54ebf",
-		arrayPrefix: `[{"inf_id":`,
-	},
+var (
+	serverActionsMu sync.RWMutex
+	serverActions   = map[Kind]serverActionDef{
+		KindPressRelease: {
+			path:        "/id/pressrelease",
+			actionID:    "608f5e41e89f2fc560866fb094a63610f7cca1b54d",
+			funcName:    "getListPressrelease",
+			arrayPrefix: `[{"brs_id":`,
+		},
+		KindPublication: {
+			path:        "/id/publication",
+			actionID:    "6064c6e4dcc79c5ddc0bc6a4ecb0d75a4b9cc67152",
+			funcName:    "getListPublication",
+			arrayPrefix: `[{"pub_id":`,
+		},
+		KindNews: {
+			path:        "/id/news",
+			actionID:    "60dde7c73a6806a8d58be2b5aee1fb05f1fbd30851",
+			funcName:    "getListNews",
+			arrayPrefix: `[{"news_id":`,
+		},
+		KindStaticTable: {
+			path:        "/id/statistics-table",
+			actionID:    "40b4dff2adfeae98b2f67226e3b8d32fd9fedfa6de",
+			funcName:    "getListTable",
+			arrayPrefix: `[{"id":`,
+		},
+		KindInfographic: {
+			path:        "/id/infographic",
+			actionID:    "70c04b524c74e17902c74fbcef5075443a6ac33c49",
+			funcName:    "getListInfografis",
+			arrayPrefix: `[{"inf_id":`,
+		},
+		KindARC: {
+			path:        "/id/arc",
+			actionID:    "60b0a7e5b2c5b76cf70945849c082abfb9f345e84f",
+			funcName:    "getArcBrs",
+			arrayPrefix: `[{"`,
+		},
+	}
+	arcPubActionID = "7059cffa2cfc3db9b02729cb1906e796b5e9e9d239"
+	reNextChunk    = regexp.MustCompile(`/_next/static/chunks/[^"'>\s]+\.js`)
+)
+
+func (r *Runner) discoverActionIDFromHTML(ctx context.Context, htmlBody []byte, baseParsed *url.URL, funcName string) string {
+	if len(htmlBody) == 0 || funcName == "" {
+		return ""
+	}
+	reRef := regexp.MustCompile(`createServerReference\)\("([0-9a-f]{40,44})"[^)]*"` + regexp.QuoteMeta(funcName) + `"\)`)
+	chunks := reNextChunk.FindAllString(string(htmlBody), -1)
+	seen := make(map[string]bool, len(chunks))
+	for _, chunkPath := range chunks {
+		if seen[chunkPath] {
+			continue
+		}
+		seen[chunkPath] = true
+		chunkURL := fmt.Sprintf("%s://%s%s", baseParsed.Scheme, baseParsed.Host, chunkPath)
+		jsBody, err := r.fetcher.GetAsset(ctx, chunkURL)
+		if err != nil {
+			continue
+		}
+		if m := reRef.FindSubmatch(jsBody); len(m) == 2 {
+			discovered := string(m[1])
+			slog.Info("scraper.discovered_action_id", "func", funcName, "action_id", discovered)
+			return discovered
+		}
+	}
+	return ""
+}
+
+func (r *Runner) postActionWithDiscovery(
+	ctx context.Context,
+	kind Kind,
+	pageURL string,
+	htmlBody []byte,
+	baseParsed *url.URL,
+	actionID string,
+	funcName string,
+	payload string,
+) ([]byte, string, error) {
+	respBody, err := r.fetcher.PostAction(ctx, pageURL, actionID, payload)
+	if err == nil && !strings.Contains(string(respBody), "Server Action unavailable") {
+		return respBody, actionID, nil
+	}
+
+	discovered := r.discoverActionIDFromHTML(ctx, htmlBody, baseParsed, funcName)
+	if discovered == "" || discovered == actionID {
+		if err != nil {
+			return nil, actionID, err
+		}
+		return respBody, actionID, errors.New("server action unavailable")
+	}
+
+	serverActionsMu.Lock()
+	if def, ok := serverActions[kind]; ok && def.funcName == funcName {
+		def.actionID = discovered
+		serverActions[kind] = def
+	}
+	if funcName == "getArcPublikasi" {
+		arcPubActionID = discovered
+	}
+	serverActionsMu.Unlock()
+
+	respBody, err = r.fetcher.PostAction(ctx, pageURL, discovered, payload)
+	return respBody, discovered, err
 }
 
 func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *url.URL) ([]Item, int, error) {
+	serverActionsMu.RLock()
 	def, ok := serverActions[kind]
+	serverActionsMu.RUnlock()
 	if !ok {
 		return nil, 0, errors.New("no server action defined for kind")
 	}
 
 	pageURL := fmt.Sprintf("%s://%s%s", baseParsed.Scheme, baseParsed.Host, def.path)
-	// Initial GET to acquire session cookies
-	_, _ = r.fetcher.Get(ctx, pageURL, nil)
+	// Initial GET to acquire session cookies and HTML for action ID discovery if needed
+	initResp, _ := r.fetcher.Get(ctx, pageURL, nil)
+	var htmlBody []byte
+	if initResp != nil {
+		htmlBody = initResp.Body
+	}
+
+	if kind == KindARC {
+		return r.scrapeARC(ctx, pageURL, htmlBody, baseParsed, def)
+	}
 
 	var allItems []Item
 	skippedCount := 0
@@ -335,6 +426,8 @@ func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *
 	if maxPages <= 0 {
 		maxPages = 2
 	}
+
+	actionID := def.actionID
 
 	if kind == KindInfographic {
 		categories := []struct {
@@ -349,7 +442,8 @@ func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *
 		for _, cat := range categories {
 			for page := 1; page <= maxPages; page++ {
 				payload := fmt.Sprintf(`["id",%d,%d]`, page, cat.id)
-				respBody, err := r.fetcher.PostAction(ctx, pageURL, def.actionID, payload)
+				respBody, updatedID, err := r.postActionWithDiscovery(ctx, kind, pageURL, htmlBody, baseParsed, actionID, def.funcName, payload)
+				actionID = updatedID
 				if err != nil {
 					break
 				}
@@ -372,6 +466,10 @@ func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *
 					}
 					allItems = append(allItems, *it)
 				}
+
+				if len(pageItems) < 10 {
+					break
+				}
 			}
 		}
 
@@ -383,7 +481,8 @@ func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *
 		if kind == KindStaticTable {
 			payload = fmt.Sprintf(`[{"locale":"id","page":%d,"perpage":20}]`, page)
 		}
-		respBody, err := r.fetcher.PostAction(ctx, pageURL, def.actionID, payload)
+		respBody, updatedID, err := r.postActionWithDiscovery(ctx, kind, pageURL, htmlBody, baseParsed, actionID, def.funcName, payload)
+		actionID = updatedID
 		if err != nil {
 			if len(allItems) > 0 {
 				break
@@ -409,9 +508,145 @@ func (r *Runner) scrapeServerAction(ctx context.Context, kind Kind, baseParsed *
 			}
 			allItems = append(allItems, *it)
 		}
+
+		if len(pageItems) < 10 {
+			break
+		}
 	}
 
 	return allItems, skippedCount, nil
+}
+
+func (r *Runner) scrapeARC(
+	ctx context.Context,
+	pageURL string,
+	htmlBody []byte,
+	baseParsed *url.URL,
+	def serverActionDef,
+) ([]Item, int, error) {
+	var allItems []Item
+	skippedCount := 0
+	year := fmt.Sprintf("%d", time.Now().Year())
+
+	// 1. Scrape BRS Release Schedule (getArcBrs)
+	brsPayload := fmt.Sprintf(`["id",%q]`, year)
+	brsBody, _, err := r.postActionWithDiscovery(ctx, KindARC, pageURL, htmlBody, baseParsed, def.actionID, def.funcName, brsPayload)
+	if err == nil {
+		if block := extractJSONBlock(string(brsBody), `[{"`); block != nil {
+			if items, parseErr := r.parseARCJSON(block, baseParsed, year, "Berita Resmi Statistik (BRS)"); parseErr == nil {
+				for i := range items {
+					it := &items[i]
+					if valErr := ValidateItem(it, r.cfg.AllowedHosts, r.cfg.AppEnv); valErr != nil {
+						skippedCount++
+						continue
+					}
+					allItems = append(allItems, *it)
+				}
+			}
+		}
+	}
+
+	// 2. Scrape Publication Release Schedule (getArcPublikasi) across months 01..12
+	serverActionsMu.RLock()
+	pubActionID := arcPubActionID
+	serverActionsMu.RUnlock()
+
+	months := []string{"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"}
+	for _, m := range months {
+		pubPayload := fmt.Sprintf(`["id",%q,%q]`, year, m)
+		pubBody, updatedID, pErr := r.postActionWithDiscovery(ctx, KindARC, pageURL, htmlBody, baseParsed, pubActionID, "getArcPublikasi", pubPayload)
+		pubActionID = updatedID
+		if pErr != nil {
+			continue
+		}
+		if block := extractJSONBlock(string(pubBody), `[{"`); block != nil {
+			if items, parseErr := r.parseARCJSON(block, baseParsed, year, "Publikasi Statistik"); parseErr == nil {
+				for i := range items {
+					it := &items[i]
+					if valErr := ValidateItem(it, r.cfg.AllowedHosts, r.cfg.AppEnv); valErr != nil {
+						skippedCount++
+						continue
+					}
+					allItems = append(allItems, *it)
+				}
+			}
+		}
+	}
+
+	return allItems, skippedCount, nil
+}
+
+func (r *Runner) parseARCJSON(block []byte, baseParsed *url.URL, year, categoryLabel string) ([]Item, error) {
+	var raw []struct {
+		ID      string `json:"id"`
+		Title   string `json:"title"`
+		Date    string `json:"date"`
+		Status  string `json:"status"`
+		Type    string `json:"type"`
+		URL     string `json:"url"`
+		Periode string `json:"periode"`
+	}
+	if err := json.Unmarshal(block, &raw); err != nil {
+		return nil, err
+	}
+
+	var items []Item
+	seen := make(map[string]bool, len(raw))
+	for idx, it := range raw {
+		cleanTitle := CleanHTML(it.Title)
+		if cleanTitle == "" {
+			continue
+		}
+		var relDate *time.Time
+		if t, err := time.Parse("2006-01-02", strings.TrimSpace(it.Date)); err == nil {
+			relDate = &t
+		}
+		rawID := strings.TrimSpace(it.ID)
+		if rawID == "" {
+			rawID = fmt.Sprintf("%s_%d", it.Date, idx)
+		}
+		typePrefix := strings.ToLower(strings.TrimSpace(it.Type))
+		if typePrefix == "" {
+			typePrefix = "arc"
+		}
+		sourceKey := fmt.Sprintf("%s_%s_%s", typePrefix, year, rawID)
+		if seen[sourceKey] {
+			continue
+		}
+		seen[sourceKey] = true
+
+		itemURL := strings.TrimSpace(it.URL)
+		switch {
+		case strings.HasPrefix(itemURL, "http://") || strings.HasPrefix(itemURL, "https://"):
+		case strings.HasPrefix(itemURL, "/"):
+			itemURL = fmt.Sprintf("%s://%s%s", baseParsed.Scheme, baseParsed.Host, itemURL)
+		default:
+			itemURL = fmt.Sprintf("%s://%s/id/arc?id=%s", baseParsed.Scheme, baseParsed.Host, url.QueryEscape(sourceKey))
+		}
+
+		statusText := strings.TrimSpace(it.Status)
+		if statusText == "" {
+			statusText = "Terjadwal"
+		}
+		if strings.TrimSpace(it.Periode) != "" {
+			statusText = fmt.Sprintf("%s (%s)", statusText, strings.TrimSpace(it.Periode))
+		}
+
+		item := Item{
+			Kind:        KindARC,
+			Lang:        "id",
+			SourceKey:   sourceKey,
+			URL:         itemURL,
+			Title:       cleanTitle,
+			Abstract:    statusText,
+			ReleaseDate: relDate,
+			Subject:     categoryLabel,
+			IsActive:    true,
+		}
+		item.ContentHash = CalculateContentHash(&item)
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 func (r *Runner) parseServerActionJSON(kind Kind, block []byte, baseParsed *url.URL) ([]Item, error) {

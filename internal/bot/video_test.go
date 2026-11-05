@@ -15,7 +15,7 @@ func TestVideoLiterasiNavigationAndDelivery(t *testing.T) {
 		IdleTimeoutMinutes:  30,
 		UserRateLimitPer10s: 50,
 		UserCooldownSeconds: 60,
-		TentangBPSVideoURL:  "https://www.youtube.com/watch?v=BFj6yi8HLAg",
+		TentangBPSVideoURL:  "https://youtu.be/q9BYxUJ-4z4",
 	}
 
 	sender := whatsapp.NewSender(nil, nil)

@@ -84,3 +84,20 @@ news:
     image_link: ".news-image img"
   required_markers:
     - "Badan Pusat Statistik"
+
+arc:
+  list_url: "/{lang}/arc?page={page}"
+  list:
+    item: ".arc-item, tr.arc-row, .list-group-item"
+    title: ".title, td.title, a"
+    link: "a[href*='/pressrelease/'], a[href*='/publication/'], a"
+    date: ".date, td.date, time"
+    next_page: ".pagination .page-item:not(.disabled) a[rel='next']"
+  detail:
+    abstract: ".status, .notes"
+    release_date: ".date"
+    file_size: ""
+    file_link: ""
+    image_link: ""
+  required_markers:
+    - "Badan Pusat Statistik"

@@ -255,3 +255,55 @@ Kamis 10.00 WIB`
 		t.Errorf("expected Topic 'Data PDRB', got '%s'", detailsMulti.Topic)
 	}
 }
+
+func TestFormatPhoneDisplayAndSupportMenus(t *testing.T) {
+	got := formatPhoneDisplay("6282164302643")
+	want := "0821-6430-2643 (+62 821-6430-2643)"
+	if got != want {
+		t.Errorf("formatPhoneDisplay(\"6282164302643\") = %q, want %q", got, want)
+	}
+
+	tempDir, err := os.MkdirTemp("", "support_menus_test_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "scraper.db")
+	store, err := scraper.NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create scraper store: %v", err)
+	}
+	defer store.Close()
+
+	now := time.Now()
+	_, _, err = store.ApplyItems(context.Background(), scraper.KindARC, "id", []scraper.Item{
+		{
+			Kind:        scraper.KindARC,
+			SourceKey:   "arc-brs-2026-01",
+			Lang:        "id",
+			Title:       "BRS: Perkembangan Indeks Harga Konsumen",
+			Abstract:    "Januari: 2 | Februari: 2",
+			URL:         "https://bangkabaratkab.bps.go.id/id/arc",
+			ReleaseDate: &now,
+			ContentHash: "hash-arc-1",
+		},
+	}, true)
+	if err != nil {
+		t.Fatalf("failed to insert ARC item: %v", err)
+	}
+
+	provider := scraper.NewProvider(store, 24)
+	cfg := &config.Config{
+		IdleTimeoutMinutes: 30,
+		TentangBPSVideoURL: "https://youtu.be/q9BYxUJ-4z4",
+	}
+	sender := whatsapp.NewSender(nil, nil)
+	router := NewBotRouter(cfg, sender, nil)
+	router.SetScraper(provider)
+
+	arcMsg := router.buildARCScheduleFAQ(context.Background())
+	if !strings.Contains(arcMsg, "BRS: Perkembangan Indeks Harga Konsumen") {
+		t.Errorf("expected ARC schedule FAQ to contain scraped ARC item, got: %s", arcMsg)
+	}
+}

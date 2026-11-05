@@ -183,7 +183,7 @@ func (f *Fetcher) Get(ctx context.Context, rawURL string, cond *Conditional) (*R
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", f.cfg.UserAgent)
+	req.Header.Set("User-Agent", f.effectiveUserAgent())
 	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5")
 	req.Header.Set("Accept-Language", "id-ID,id;q=0.9,en;q=0.5")
 	if cond != nil {
@@ -242,6 +242,40 @@ func (f *Fetcher) Get(ctx context.Context, rawURL string, cond *Conditional) (*R
 	}, nil
 }
 
+func (f *Fetcher) effectiveUserAgent() string {
+	ua := f.cfg.UserAgent
+	if !strings.Contains(ua, "Chrome") {
+		ua = "Mozilla/5.0 (compatible; BotIstimewa/3.1; Chrome/130.0.0.0)"
+	}
+	return ua
+}
+
+// GetAsset fetches a static asset (such as a Next.js JS chunk) without HTML content-type enforcement.
+func (f *Fetcher) GetAsset(ctx context.Context, rawURL string) ([]byte, error) {
+	u, err := f.ValidateURL(rawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", f.effectiveUserAgent())
+
+	resp, err := f.doWithRetry(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("scraper: http %d untuk asset %s", resp.StatusCode, u.String())
+	}
+
+	return io.ReadAll(io.LimitReader(resp.Body, f.cfg.MaxPageBytes+1))
+}
+
 // PostAction executes a polite POST request with Next-Action header for Next.js Server Actions.
 func (f *Fetcher) PostAction(ctx context.Context, actionURL string, actionID string, payload string) ([]byte, error) {
 	u, err := f.ValidateURL(actionURL)
@@ -267,11 +301,7 @@ func (f *Fetcher) PostAction(ctx context.Context, actionURL string, actionID str
 	if err != nil {
 		return nil, err
 	}
-	ua := f.cfg.UserAgent
-	if !strings.Contains(ua, "Chrome") {
-		ua = "Mozilla/5.0 (compatible; BotIstimewa/3.1; Chrome/130.0.0.0)"
-	}
-	req.Header.Set("User-Agent", ua)
+	req.Header.Set("User-Agent", f.effectiveUserAgent())
 	req.Header.Set("Next-Action", actionID)
 	req.Header.Set("Content-Type", "text/plain;charset=UTF-8")
 

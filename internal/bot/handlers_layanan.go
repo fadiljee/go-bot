@@ -469,7 +469,7 @@ func getTopicDirectFigures(categorySlug string, topicIdx int) string {
 		case 1:
 			return "• *Pertumbuhan Ekonomi (LPE)*: 4,55% - 4,82%\n• *PDRB ADHB*: ± Rp 14,8 Triliun\n• *PDRB ADHK*: ± Rp 9,7 Triliun\n• *PDRB Per Kapita*: ± Rp 68,9 Juta /tahun\n• *Struktur Ekonomi*: Industri Pengolahan (33,4%), Pertanian (21,8%), Pertambangan (13,2%)"
 		case 2:
-			return "• *Industri Unggulan*: Smelter Peleburan Timah PT Timah Muntok\n• *Industri Mikro & Kecil (IMK)*: > 3.200 unit usaha\n• *Sentra Olahan Pangan*: Terasi Muntok, Kemplang/Kerupuk Ikan, Kopi Menumbing"
+			return "• *Industri Unggulan*: Smelter Peleburan Timah PT Timah Mentok\n• *Industri Mikro & Kecil (IMK)*: > 3.200 unit usaha\n• *Sentra Olahan Pangan*: Terasi Mentok, Kemplang/Kerupuk Ikan, Kopi Menumbing"
 		case 3:
 			return "• *Realisasi Pendapatan APBD*: ± Rp 1,02 Triliun\n• *Pendapatan Asli Daerah (PAD)*: ± Rp 112 Miliar\n• *Dana Transfer ke Daerah (TKD)*: ± Rp 875 Miliar\n• *Belanja Modal*: ± Rp 195 Miliar"
 		case 4:
@@ -490,7 +490,7 @@ func getTopicDirectFigures(categorySlug string, topicIdx int) string {
 	case "pertanian":
 		switch topicIdx {
 		case 1:
-			return "• *Kelapa Sawit*: Luas areal > 60.000 Ha, Produksi TBS > 350.000 Ton\n• *Lada Muntok White Pepper*: Luas > 4.500 Ha, Produksi > 2.300 Ton (Indikasi Geografis Resmi)\n• *Karet*: Luas areal > 18.000 Ha\n• *Padi Sawah*: Luas panen > 2.100 Ha (Sentra: Tempilang & Simpang Teritip)"
+			return "• *Kelapa Sawit*: Luas areal > 60.000 Ha, Produksi TBS > 350.000 Ton\n• *Lada Mentok White Pepper*: Luas > 4.500 Ha, Produksi > 2.300 Ton (Indikasi Geografis Resmi)\n• *Karet*: Luas areal > 18.000 Ha\n• *Padi Sawah*: Luas panen > 2.100 Ha (Sentra: Tempilang & Simpang Teritip)"
 		case 2:
 			return "• *Produksi Perikanan Tangkap*: > 28.000 Ton/tahun\n• *Sentra Pesisir*: Mentok, Jebus, Parittiga, Tempilang\n• *Armada Kapal Tangkap*: > 3.100 perahu motor/kapal nelayan\n• *Kawasan Konservasi Hutan*: Hutan Lindung Menumbing (> 3.300 Ha)"
 		}
