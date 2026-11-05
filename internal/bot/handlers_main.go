@@ -86,7 +86,10 @@ func (r *BotRouter) HandleWelcomeFull(ctx context.Context, s *UserSession, p *wh
 	s.HistoryStack = nil
 	s.mu.Unlock()
 
-	// Format personalized greeting with time & name (PRD §6.1 F-01 & §14)
+	// 1. Send sticker selamat datang
+	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - selamat datang new.webp")
+
+	// 2. Format personalized greeting with time & name (PRD §6.1 F-01 & §14)
 	userName := strings.TrimSpace(p.Name)
 	timeGreeting := getTimeGreeting()
 	var greetingLine string
@@ -124,6 +127,9 @@ func (r *BotRouter) HandleWelcomeShort(ctx context.Context, s *UserSession, p *w
 	s.CurrentState = StateRoot
 	s.HistoryStack = nil
 	s.mu.Unlock()
+
+	// Send sticker siap
+	_ = r.sender.SendSticker(ctx, p.JID, "StikerChatbot/IKON ISTIMEWA - siap new.webp")
 
 	userName := strings.TrimSpace(p.Name)
 	var greetingLine string
@@ -345,7 +351,7 @@ func (r *BotRouter) HandleUnavailable(ctx context.Context, s *UserSession, p *wh
 	return r.sender.SendInteractiveMessage(ctx, p.JID, msg)
 }
 
-// HandleIdleTimeout sends SKD survey outro after 15 min idle
+// HandleIdleTimeout sends SKD survey outro and closing stickers after 15 min idle
 func (r *BotRouter) HandleIdleTimeout(ctx context.Context, s *UserSession) {
 	log.Printf("[TIMEOUT] Sesi idle %d menit berakhir untuk %s. Mengirim Survei SKD dan penutup.", r.cfg.IdleTimeoutMinutes, whatsapp.MaskJID(s.JID.User))
 
@@ -354,10 +360,14 @@ func (r *BotRouter) HandleIdleTimeout(ctx context.Context, s *UserSession) {
 		_ = r.sender.SendTextMessage(ctx, s.JID, outro)
 	}
 
+	_ = r.sender.SendSticker(ctx, s.JID, "StikerChatbot/IKON ISTIMEWA - terimakasih.webp")
+
 	outro2 := locale.T("outro2")
 	if outro2 != "" {
 		_ = r.sender.SendTextMessage(ctx, s.JID, outro2)
 	}
+
+	_ = r.sender.SendSticker(ctx, s.JID, "StikerChatbot/IKON ISTIMEWA-love data.webp")
 
 	r.sessions.Delete(s.JID)
 }

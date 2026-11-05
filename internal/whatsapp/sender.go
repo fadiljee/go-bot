@@ -177,6 +177,66 @@ func (s *Sender) SendInteractiveMessage(ctx context.Context, jid types.JID, msg 
 	return nil
 }
 
+// SendSticker sends a webp sticker from local file path with media upload caching.
+func (s *Sender) SendSticker(ctx context.Context, jid types.JID, filePath string) error {
+	if s == nil || s.client == nil {
+		return nil
+	}
+	s.mediaMu.RLock()
+	cached, found := s.mediaCache[filePath]
+	s.mediaMu.RUnlock()
+
+	if !found {
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("read sticker file %s: %w", filePath, err)
+		}
+
+		uploaded, err := s.client.Upload(ctx, data, whatsmeow.MediaImage)
+		if err != nil {
+			return fmt.Errorf("upload sticker: %w", err)
+		}
+
+		cached = &CachedMedia{
+			URL:           uploaded.URL,
+			DirectPath:    uploaded.DirectPath,
+			MediaKey:      uploaded.MediaKey,
+			FileSHA256:    uploaded.FileSHA256,
+			FileEncSHA256: uploaded.FileEncSHA256,
+			FileLength:    uploaded.FileLength,
+		}
+
+		s.mediaMu.Lock()
+		s.mediaCache[filePath] = cached
+		s.mediaMu.Unlock()
+	}
+
+	msg := &waE2E.Message{
+		StickerMessage: &waE2E.StickerMessage{
+			URL:           proto.String(cached.URL),
+			DirectPath:    proto.String(cached.DirectPath),
+			MediaKey:      cached.MediaKey,
+			Mimetype:      proto.String("image/webp"),
+			FileSHA256:    cached.FileSHA256,
+			FileEncSHA256: cached.FileEncSHA256,
+			FileLength:    proto.Uint64(cached.FileLength),
+		},
+	}
+
+	var err error
+	if s.queue != nil {
+		err = s.queue.SendInteractiveSync(ctx, jid, msg, nil)
+	} else {
+		_, err = s.client.SendMessage(ctx, jid, msg)
+	}
+	if err != nil {
+		log.Printf("[SENDER ERROR] Gagal mengirim stiker ke %s: %v", MaskJID(jid.String()), err)
+		return err
+	}
+	log.Printf("[SENDER OK] Stiker terkirim ke %s", MaskJID(jid.String()))
+	return nil
+}
+
 // SendImageFromURL downloads image from URL with Anti-SSRF and LimitReader, uploads to WA, and sends with caption
 func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, caption string) error {
 	if imageURL == "" {
