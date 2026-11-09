@@ -225,7 +225,10 @@ func (r *BotRouter) HandleAdminPrompt(ctx context.Context, s *UserSession, p *wh
 
 // HandleAdminAuth verifies admin password from .env, applies brute-force lockout, and auto-expires admin session
 func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *whatsapp.ParsedMessage) error {
-	phone := p.JID.User
+	phone := resolveUserPhone(p)
+	if phone == "" {
+		phone = p.JID.User
+	}
 
 	// Check lockout
 	if locked, until := r.isAdminLockedOut(phone); locked {
@@ -243,7 +246,7 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 	enteredPass := strings.TrimSpace(p.Text)
 	if r.cfg.AdminPassword != "" && subtle.ConstantTimeCompare([]byte(enteredPass), []byte(r.cfg.AdminPassword)) == 1 {
 		r.adminMu.Lock()
-		r.adminFailedAttempts[phone] = 0
+		delete(r.adminFailedAttempts, phone)
 		r.adminMu.Unlock()
 
 		log.Printf("[ADMIN AUTH] Admin %s berhasil login", whatsapp.MaskJID(phone))
@@ -253,6 +256,9 @@ func (r *BotRouter) HandleAdminAuth(ctx context.Context, s *UserSession, p *what
 
 	// Password wrong
 	r.adminMu.Lock()
+	if len(r.adminFailedAttempts) > 1000 {
+		r.adminFailedAttempts = make(map[string]int)
+	}
 	r.adminFailedAttempts[phone]++
 	attempts := r.adminFailedAttempts[phone]
 	maxRetry := r.cfg.AdminMaxRetry

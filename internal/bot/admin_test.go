@@ -132,3 +132,62 @@ func TestAdminSessionBackAndExit(t *testing.T) {
 		t.Errorf("expected state to reset to StateRoot after typing 0 in admin mode, got %s", sess.CurrentState)
 	}
 }
+
+func TestAdminFailSecureEmptyWhitelistAndLIDResolution(t *testing.T) {
+	// 1. Empty whitelist must deny all numbers (fail-secure)
+	emptyCfg := &config.Config{
+		AdminTriggerKeyword:   "secret_trigger_xyz",
+		AdminPassword:         "strong_pass_123",
+		AdminWhitelistNumbers: nil,
+		IdleTimeoutMinutes:    30,
+	}
+	emptyRouter := NewBotRouter(emptyCfg, nil, nil)
+	if emptyRouter.isAdminWhitelisted("6281234567890") {
+		t.Error("expected empty AdminWhitelistNumbers to reject all numbers (fail-secure)")
+	}
+
+	// 2. Custom trigger keyword must reject legacy hardcoded triggers & support LID PhoneNumber resolution
+	cfg := &config.Config{
+		AdminTriggerKeyword:   "secret_trigger_xyz",
+		AdminPassword:         "strong_pass_123",
+		AdminWhitelistNumbers: []string{"6281234567890"},
+		AdminMaxRetry:         3,
+		AdminLockoutMinutes:   60,
+		IdleTimeoutMinutes:    30,
+	}
+	router := NewBotRouter(cfg, nil, nil)
+
+	lidJID := types.NewJID("99887766554433", "lid")
+	resolvedPhone := "6281234567890"
+
+	// Legacy trigger must NOT enter StateAdminWaitPass
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:         lidJID,
+		PhoneNumber: resolvedPhone,
+		Text:        "login admin - 1903",
+	})
+	sess := router.sessions.GetOrCreate(lidJID, nil, resolvedPhone)
+	if sess.CurrentState == StateAdminWaitPass {
+		t.Error("expected legacy hardcoded trigger to be rejected when custom AdminTriggerKeyword is set")
+	}
+
+	// Configured trigger from whitelisted LID phone must enter StateAdminWaitPass
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:         lidJID,
+		PhoneNumber: resolvedPhone,
+		Text:        "secret_trigger_xyz",
+	})
+	if sess.CurrentState != StateAdminWaitPass {
+		t.Errorf("expected whitelisted LID user to enter StateAdminWaitPass, got %s", sess.CurrentState)
+	}
+
+	// Authenticate via LID with resolved PhoneNumber
+	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:         lidJID,
+		PhoneNumber: resolvedPhone,
+		Text:        "strong_pass_123",
+	})
+	if sess.CurrentState != StateAdminLoggedIn {
+		t.Errorf("expected whitelisted LID user to enter StateAdminLoggedIn, got %s", sess.CurrentState)
+	}
+}
