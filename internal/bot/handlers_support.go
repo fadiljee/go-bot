@@ -661,7 +661,7 @@ func (r *BotRouter) HandleMenu8Pengaduan(ctx context.Context, s *UserSession, p 
 		"*4. Email*\n" +
 		"bps1903@bps.go.id\n\n" +
 		"*5. Link Google Form*\n" +
-		"https://forms.gle/ContohLinkPengaduanBPS1903\n\n" +
+		"https://s.bps.go.id/1903_FormPengaduan\n\n" +
 		"Setiap aspirasi & laporan yang masuk akan ditindaklanjuti secara profesional dan rahasia."
 
 	msg := whatsapp.BuildQuickReplyButtons(

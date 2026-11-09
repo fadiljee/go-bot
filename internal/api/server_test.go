@@ -77,6 +77,72 @@ func TestAPIServerSecurity(t *testing.T) {
 	if respAPIQR.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden for /api/v1/qr when logged in, got %d", respAPIQR.StatusCode)
 	}
+
+	// 6. Query parameter ?key= must be rejected to prevent secret leakage in logs
+	reqQueryKey := httptest.NewRequest("POST", "/api/cache/refresh?key=test_secret_key_12345", nil)
+	respQueryKey, err := server.app.Test(reqQueryKey)
+	if err != nil {
+		t.Fatalf("query key test error: %v", err)
+	}
+	defer func() { _ = respQueryKey.Body.Close() }()
+	if respQueryKey.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401 Unauthorized when passing API key via query string, got %d", respQueryKey.StatusCode)
+	}
+
+	// 7. Security headers must be present
+	if got := respHealth.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("expected X-Content-Type-Options=nosniff, got %q", got)
+	}
+	if got := respHealth.Header.Get("X-Frame-Options"); got != "DENY" {
+		t.Errorf("expected X-Frame-Options=DENY, got %q", got)
+	}
+}
+
+func TestAPIQRProxyProtectionAndBlastValidation(t *testing.T) {
+	cfg := &config.Config{
+		AppPort:      "3000",
+		APISecretKey: "test_secret_key_12345",
+	}
+
+	// Simulate logged out state
+	clientMgr := &whatsapp.ClientManager{
+		IsLoggedIn: false,
+	}
+	server := NewAPIServer(cfg, clientMgr, nil)
+
+	// 1. Remote request via reverse proxy (X-Forwarded-For) to /qr without API key -> 401 Unauthorized
+	reqRemoteQR := httptest.NewRequest("GET", "/qr", nil)
+	reqRemoteQR.Header.Set("X-Forwarded-For", "203.0.113.10")
+	respRemoteQR, err := server.app.Test(reqRemoteQR)
+	if err != nil {
+		t.Fatalf("remote qr error: %v", err)
+	}
+	defer func() { _ = respRemoteQR.Body.Close() }()
+	if respRemoteQR.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401 Unauthorized for remote /qr without API key, got %d", respRemoteQR.StatusCode)
+	}
+
+	// 2. Local request to /qr when logged out -> 200 OK
+	reqLocalQR := httptest.NewRequest("GET", "/qr", nil)
+	respLocalQR, err := server.app.Test(reqLocalQR)
+	if err != nil {
+		t.Fatalf("local qr error: %v", err)
+	}
+	defer func() { _ = respLocalQR.Body.Close() }()
+	if respLocalQR.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 OK for local /qr when logged out, got %d", respLocalQR.StatusCode)
+	}
+
+	// 3. Blast validation: reject invalid phone numbers
+	if _, ok := sanitizeBlastPhone("abc-invalid"); ok {
+		t.Error("expected sanitizeBlastPhone to reject non-digit phone")
+	}
+	if _, ok := sanitizeBlastPhone("12345"); ok {
+		t.Error("expected sanitizeBlastPhone to reject too-short phone")
+	}
+	if clean, ok := sanitizeBlastPhone("0812-3456-7890"); !ok || clean != "6281234567890" {
+		t.Errorf("expected 6281234567890, got %q (ok=%v)", clean, ok)
+	}
 }
 
 func TestAPIServerScraperRoutes(t *testing.T) {

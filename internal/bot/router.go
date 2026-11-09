@@ -77,6 +77,16 @@ func NewBotRouter(cfg *config.Config, sender *whatsapp.Sender, _ *gsheet.Client)
 	return r
 }
 
+func resolveUserPhone(p *whatsapp.ParsedMessage) string {
+	if p == nil {
+		return ""
+	}
+	if pn := strings.TrimSpace(p.PhoneNumber); pn != "" {
+		return normalizePhone(pn)
+	}
+	return normalizePhone(p.JID.User)
+}
+
 func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 	if p == nil {
 		return
@@ -87,27 +97,27 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
+	userKey := resolveUserPhone(p)
+	if userKey == "" {
+		userKey = p.JID.User
+	}
+
 	// Filter allowed numbers if set
 	if len(r.cfg.AllowedNumbers) > 0 {
-		senderNum := p.JID.User
 		allowed := false
 		for _, num := range r.cfg.AllowedNumbers {
-			if strings.TrimSpace(num) == senderNum {
+			if normalizePhone(num) == userKey {
 				allowed = true
 				break
 			}
 		}
 		if !allowed {
-			log.Printf("[FILTER] Mengabaikan pesan dari %s (tidak terdaftar di ALLOWED_NUMBERS)", whatsapp.MaskJID(p.JID.String()))
+			log.Printf("[FILTER] Mengabaikan pesan dari %s (tidak terdaftar di ALLOWED_NUMBERS)", whatsapp.MaskJID(userKey))
 			return
 		}
 	}
 
 	// 1. Per-User Token Bucket Rate Limiting (Anti-Flooding / DDoS Protection)
-	userKey := p.JID.User
-	if p.PhoneNumber != "" {
-		userKey = p.PhoneNumber
-	}
 	if !r.rateLimiter.Allow(userKey) {
 		log.Printf("[RATE LIMIT] Mengabaikan pesan dari %s (dalam cooldown / melebihi kuota pesan)", whatsapp.MaskJID(userKey))
 		return
@@ -191,25 +201,21 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
-	// Admin Trigger Keyword Check with Whitelist & Lockout
+	// Admin Trigger Keyword Check with Strict Whitelist & Lockout
 	triggerLower := strings.ToLower(strings.TrimSpace(r.cfg.AdminTriggerKeyword))
-	isAdminTrigger := (triggerLower != "" && inputLower == triggerLower) ||
-		inputLower == "login admin" ||
-		inputLower == "login admin - 1903" ||
-		inputLower == "login admin 1903" ||
-		inputLower == "admin 1903"
+	isAdminTrigger := triggerLower != "" && inputLower == triggerLower
 
 	if isAdminTrigger {
-		// Whitelist check: only registered numbers in .env can trigger admin mode (if whitelist configured)
-		if !r.isAdminWhitelisted(p.JID.User) {
-			log.Printf("[ADMIN AUDIT] Percobaan login admin dari nomor tidak dikenal: %s (silent reject)", whatsapp.MaskJID(p.JID.User))
+		// Whitelist check (fail-secure): only registered numbers in .env can trigger admin mode
+		if !r.isAdminWhitelisted(userKey) {
+			log.Printf("[ADMIN AUDIT] Percobaan login admin dari nomor tidak terdaftar: %s (silent reject)", whatsapp.MaskJID(userKey))
 			_ = r.HandleUnavailable(ctx, session, p)
 			return
 		}
 
 		// Lockout check: verify if temporarily locked out due to previous failed attempts
-		if locked, until := r.isAdminLockedOut(p.JID.User); locked {
-			log.Printf("[ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", whatsapp.MaskJID(p.JID.User), until.Format("15:04:05"))
+		if locked, until := r.isAdminLockedOut(userKey); locked {
+			log.Printf("[ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", whatsapp.MaskJID(userKey), until.Format("15:04:05"))
 			msg := fmt.Sprintf("Nomor Anda sedang dikunci dari percobaan admin hingga %s.\nSilakan coba lagi nanti atau ketik *0* untuk ke menu utama.", until.Format("15:04:05"))
 			_ = r.sender.SendTextMessage(ctx, p.JID, msg)
 			return
@@ -639,20 +645,17 @@ func (r *BotRouter) registerRoutes() {
 }
 
 func (r *BotRouter) isAdminWhitelisted(phone string) bool {
-	// Jika ADMIN_WHITELIST_NUMBERS di .env kosong, whitelist dinonaktifkan (semua nomor berhak mencoba login dengan password)
+	// Fail-secure: jika ADMIN_WHITELIST_NUMBERS kosong, tolak seluruh percobaan login admin
 	if len(r.cfg.AdminWhitelistNumbers) == 0 {
-		return true
+		return false
 	}
-	clean := strings.TrimPrefix(strings.TrimSpace(phone), "+")
-	if strings.HasPrefix(clean, "08") {
-		clean = "62" + clean[1:]
+	clean := normalizePhone(phone)
+	if clean == "" {
+		return false
 	}
 	for _, allowed := range r.cfg.AdminWhitelistNumbers {
-		cand := strings.TrimPrefix(strings.TrimSpace(allowed), "+")
-		if strings.HasPrefix(cand, "08") {
-			cand = "62" + cand[1:]
-		}
-		if cand == clean {
+		cand := normalizePhone(allowed)
+		if cand != "" && cand == clean {
 			return true
 		}
 	}
@@ -660,6 +663,7 @@ func (r *BotRouter) isAdminWhitelisted(phone string) bool {
 }
 
 func (r *BotRouter) isAdminLockedOut(phone string) (bool, time.Time) {
+	phone = normalizePhone(phone)
 	r.adminMu.Lock()
 	defer r.adminMu.Unlock()
 
@@ -671,5 +675,6 @@ func (r *BotRouter) isAdminLockedOut(phone string) (bool, time.Time) {
 		return true, until
 	}
 	delete(r.adminLockedUntil, phone)
+	delete(r.adminFailedAttempts, phone)
 	return false, time.Time{}
 }

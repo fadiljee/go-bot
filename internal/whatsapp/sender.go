@@ -22,6 +22,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const maxMediaCacheEntries = 500
+
 type CachedMedia struct {
 	URL           string
 	DirectPath    string
@@ -49,13 +51,76 @@ func NewSender(client *whatsmeow.Client, queue *MessageQueue, cfg ...*config.Con
 		client:     client,
 		queue:      queue,
 		mediaCache: make(map[string]*CachedMedia),
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		httpClient: newSafeMediaHTTPClient(15 * time.Second),
 		cfg:        c,
 	}
 }
 
+func newSafeMediaHTTPClient(timeout time.Duration) *http.Client {
+	dialer := &net.Dialer{
+		Timeout: 8 * time.Second,
+	}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil || len(ips) == 0 {
+				return nil, fmt.Errorf("SSRF protection: failed to resolve host %q: %w", host, err)
+			}
+			for _, ipAddr := range ips {
+				if isProhibitedIP(ipAddr.IP) {
+					return nil, fmt.Errorf("SSRF protection: host %q resolves to prohibited IP %s", host, ipAddr.IP.String())
+				}
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+		},
+		TLSHandshakeTimeout: 8 * time.Second,
+		MaxIdleConns:        10,
+		IdleConnTimeout:     30 * time.Second,
+	}
+
+	return &http.Client{
+		Transport: transport,
+		Timeout:   timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 3 {
+				return fmt.Errorf("SSRF protection: too many redirects (max 3)")
+			}
+			return ValidateURLAntiSSRF(req.URL.String())
+		},
+	}
+}
+
+func (s *Sender) setCachedMedia(key string, media *CachedMedia) {
+	s.mediaMu.Lock()
+	defer s.mediaMu.Unlock()
+	if len(s.mediaCache) >= maxMediaCacheEntries {
+		// Evict oldest/random entry to prevent unbounded memory growth
+		for k := range s.mediaCache {
+			delete(s.mediaCache, k)
+			break
+		}
+	}
+	s.mediaCache[key] = media
+}
+
 func (s *Sender) Queue() *MessageQueue {
 	return s.queue
+}
+
+func isProhibitedIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	return ip.IsLoopback() ||
+		ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() ||
+		ip.IsUnspecified() ||
+		ip.IsMulticast()
 }
 
 // ValidateURLAntiSSRF checks that the URL uses HTTPS and does not point to internal/private/loopback addresses
@@ -69,23 +134,35 @@ func ValidateURLAntiSSRF(rawURL string) error {
 		return fmt.Errorf("SSRF protection: only https scheme is allowed, got '%s'", parsed.Scheme)
 	}
 
+	if parsed.User != nil {
+		return fmt.Errorf("SSRF protection: credentials in URL are prohibited")
+	}
+
 	hostname := parsed.Hostname()
 	if hostname == "" {
 		return fmt.Errorf("SSRF protection: empty hostname")
 	}
 
 	lowerHost := strings.ToLower(hostname)
-	if lowerHost == "localhost" || lowerHost == "127.0.0.1" || lowerHost == "::1" {
+	if lowerHost == "localhost" || strings.HasSuffix(lowerHost, ".localhost") || strings.HasSuffix(lowerHost, ".local") || strings.HasSuffix(lowerHost, ".internal") {
 		return fmt.Errorf("SSRF protection: local address '%s' is prohibited", hostname)
 	}
 
-	// Resolve IP to check for private / loopback / link-local addresses
+	if ip := net.ParseIP(hostname); ip != nil {
+		if isProhibitedIP(ip) {
+			return fmt.Errorf("SSRF protection: prohibited IP address '%s'", ip.String())
+		}
+		return nil
+	}
+
+	// Resolve IP to check for private / loopback / link-local addresses (fail-closed on lookup failure)
 	ips, err := net.LookupIP(hostname)
-	if err == nil {
-		for _, ip := range ips {
-			if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-				return fmt.Errorf("SSRF protection: host '%s' resolves to prohibited IP '%s'", hostname, ip.String())
-			}
+	if err != nil || len(ips) == 0 {
+		return fmt.Errorf("SSRF protection: failed to resolve host '%s': %w", hostname, err)
+	}
+	for _, ip := range ips {
+		if isProhibitedIP(ip) {
+			return fmt.Errorf("SSRF protection: host '%s' resolves to prohibited IP '%s'", hostname, ip.String())
 		}
 	}
 
@@ -206,9 +283,7 @@ func (s *Sender) SendSticker(ctx context.Context, jid types.JID, filePath string
 			FileLength:    uploaded.FileLength,
 		}
 
-		s.mediaMu.Lock()
-		s.mediaCache[filePath] = cached
-		s.mediaMu.Unlock()
+		s.setCachedMedia(filePath, cached)
 	}
 
 	msg := &waE2E.Message{
@@ -283,9 +358,7 @@ func (s *Sender) SendImageFromURL(ctx context.Context, jid types.JID, imageURL, 
 			FileLength:    uploaded.FileLength,
 		}
 
-		s.mediaMu.Lock()
-		s.mediaCache[imageURL] = cached
-		s.mediaMu.Unlock()
+		s.setCachedMedia(imageURL, cached)
 	}
 
 	msg := &waE2E.Message{
@@ -351,9 +424,7 @@ func (s *Sender) SendVideoFromFile(ctx context.Context, jid types.JID, filePath,
 			FileLength:    uploaded.FileLength,
 		}
 
-		s.mediaMu.Lock()
-		s.mediaCache[filePath] = cached
-		s.mediaMu.Unlock()
+		s.setCachedMedia(filePath, cached)
 	}
 
 	msg := &waE2E.Message{

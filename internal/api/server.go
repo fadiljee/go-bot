@@ -50,7 +50,16 @@ func NewAPIServer(cfg *config.Config, clientMgr *whatsapp.ClientManager, gsheetC
 
 	app.Use(recover.New())
 	app.Use(logger.New())
-	app.Use(cors.New())
+	app.Use(func(c *fiber.Ctx) error {
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Frame-Options", "DENY")
+		c.Set("Referrer-Policy", "no-referrer")
+		return c.Next()
+	})
+	app.Use(cors.New(cors.Config{
+		AllowMethods: "GET,POST,OPTIONS",
+		AllowHeaders: "Origin,Content-Type,Accept,X-API-Key,Authorization",
+	}))
 
 	srv := &APIServer{
 		app:       app,
@@ -151,7 +160,7 @@ func (s *APIServer) getProvider() scraper.DataProvider {
 	return nil
 }
 
-func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
+func (s *APIServer) hasValidAPIKey(c *fiber.Ctx) bool {
 	apiKey := c.Get("X-API-Key")
 	if apiKey == "" {
 		authHeader := c.Get("Authorization")
@@ -159,11 +168,11 @@ func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
 			apiKey = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 	}
-	if apiKey == "" {
-		apiKey = c.Query("key")
-	}
+	return s.cfg.APISecretKey != "" && subtle.ConstantTimeCompare([]byte(apiKey), []byte(s.cfg.APISecretKey)) == 1
+}
 
-	if s.cfg.APISecretKey == "" || subtle.ConstantTimeCompare([]byte(apiKey), []byte(s.cfg.APISecretKey)) != 1 {
+func (s *APIServer) authMiddleware(c *fiber.Ctx) error {
+	if !s.hasValidAPIKey(c) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"error":   "Unauthorized: Invalid or missing API key",
@@ -231,6 +240,21 @@ func (s *APIServer) handleQRPage(c *fiber.Ctx) error {
 			</body>
 			</html>
 		`)
+	}
+
+	// Block unauthenticated external proxy requests (e.g. Cloudflare Tunnel / Reverse Proxy)
+	forwardedIP := strings.TrimSpace(c.Get("CF-Connecting-IP"))
+	if forwardedIP == "" {
+		forwardedIP = strings.TrimSpace(c.Get("X-Forwarded-For"))
+	}
+	if forwardedIP == "" {
+		forwardedIP = strings.TrimSpace(c.Get("X-Real-IP"))
+	}
+	if forwardedIP != "" && forwardedIP != "127.0.0.1" && forwardedIP != "::1" && !s.hasValidAPIKey(c) {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"error":   "Unauthorized: API key required for remote QR access",
+		})
 	}
 
 	qrPNG, _ := s.clientMgr.GetQR()
@@ -325,12 +349,66 @@ type BlastRequest struct {
 	Message string   `json:"message"`
 }
 
+const (
+	maxBlastNumbers    = 500
+	maxBlastMessageLen = 4096
+)
+
+func sanitizeBlastPhone(raw string) (string, bool) {
+	raw = strings.TrimSpace(raw)
+	var digits strings.Builder
+	for _, r := range raw {
+		if r >= '0' && r <= '9' {
+			digits.WriteRune(r)
+		} else if r != '+' && r != '-' && r != ' ' {
+			return "", false
+		}
+	}
+	d := digits.String()
+	if strings.HasPrefix(d, "08") {
+		d = "62" + d[1:]
+	} else if strings.HasPrefix(d, "8") && len(d) >= 9 {
+		d = "62" + d
+	}
+	if len(d) < 9 || len(d) > 15 {
+		return "", false
+	}
+	return d, true
+}
+
 func (s *APIServer) handleBlast(c *fiber.Ctx) error {
 	var req BlastRequest
-	if err := c.BodyParser(&req); err != nil || len(req.Numbers) == 0 || req.Message == "" {
+	if err := c.BodyParser(&req); err != nil || len(req.Numbers) == 0 || strings.TrimSpace(req.Message) == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"error":   "Payload tidak valid. Pastikan 'numbers' (array) dan 'message' terisi.",
+		})
+	}
+
+	if len(req.Numbers) > maxBlastNumbers {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   fmt.Sprintf("Jumlah nomor melebihi batas maksimum (%d nomor per request).", maxBlastNumbers),
+		})
+	}
+
+	if len(req.Message) > maxBlastMessageLen {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   fmt.Sprintf("Panjang pesan melebihi batas maksimum (%d karakter).", maxBlastMessageLen),
+		})
+	}
+
+	validNumbers := make([]string, 0, len(req.Numbers))
+	for _, num := range req.Numbers {
+		if cleanNum, ok := sanitizeBlastPhone(num); ok {
+			validNumbers = append(validNumbers, cleanNum)
+		}
+	}
+	if len(validNumbers) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "Tidak ada nomor telepon valid di dalam daftar 'numbers'.",
 		})
 	}
 
@@ -363,26 +441,20 @@ func (s *APIServer) handleBlast(c *fiber.Ctx) error {
 	// Dispatch to low-priority BlastQueue
 	go func(numbers []string) {
 		log.Printf("[BLAST QUEUE] Memasukkan %d nomor ke antrean BlastQueue (delay 5-10 detik)...", len(numbers))
-		for _, num := range numbers {
-			cleanNum := strings.TrimSpace(num)
-			cleanNum = strings.TrimPrefix(cleanNum, "+")
-			if strings.HasPrefix(cleanNum, "08") {
-				cleanNum = "62" + cleanNum[1:]
-			}
-
+		for _, cleanNum := range numbers {
 			jid := types.NewJID(cleanNum, types.DefaultUserServer)
-			if s.clientMgr.Sender.Queue() != nil {
+			if s.clientMgr != nil && s.clientMgr.Sender != nil && s.clientMgr.Sender.Queue() != nil {
 				s.clientMgr.Sender.Queue().EnqueueBlast(jid, blastMsg, extra)
-			} else {
+			} else if s.clientMgr != nil && s.clientMgr.Sender != nil {
 				_ = s.clientMgr.Sender.SendInteractiveMessage(context.Background(), jid, blastMsg)
 			}
 		}
 		log.Println("[BLAST QUEUE] Seluruh nomor telah dijadwalkan di antrean blast.")
-	}(req.Numbers)
+	}(validNumbers)
 
 	return c.JSON(fiber.Map{
 		"success": true,
-		"message": fmt.Sprintf("Pengiriman blast ke %d nomor sedang diproses di antrean latar belakang dengan tombol opt-out.", len(req.Numbers)),
+		"message": fmt.Sprintf("Pengiriman blast ke %d nomor sedang diproses di antrean latar belakang dengan tombol opt-out.", len(validNumbers)),
 	})
 }
 
