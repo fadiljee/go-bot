@@ -25,3 +25,4 @@ pair-sync-24: 1794499509
 pair-sync-25: 1794499546
 pair-sync-26: 1794499588
 pair-sync-27: 1794499621
+pair-sync-28: 1794499660
