@@ -11,32 +11,17 @@ import (
 	"go.mau.fi/whatsmeow/types"
 )
 
-func TestAdminWhitelistAndLockout(t *testing.T) {
+func TestAdminLockout(t *testing.T) {
 	cfg := &config.Config{
-		AdminTriggerKeyword:   "login admin - 1903",
-		AdminPassword:         "test_admin_pass_123",
-		AdminWhitelistNumbers: []string{"6281234567890"},
-		AdminMaxRetry:         3,
-		AdminLockoutMinutes:   60,
+		AdminTriggerKeyword: "login admin - 1903",
+		AdminPassword:       "test_admin_pass_123",
+		AdminMaxRetry:       3,
+		AdminLockoutMinutes: 60,
 	}
 
 	router := NewBotRouter(cfg, nil, nil)
 
-	// 1. Test whitelist check
-	if !router.isAdminWhitelisted("6281234567890") {
-		t.Error("expected 6281234567890 to be whitelisted")
-	}
-	if !router.isAdminWhitelisted("+6281234567890") {
-		t.Error("expected +6281234567890 to be whitelisted after normalization")
-	}
-	if !router.isAdminWhitelisted("081234567890") {
-		t.Error("expected 081234567890 to be whitelisted after 08->62 conversion")
-	}
-	if router.isAdminWhitelisted("6281111111111") {
-		t.Error("did not expect 6281111111111 to be whitelisted")
-	}
-
-	// 2. Test lockout logic
+	// Test lockout logic
 	phone := "6281234567890"
 	session := &UserSession{
 		JID:          types.NewJID(phone, types.DefaultUserServer),
@@ -133,27 +118,14 @@ func TestAdminSessionBackAndExit(t *testing.T) {
 	}
 }
 
-func TestAdminFailSecureEmptyWhitelistAndLIDResolution(t *testing.T) {
-	// 1. Empty whitelist must deny all numbers (fail-secure)
-	emptyCfg := &config.Config{
-		AdminTriggerKeyword:   "secret_trigger_xyz",
-		AdminPassword:         "strong_pass_123",
-		AdminWhitelistNumbers: nil,
-		IdleTimeoutMinutes:    30,
-	}
-	emptyRouter := NewBotRouter(emptyCfg, nil, nil)
-	if emptyRouter.isAdminWhitelisted("6281234567890") {
-		t.Error("expected empty AdminWhitelistNumbers to reject all numbers (fail-secure)")
-	}
-
-	// 2. Custom trigger keyword must reject legacy hardcoded triggers & support LID PhoneNumber resolution
+func TestAdminTriggerAndLIDResolution(t *testing.T) {
+	// 1. Any number can trigger admin login when AdminTriggerKeyword is set, without whitelist
 	cfg := &config.Config{
-		AdminTriggerKeyword:   "secret_trigger_xyz",
-		AdminPassword:         "strong_pass_123",
-		AdminWhitelistNumbers: []string{"6281234567890"},
-		AdminMaxRetry:         3,
-		AdminLockoutMinutes:   60,
-		IdleTimeoutMinutes:    30,
+		AdminTriggerKeyword: "secret_trigger_xyz",
+		AdminPassword:       "strong_pass_123",
+		AdminMaxRetry:       3,
+		AdminLockoutMinutes: 60,
+		IdleTimeoutMinutes:  30,
 	}
 	router := NewBotRouter(cfg, nil, nil)
 
@@ -171,14 +143,14 @@ func TestAdminFailSecureEmptyWhitelistAndLIDResolution(t *testing.T) {
 		t.Error("expected legacy hardcoded trigger to be rejected when custom AdminTriggerKeyword is set")
 	}
 
-	// Configured trigger from whitelisted LID phone must enter StateAdminWaitPass
+	// Configured trigger from any LID/phone must enter StateAdminWaitPass without whitelist
 	router.Dispatch(context.Background(), &whatsapp.ParsedMessage{
 		JID:         lidJID,
 		PhoneNumber: resolvedPhone,
 		Text:        "secret_trigger_xyz",
 	})
 	if sess.CurrentState != StateAdminWaitPass {
-		t.Errorf("expected whitelisted LID user to enter StateAdminWaitPass, got %s", sess.CurrentState)
+		t.Errorf("expected user to enter StateAdminWaitPass, got %s", sess.CurrentState)
 	}
 
 	// Authenticate via LID with resolved PhoneNumber
@@ -188,6 +160,32 @@ func TestAdminFailSecureEmptyWhitelistAndLIDResolution(t *testing.T) {
 		Text:        "strong_pass_123",
 	})
 	if sess.CurrentState != StateAdminLoggedIn {
-		t.Errorf("expected whitelisted LID user to enter StateAdminLoggedIn, got %s", sess.CurrentState)
+		t.Errorf("expected user to enter StateAdminLoggedIn, got %s", sess.CurrentState)
+	}
+
+	// 2. Empty AdminPassword must reject login even if trigger matched
+	emptyPassCfg := &config.Config{
+		AdminTriggerKeyword: "secret_trigger_xyz",
+		AdminPassword:       "",
+		AdminMaxRetry:       3,
+		AdminLockoutMinutes: 60,
+		IdleTimeoutMinutes:  30,
+	}
+	emptyPassRouter := NewBotRouter(emptyPassCfg, nil, nil)
+	anyJID := types.NewJID("6289876543210", types.DefaultUserServer)
+	emptyPassRouter.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:  anyJID,
+		Text: "secret_trigger_xyz",
+	})
+	emptySess := emptyPassRouter.sessions.GetOrCreate(anyJID, nil)
+	if emptySess.CurrentState != StateAdminWaitPass {
+		t.Errorf("expected StateAdminWaitPass, got %s", emptySess.CurrentState)
+	}
+	emptyPassRouter.Dispatch(context.Background(), &whatsapp.ParsedMessage{
+		JID:  anyJID,
+		Text: "",
+	})
+	if emptySess.CurrentState == StateAdminLoggedIn {
+		t.Error("expected empty AdminPassword to reject login")
 	}
 }

@@ -206,18 +206,11 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
-	// Admin Trigger Keyword Check with Strict Whitelist & Lockout
+	// Admin Trigger Keyword Check with Lockout
 	triggerLower := strings.ToLower(strings.TrimSpace(r.cfg.AdminTriggerKeyword))
 	isAdminTrigger := triggerLower != "" && inputLower == triggerLower
 
 	if isAdminTrigger {
-		// Whitelist check (fail-secure): only registered numbers in .env can trigger admin mode
-		if !r.isAdminWhitelisted(userKey) {
-			log.Printf("[ADMIN AUDIT] Percobaan login admin dari nomor tidak terdaftar: %s (silent reject)", whatsapp.MaskJID(userKey))
-			_ = r.HandleUnavailable(ctx, session, p)
-			return
-		}
-
 		// Lockout check: verify if temporarily locked out due to previous failed attempts
 		if locked, until := r.isAdminLockedOut(userKey); locked {
 			log.Printf("[ADMIN AUDIT] Nomor %s mencoba login tetapi masih terkunci hingga %s", whatsapp.MaskJID(userKey), until.Format("15:04:05"))
@@ -647,24 +640,6 @@ func (r *BotRouter) registerRoutes() {
 			return r.HandleFAQDetail(ctx, s, p, idx)
 		}
 	}
-}
-
-func (r *BotRouter) isAdminWhitelisted(phone string) bool {
-	// Fail-secure: jika ADMIN_WHITELIST_NUMBERS kosong, tolak seluruh percobaan login admin
-	if len(r.cfg.AdminWhitelistNumbers) == 0 {
-		return false
-	}
-	clean := normalizePhone(phone)
-	if clean == "" {
-		return false
-	}
-	for _, allowed := range r.cfg.AdminWhitelistNumbers {
-		cand := normalizePhone(allowed)
-		if cand != "" && cand == clean {
-			return true
-		}
-	}
-	return false
 }
 
 func (r *BotRouter) isAdminLockedOut(phone string) (bool, time.Time) {

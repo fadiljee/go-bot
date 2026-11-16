@@ -32,9 +32,8 @@ func TestConsultationBookingWorkflow(t *testing.T) {
 	provider := scraper.NewProvider(store, 24)
 
 	cfg := &config.Config{
-		InternalPSTGroupJID:   "120363999999999999@g.us",
-		AdminWhitelistNumbers: []string{"6281234567890"},
-		IdleTimeoutMinutes:    30,
+		InternalPSTGroupJID: "120363999999999999@g.us",
+		IdleTimeoutMinutes:  30,
 	}
 
 	sender := whatsapp.NewSender(nil, nil)
@@ -324,9 +323,8 @@ func TestConsultationBookingValidationAndScheduleFormat(t *testing.T) {
 
 	provider := scraper.NewProvider(store, 24)
 	cfg := &config.Config{
-		InternalPSTGroupJID:   "120363999999999999@g.us",
-		AdminWhitelistNumbers: []string{"6281234567890"},
-		IdleTimeoutMinutes:    30,
+		InternalPSTGroupJID: "120363999999999999@g.us",
+		IdleTimeoutMinutes:  30,
 	}
 
 	sender := whatsapp.NewSender(nil, nil)
