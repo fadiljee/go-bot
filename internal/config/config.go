@@ -12,11 +12,10 @@ type Config struct {
 	AppHost               string
 	AppPort               string
 	APISecretKey          string
-	AdminTriggerKeyword   string
-	AdminPassword         string
-	AdminWhitelistNumbers []string
-	AdminMaxRetry         int
-	AdminLockoutMinutes   int
+	AdminTriggerKeyword string
+	AdminPassword       string
+	AdminMaxRetry       int
+	AdminLockoutMinutes int
 
 	UserRateLimitPer10s int
 	UserCooldownSeconds int
@@ -112,24 +111,12 @@ func LoadConfig() *Config {
 		}
 	}
 
-	var adminWhitelist []string
-	rawAdminWhitelist := os.Getenv("ADMIN_WHITELIST_NUMBERS")
-	if rawAdminWhitelist != "" {
-		for _, num := range strings.Split(rawAdminWhitelist, ",") {
-			trimmed := strings.TrimSpace(num)
-			if trimmed != "" {
-				adminWhitelist = append(adminWhitelist, trimmed)
-			}
-		}
-	}
-
 	return &Config{
 		AppHost:                    appHost,
 		AppPort:                    port,
 		APISecretKey:               apiSecret,
 		AdminTriggerKeyword:        adminTrigger,
 		AdminPassword:              adminPass,
-		AdminWhitelistNumbers:      adminWhitelist,
 		AdminMaxRetry:              adminMaxRetry,
 		AdminLockoutMinutes:        adminLockoutMin,
 		UserRateLimitPer10s:        userRateLimit,
