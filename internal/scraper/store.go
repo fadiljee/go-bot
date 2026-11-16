@@ -410,7 +410,9 @@ func (s *Store) StartRun(ctx context.Context, trigger, kind string) (*RunResult,
 
 // FinishRun marks a scrape run as completed.
 func (s *Store) FinishRun(ctx context.Context, r *RunResult) error {
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC()
+	r.FinishedAt = &now
+	nowStr := now.Format(time.RFC3339)
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE scrape_runs SET
 			finished_at = ?, status = ?, requests = ?, items_found = ?,

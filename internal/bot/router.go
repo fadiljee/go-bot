@@ -123,6 +123,11 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 		return
 	}
 
+	if p.IsUnsupportedMedia && strings.TrimSpace(p.Text) == "" {
+		_ = r.sender.SendTextMessage(ctx, p.JID, "Mohon maaf, bot hanya menerima pesan teks/angka menu")
+		return
+	}
+
 	// Input sanitization & 100 character limit (Anti-ReDoS / Anti-OOM)
 	input := strings.TrimSpace(p.Text)
 	if input == "" {
@@ -368,7 +373,7 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 				timeStr := time.Now().Format("15:04:05 WIB")
 				if res.FinishedAt != nil {
 					durStr = res.FinishedAt.Sub(res.StartedAt).Round(time.Second).String()
-					timeStr = res.FinishedAt.Format("15:04:05 WIB")
+					timeStr = res.FinishedAt.Local().Format("15:04:05 WIB")
 				}
 				doneMsg := fmt.Sprintf("*SCRAPING MANUAL SELESAI*\n"+
 					"_BPS Kabupaten Bangka Barat_\n"+

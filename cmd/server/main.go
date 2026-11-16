@@ -163,7 +163,7 @@ func main() {
 			}
 
 			parsed := whatsapp.ParseIncomingMessage(evt)
-			if parsed == nil || strings.TrimSpace(parsed.Text) == "" {
+			if parsed == nil || (strings.TrimSpace(parsed.Text) == "" && !parsed.IsUnsupportedMedia) {
 				// Abaikan pesan tanpa teks/pilihan (misal protokol pesan, receipt, reaksi)
 				return
 			}

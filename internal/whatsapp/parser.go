@@ -10,15 +10,16 @@ import (
 )
 
 type ParsedMessage struct {
-	JID         types.JID
-	SenderJID   types.JID
-	SenderAlt   types.JID
-	PhoneNumber string
-	Name        string
-	IsFromMe    bool
-	IsGroup     bool
-	Text        string
-	Raw         *waE2E.Message
+	JID                types.JID
+	SenderJID          types.JID
+	SenderAlt          types.JID
+	PhoneNumber        string
+	Name               string
+	IsFromMe           bool
+	IsGroup            bool
+	IsUnsupportedMedia bool
+	Text               string
+	Raw                *waE2E.Message
 }
 
 type nativeFlowParams struct {
@@ -134,6 +135,15 @@ func ParseIncomingMessage(evt *events.Message) *ParsedMessage {
 	if ext := msg.GetExtendedTextMessage(); ext != nil && ext.GetText() != "" {
 		parsed.Text = strings.TrimSpace(ext.GetText())
 		return parsed
+	}
+
+	// 6. User-sent non-text media (e.g. voice note / audio, sticker, image/video/document without text)
+	if msg.GetAudioMessage() != nil ||
+		msg.GetStickerMessage() != nil ||
+		msg.GetImageMessage() != nil ||
+		msg.GetVideoMessage() != nil ||
+		msg.GetDocumentMessage() != nil {
+		parsed.IsUnsupportedMedia = true
 	}
 
 	return parsed
