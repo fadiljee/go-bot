@@ -648,7 +648,8 @@ func (s *Store) GetLastRun(ctx context.Context) (*RunResult, error) {
 		SELECT id, trigger, kind, started_at, finished_at, status,
 		       requests, items_found, items_new, items_updated, items_skipped, error_message
 		FROM scrape_runs
-		ORDER BY id DESC LIMIT 1
+		ORDER BY (status = 'skipped_overlap') ASC, COALESCE(finished_at, started_at) DESC, id DESC
+		LIMIT 1
 	`)
 	var r RunResult
 	var sAt, fAt, errMsg sql.NullString
