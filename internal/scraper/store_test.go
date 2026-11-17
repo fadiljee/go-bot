@@ -240,3 +240,49 @@ func TestStore_InfographicsBySubject(t *testing.T) {
 		t.Errorf("expected 1 lingkungan infographic (cat3_103), got %+v (err=%v)", lingkungan, err)
 	}
 }
+
+func TestGetLastRunPrioritizesActualRunOverSkippedOverlap(t *testing.T) {
+	ctx := context.Background()
+	store, err := NewStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("NewStore failed: %v", err)
+	}
+	defer store.Close()
+
+	// Start an actual run
+	run, err := store.StartRun(ctx, TriggerStartup, "all")
+	if err != nil {
+		t.Fatalf("StartRun failed: %v", err)
+	}
+
+	// Simulate an overlapping trigger while the first run is still running
+	store.LogSkipped(ctx, TriggerManual, "skipped_overlap")
+
+	// While running, GetLastRun should return the active run, not skipped_overlap
+	last, err := store.GetLastRun(ctx)
+	if err != nil {
+		t.Fatalf("GetLastRun while running failed: %v", err)
+	}
+	if last.ID != run.ID || last.Status != "running" {
+		t.Errorf("expected active run ID=%d status=running, got ID=%d status=%s", run.ID, last.ID, last.Status)
+	}
+
+	// Finish the actual run with success
+	run.Status = "success"
+	run.ItemsFound = 359
+	run.ItemsNew = 6
+	run.ItemsUpdated = 231
+	if err := store.FinishRun(ctx, run); err != nil {
+		t.Fatalf("FinishRun failed: %v", err)
+	}
+
+	// After finishing, GetLastRun must return the completed run (with higher finished_at and non-overlap status)
+	last, err = store.GetLastRun(ctx)
+	if err != nil {
+		t.Fatalf("GetLastRun after finish failed: %v", err)
+	}
+	if last.ID != run.ID || last.Status != "success" || last.ItemsFound != 359 {
+		t.Errorf("expected completed run ID=%d status=success items=359, got ID=%d status=%s items=%d",
+			run.ID, last.ID, last.Status, last.ItemsFound)
+	}
+}

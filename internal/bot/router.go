@@ -306,9 +306,10 @@ func (r *BotRouter) Dispatch(ctx context.Context, p *whatsapp.ParsedMessage) {
 					if lastRun.FinishedAt != nil {
 						dur = lastRun.FinishedAt.Sub(lastRun.StartedAt).Round(time.Second).String()
 					}
+					wib := time.FixedZone("WIB", 7*3600)
 					sb.WriteString("\n*Riwayat Scraping Terakhir:*\n")
 					fmt.Fprintf(&sb, "• Status: *%s*\n", strings.ToUpper(lastRun.Status))
-					fmt.Fprintf(&sb, "• Waktu: %s WIB\n", lastRun.StartedAt.Format("02 Jan 2006, 15:04"))
+					fmt.Fprintf(&sb, "• Waktu: %s WIB\n", lastRun.StartedAt.In(wib).Format("02 Jan 2006, 15:04"))
 					fmt.Fprintf(&sb, "• Pemicu: %s | Durasi: %s\n", lastRun.Trigger, dur)
 					fmt.Fprintf(&sb, "• Hasil: %d Ditemukan | %d Baru | %d Update\n", lastRun.ItemsFound, lastRun.ItemsNew, lastRun.ItemsUpdated)
 					if lastRun.ErrorMessage != "" {
