@@ -1,0 +1,13 @@
+.git
+.env
+*.md
+tmp/
+*.db
+*.db-wal
+*.db-shm
+storage/
+bot-istimewa
+scraper-cli
+.agent/
+.vscode/
+.idea/
